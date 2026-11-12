@@ -31,7 +31,7 @@ public final class ModrinthProvider implements MarketplaceProvider {
         JsonArray facets = new JsonArray();
         addFacet(facets, "project_type:" + modrinthType(type));
         if (minecraftVersion != null && !minecraftVersion.isBlank()) addFacet(facets, "versions:" + minecraftVersion.trim());
-        if (loader != null && !loader.isBlank() && !loader.equalsIgnoreCase("all")) {
+        if (type == ProjectType.MOD && loader != null && !loader.isBlank() && !loader.equalsIgnoreCase("all")) {
             addFacet(facets, "categories:" + loader.trim().toLowerCase());
         }
 
