@@ -43,7 +43,7 @@ public final class InstanceManager {
                 sourceLabel = source.toString();
                 copySupportedContent(source, target);
             }
-            writePerformanceDefaults(target, version);
+            if (kind != Kind.MODPACK) writePerformanceDefaults(target, version);
             List<String> modules = kind == Kind.VANILLA ? List.of() : RELIAN_MODULES;
             InstanceManifest manifest = new InstanceManifest(cleanName, version,
                     kind == Kind.VANILLA ? "Vanilla" : (loader == null ? "Fabric" : loader), kind, sourceLabel,
@@ -151,6 +151,23 @@ public final class InstanceManager {
         String cleaned = name.trim().replaceAll("[^A-Za-z0-9 _.-]", "").replaceAll("[. ]+$", "");
         if (cleaned.isBlank() || cleaned.equals(".") || cleaned.equals("..")) throw new IOException("Enter a valid instance name.");
         return cleaned;
+    }
+
+    /** Removes an instance created by a failed, not-yet-completed modpack import. */
+    public static void deleteIncompleteModpackInstance(Path directory) throws IOException {
+        Path target = directory.toAbsolutePath().normalize();
+        if (!Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(target)
+                || !Files.isRegularFile(target.resolve("relian-instance.json"), LinkOption.NOFOLLOW_LINKS)
+                || Files.exists(target.resolve("relian-modpack.json"), LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Refusing to remove a folder that is not an incomplete Relian modpack instance.");
+        }
+        String json = Files.readString(target.resolve("relian-instance.json"));
+        InstanceManifest manifest;
+        try { manifest = GSON.fromJson(json, InstanceManifest.class); }
+        catch (RuntimeException ex) { throw new IOException("The Relian instance manifest is invalid.", ex); }
+        if (manifest == null || manifest.kind() != Kind.MODPACK)
+            throw new IOException("Only an incomplete Modpack instance can be removed by this cleanup operation.");
+        deleteTree(target);
     }
 
     private static void deleteTree(Path root) {
