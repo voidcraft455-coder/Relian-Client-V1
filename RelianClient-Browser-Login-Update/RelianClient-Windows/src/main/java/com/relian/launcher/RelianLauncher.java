@@ -31,7 +31,9 @@ public class RelianLauncher extends Application {
     private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
-    @Override public void stop() { launchService.close(); }\n\n    @Override public void start(Stage stage) {
+    @Override public void stop() { launchService.close(); }
+
+    @Override public void start(Stage stage) {
         shell.setStyle("-fx-background-color:"+backgroundColor+";");
         shell.setLeft(sidebar());
         shell.setCenter(host);
