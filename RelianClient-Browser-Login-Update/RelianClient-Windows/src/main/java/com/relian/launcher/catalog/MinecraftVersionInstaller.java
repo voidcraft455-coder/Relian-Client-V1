@@ -80,10 +80,18 @@ public final class MinecraftVersionInstaller {
         Path root = gameDirectory.toAbsolutePath().normalize();
         Path versionsRoot = root.resolve("versions").normalize();
         Path versionDirectory = versionsRoot.resolve(id).normalize();
-        if (!versionDirectory.startsWith(versionsRoot)) throw new IOException("Invalid version installation path.");
+        if (!versionsRoot.startsWith(root) || !versionDirectory.startsWith(versionsRoot)) {
+            throw new IOException("Invalid version installation path.");
+        }
+        Files.createDirectories(root);
+        rejectSymlinkIfPresent(versionsRoot);
+        Files.createDirectories(versionsRoot);
+        rejectSymlinkIfPresent(versionDirectory);
         Files.createDirectories(versionDirectory);
         Path metadataFile = versionDirectory.resolve(id + ".json");
         Path clientJar = versionDirectory.resolve(id + ".jar");
+        rejectSymlinkIfPresent(metadataFile);
+        rejectSymlinkIfPresent(clientJar);
 
         status.accept("Downloading and verifying Minecraft " + id + " client JAR…");
         long bytes = downloadVerified(clientUri, clientSha1, clientJar, MAX_CLIENT_BYTES);
@@ -184,6 +192,17 @@ public final class MinecraftVersionInstaller {
         }
         if (!"https".equalsIgnoreCase(uri.getScheme()) || !allowed || uri.getUserInfo() != null) {
             throw new IOException("A Minecraft download URL did not use an approved Mojang HTTPS host.");
+        }
+    }
+
+    private static void rejectSymlinkIfPresent(Path path) throws IOException {
+        if (Files.isSymbolicLink(path)) {
+            throw new IOException("Relian will not write through a symbolic link in the selected version directory.");
+        }
+        if (Files.exists(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                && !Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                && !Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("A version installation path is not a regular file or directory.");
         }
     }
 
