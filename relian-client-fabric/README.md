@@ -6,8 +6,9 @@ This is the first in-game runtime module, currently targeting **Minecraft Java 1
 
 - Press **Right Shift** to open/close the Relian HUD editor.
 - Toggle FPS, coordinates, keystrokes, and armor durability panels.
-- Move each panel with the arrow buttons and adjust its scale.
+- Move each panel with the arrow buttons, adjust its scale, and cycle through a small preset color palette.
 - Settings persist in `config/relian-hud.json`.
+- A branded loading overlay darkens the vanilla resource-loading splash and displays an original geometric Relian mark and title.
 - The editor does not pause single-player gameplay.
 
 This is an original Relian layout and visual system. It is not a copy of Lunar Client or Dawn Client assets or source.
@@ -18,4 +19,4 @@ Run `gradle build` from this directory with Java 21 and internet access. The out
 
 ## Current limits
 
-This is a first runtime milestone, not a full client. It does not implement combat automation, player targeting, hidden-player tracking, or anti-cheat bypasses. The custom Relian resource-loading splash, game launching, additional module types, direct mouse dragging, a fully free-form color picker, and support for other Minecraft versions are future work. The loading overlay currently appears over the vanilla resource-loading splash rather than replacing every early startup frame. The current HUD module has not been benchmarked in-game yet.
+This is a first runtime milestone, not a full client. It does not implement combat automation, player targeting, hidden-player tracking, or anti-cheat bypasses. Game launching, additional module types, direct mouse dragging, a fully free-form color picker, and support for other Minecraft versions are future work. The loading overlay appears over the vanilla resource-loading splash rather than replacing every early startup frame. The current HUD module has not been benchmarked in-game yet.
