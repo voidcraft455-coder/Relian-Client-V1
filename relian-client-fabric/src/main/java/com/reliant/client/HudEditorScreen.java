@@ -63,6 +63,8 @@ public final class HudEditorScreen extends Screen {
         context.drawTextWithShadow(textRenderer, Text.literal("PING: 34 ms"), px + 22, py + 153, 0xFF8FE3B0);
         context.drawTextWithShadow(textRenderer, Text.literal("HELD ITEM: 92%"), px + 22, py + 169, 0xFFFFD479);
         context.drawTextWithShadow(textRenderer, Text.literal("Armor: 98%  91%  84%"), px + 22, py + 185, 0xFFFFFFFF);
+        context.drawTextWithShadow(textRenderer, Text.literal("POTIONS: Speed II  1:24"), px + 22, py + 201, 0xFFB69CFF);
+        context.drawTextWithShadow(textRenderer, Text.literal("FACING: NORTH"), px + 22, py + 217, 0xFF83B7FF);
         rounded(context, px + 10, py + 244, px + 245, py + 271, 0xFF24344A, 8);
         context.drawTextWithShadow(textRenderer, Text.literal("Drag in preview to move selected module"),
             px + 18, py + 253, 0xFFB9C7D8);
@@ -78,9 +80,9 @@ public final class HudEditorScreen extends Screen {
         drawButton(context, px + 160, py + 336, 73, 27, "SIZE +", 0xFF34445B, mouseX, mouseY);
 
         drawButton(context, panelLeft + 18, panelTop + 470, 104, 25, "RESET", 0xFF4B3540, mouseX, mouseY);
-        drawButton(context, panelLeft + 134, panelTop + 382, 104, 25, "SAVE", 0xFF245A4C, mouseX, mouseY);
+        drawButton(context, panelLeft + 134, panelTop + 470, 104, 25, "SAVE", 0xFF245A4C, mouseX, mouseY);
         context.drawTextWithShadow(textRenderer, Text.literal("RIGHT SHIFT  •  CLOSE"), panelLeft + 490,
-            panelTop + 390, 0xFF7E8DA2);
+            panelTop + 480, 0xFF7E8DA2);
     }
 
     private void drawButton(DrawContext context, int x, int y, int w, int h, String label,
@@ -151,11 +153,11 @@ public final class HudEditorScreen extends Screen {
             closeEditor();
             return true;
         }
-        if (inside(mouseX, mouseY, panelLeft + 18, panelTop + 382, 104, 25)) {
+        if (inside(mouseX, mouseY, panelLeft + 18, panelTop + 470, 104, 25)) {
             HudConfig.reset();
             return true;
         }
-        if (inside(mouseX, mouseY, panelLeft + 134, panelTop + 382, 104, 25)) {
+        if (inside(mouseX, mouseY, panelLeft + 134, panelTop + 470, 104, 25)) {
             HudConfig.save();
             closeEditor();
             return true;
