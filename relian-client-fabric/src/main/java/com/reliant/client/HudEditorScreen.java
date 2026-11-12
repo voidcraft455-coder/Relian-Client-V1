@@ -10,8 +10,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of("fps", "coordinates", "keystrokes", "armor");
-    private int page = 0;
-
+    
     public HudEditorScreen() {
         super(Text.literal("Relian HUD Editor"));
     }
@@ -19,14 +18,14 @@ public final class HudEditorScreen extends Screen {
     @Override
     protected void init() {
         clearChildren();
-        int left = Math.max(18, (width - 420) / 2);
+        int left = Math.max(18, (width - 500) / 2);
         int top = Math.max(18, (height - 310) / 2);
         addDrawableChild(ButtonWidget.builder(Text.literal("Close"), button -> close())
-            .dimensions(left + 330, top + 8, 80, 20).build());
+            .dimensions(left + 410, top + 8, 80, 20).build());
         addDrawableChild(ButtonWidget.builder(Text.literal("Reset layout"), button -> {
             HudConfig.reset();
             init();
-        }).dimensions(left + 210, top + 8, 110, 20).build());
+        }).dimensions(left + 290, top + 8, 110, 20).build());
 
         int y = top + 56;
         for (String id : MODULES) {
@@ -50,12 +49,12 @@ public final class HudEditorScreen extends Screen {
                 .dimensions(left + 280, y, 55, 20).build());
             addDrawableChild(ButtonWidget.builder(Text.literal("Scale +"), button -> scale(settings, 0.1f))
                 .dimensions(left + 338, y, 55, 20).build());
-            y += 34;
+            addDrawableChild(ButtonWidget.builder(Text.literal("Color"), button -> cycleColor(settings))\n                .dimensions(left + 397, y, 55, 20).build());\n            y += 34;
         }
         addDrawableChild(ButtonWidget.builder(Text.literal("Save"), button -> {
             HudConfig.save();
             close();
-        }).dimensions(left + 160, top + 270, 100, 22).build());
+        }).dimensions(left + 200, top + 270, 100, 22).build());
     }
 
     private void move(HudConfig.ModuleSettings settings, int dx, int dy) {
@@ -65,7 +64,7 @@ public final class HudEditorScreen extends Screen {
         init();
     }
 
-    private void scale(HudConfig.ModuleSettings settings, float amount) {
+    private void cycleColor(HudConfig.ModuleSettings settings) {\n        int[] palette = {0xFFFFFFFF, 0xFF83B7FF, 0xFF8FE3B0, 0xFFFFD479, 0xFFFF8E9E};\n        int next = 0;\n        for (int i = 0; i < palette.length; i++) if (palette[i] == settings.color) next = (i + 1) % palette.length;\n        settings.color = palette[next];\n        HudConfig.save();\n        init();\n    }\n\n    private void scale(HudConfig.ModuleSettings settings, float amount) {
         settings.scale = Math.max(0.5f, Math.min(2.0f, settings.scale + amount));
         HudConfig.save();
         init();
@@ -74,12 +73,12 @@ public final class HudEditorScreen extends Screen {
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         renderBackground(context, mouseX, mouseY, delta);
-        int left = Math.max(18, (width - 420) / 2);
+        int left = Math.max(18, (width - 500) / 2);
         int top = Math.max(18, (height - 310) / 2);
-        context.fill(left, top, left + 420, top + 310, 0xE8171B24);
+        context.fill(left, top, left + 500, top + 310, 0xE8171B24);
         context.drawTextWithShadow(textRenderer, Text.literal("RELIAN  /  HUD EDITOR"), left + 14, top + 16, 0xFF83B7FF);
         context.drawTextWithShadow(textRenderer,
-            Text.literal("Right Shift toggles this editor. Toggle, reposition and resize each module."),
+            Text.literal("Right Shift toggles this editor. Toggle, reposition, resize and recolor each module."),
             left + 14, top + 38, 0xFFD7DCE5);
         super.render(context, mouseX, mouseY, delta);
     }
