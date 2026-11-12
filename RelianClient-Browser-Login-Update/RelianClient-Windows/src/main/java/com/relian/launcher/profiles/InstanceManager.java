@@ -65,6 +65,49 @@ public final class InstanceManager {
         }
     }
 
+    public record InstanceEntry(Path directory, InstanceManifest manifest) {}
+
+    /** Lists only direct, non-symlink child folders with a valid Relian instance manifest. */
+    public static List<InstanceEntry> list(Path instancesRoot) throws IOException {
+        Path root = instancesRoot.toAbsolutePath().normalize();
+        if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return List.of();
+        if (Files.isSymbolicLink(root) || !Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("The instances location is not a safe directory.");
+        List<InstanceEntry> entries = new ArrayList<>();
+        try (DirectoryStream<Path> children = Files.newDirectoryStream(root)) {
+            for (Path child : children) {
+                if (Files.isSymbolicLink(child) || !Files.isDirectory(child, LinkOption.NOFOLLOW_LINKS)) continue;
+                Path manifestPath = child.resolve("relian-instance.json");
+                if (!Files.isRegularFile(manifestPath, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(manifestPath)) continue;
+                try {
+                    InstanceManifest manifest = GSON.fromJson(Files.readString(manifestPath), InstanceManifest.class);
+                    if (manifest != null && manifest.name() != null && manifest.minecraftVersion() != null)
+                        entries.add(new InstanceEntry(child.toAbsolutePath().normalize(), manifest));
+                } catch (RuntimeException ignored) {
+                    // Ignore incomplete or invalid profiles rather than preventing the other instances from appearing.
+                }
+            }
+        }
+        entries.sort(Comparator.comparing(entry -> entry.manifest().name(), String.CASE_INSENSITIVE_ORDER));
+        return List.copyOf(entries);
+    }
+
+    /** Deletes one managed instance only after verifying it is a direct child with our manifest marker. */
+    public static void delete(Path instancesRoot, Path instanceDirectory) throws IOException {
+        Path root = instancesRoot.toAbsolutePath().normalize();
+        Path target = instanceDirectory.toAbsolutePath().normalize();
+        if (!target.startsWith(root) || target.equals(root) || !root.equals(target.getParent()))
+            throw new IOException("Only a direct child instance folder can be removed.");
+        if (Files.isSymbolicLink(root) || Files.isSymbolicLink(target)
+                || !Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)
+                || !Files.isRegularFile(target.resolve("relian-instance.json"), LinkOption.NOFOLLOW_LINKS)
+                || Files.isSymbolicLink(target.resolve("relian-instance.json")))
+            throw new IOException("This folder is not a verified Relian-managed instance.");
+        deleteTree(target);
+        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("Some instance files could not be removed.");
+    }
+
     public static Path resolveGameDirectory(Path selected) throws IOException {
         Path source = selected.toAbsolutePath().normalize();
         if (Files.isDirectory(source.resolve(".minecraft"), LinkOption.NOFOLLOW_LINKS)) return source.resolve(".minecraft");
