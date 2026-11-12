@@ -176,13 +176,44 @@ public class RelianLauncher extends Application {
         Button btn=small(action);btn.setOnAction(e->r.run());b.getChildren().addAll(title,muted(d),btn);return b;
     }
     private VBox versionPage(){
-        VBox box=new VBox(12);box.getChildren().add(muted("Choose a Minecraft version for a separate installation profile."));
+        VBox box=new VBox(12);
+        box.getChildren().addAll(muted("Choose a Minecraft version. Download verified official client files into Relian's game directory."), 
+            muted("This stage installs the version metadata and client JAR only. Libraries, assets, Java runtime setup, Microsoft/Xbox authentication, and launching are not yet complete."));
         for(String ver:versionList){HBox row=new HBox(12);row.setAlignment(Pos.CENTER_LEFT);row.setPadding(new Insets(14));row.setStyle(cardStyle());
             VBox info=new VBox(3);Label t=new Label("Minecraft "+ver);t.setStyle("-fx-text-fill:"+FG+";-fx-font-size:14px;-fx-font-weight:bold;");
-            info.getChildren().addAll(t,muted("Version target • compatibility checked during installation"));
-            Region sp=new Region();HBox.setHgrow(sp,Priority.ALWAYS);Button select=small("Select");
-            select.setOnAction(e->{page("Home");if(versions!=null)versions.setValue(ver);});row.getChildren().addAll(info,sp,select);box.getChildren().add(row);}
+            Label state=muted("Official release • client file checksum will be verified");
+            info.getChildren().addAll(t,state);
+            Region sp=new Region();HBox.setHgrow(sp,Priority.ALWAYS);
+            Button select=small("Select");select.setOnAction(e->{page("Home");if(versions!=null)versions.setValue(ver);});
+            Button install=small("Download client files");
+            install.setOnAction(e->installVersionFiles(ver,install,state));
+            row.getChildren().addAll(info,sp,select,install);box.getChildren().add(row);}
         return box;
+    }
+
+    private void installVersionFiles(String versionId,Button action,Label status){
+        action.setDisable(true);status.setText("Preparing official Minecraft download…");
+        java.nio.file.Path target=gameDirectory.isBlank()
+            ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
+            :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+        CompletableFuture.supplyAsync(()->{
+            try{
+                var catalog=new com.relian.launcher.catalog.MinecraftVersionCatalog();
+                var release=catalog.fetchAllReleases().stream().filter(item->item.id().equals(versionId)).findFirst()
+                    .orElseThrow(()->new java.io.IOException("Minecraft "+versionId+" is no longer listed by Mojang."));
+                return com.relian.launcher.catalog.MinecraftVersionInstaller.install(release,target,
+                    message->javafx.application.Platform.runLater(()->status.setText(message)));
+            }catch(Exception ex){throw new RuntimeException(ex);}
+        }).whenComplete((result,error)->javafx.application.Platform.runLater(()->{
+            action.setDisable(false);
+            if(error!=null){
+                Throwable cause=error.getCause()==null?error:error.getCause();
+                status.setText("Download failed: "+cause.getMessage());
+                return;
+            }
+            status.setText("Verified client JAR ("+String.format(java.util.Locale.ROOT,"%.1f MB",result.clientBytes()/1048576.0)
+                +") saved to "+result.versionDirectory()+". Game libraries/assets and launch support are still pending.");
+        }));
     }
     private VBox manager(String title,String desc){
         VBox box=new VBox(14);TextField search=new TextField();search.setPromptText("Search "+title.toLowerCase()+"...");
