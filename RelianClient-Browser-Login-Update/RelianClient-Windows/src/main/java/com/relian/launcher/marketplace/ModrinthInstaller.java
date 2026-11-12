@@ -47,7 +47,7 @@ public final class ModrinthInstaller {
 
         Path root = gameDirectory.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) throw new IOException("Choose an existing Minecraft game directory.");
-        String loaderValue = normalizeLoader(loader);
+        String loaderValue = project.type() == ProjectType.MOD ? normalizeLoader(loader) : "";
         String versionQuery = "[\"" + jsonEscape(minecraftVersion.trim()) + "\"]";
         String url = API + "/project/" + encodePath(project.id()) + "/version?game_versions="
                 + enc(versionQuery);
