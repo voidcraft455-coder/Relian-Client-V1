@@ -27,6 +27,8 @@ public class RelianLauncher extends Application {
     private ComboBox<String> versions;
     private String active = "Home";
     private String accountLabel = "Sign in with Microsoft";
+    private com.relian.launcher.runtime.MinecraftLaunchCommandBuilder.Session minecraftSession;
+    private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
     @Override public void start(Stage stage) {
@@ -134,10 +136,12 @@ public class RelianLauncher extends Application {
         CompletableFuture.runAsync(() -> {
             try {
                 MicrosoftBrowserLogin.LoginResult result = MicrosoftBrowserLogin.signIn(clientId);
+                var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken());
                 javafx.application.Platform.runLater(() -> {
-                    accountLabel = "Microsoft account connected";
+                    minecraftSession = verifiedSession;
+                    accountLabel = verifiedSession.username();
                     page(active);
-                    info("Microsoft browser sign-in completed. Minecraft ownership and Xbox authentication still need to be verified before the Play button can launch the game. Your access token is kept in memory only for this session.");
+                    info("Minecraft account verified: " + verifiedSession.username() + ". You can now launch installed Vanilla versions.");
                 });
             } catch (Exception ex) {
                 javafx.application.Platform.runLater(() -> {
@@ -159,8 +163,28 @@ public class RelianLauncher extends Application {
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Fabric"); loader.setPrefWidth(150); styleCombo(loader);
         Button play=new Button("PLAY"); play.setPrefSize(150,42);
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
-        play.setOnAction(e->info("Minecraft launching is not connected yet. This is the first launcher prototype."));
-        controls.getChildren().addAll(versions,loader,play); hero.getChildren().add(controls);
+        Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
+        play.setOnAction(e->{
+            if(minecraftSession==null){info("Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching.");return;}
+            String selectedVersion=versions.getValue();
+            String javaPath=preferences.get("minecraft.java.path","");
+            if(javaPath.isBlank()){playStatus.setText("Choose or install the compatible Java runtime in Settings first.");return;}
+            java.nio.file.Path root=gameDirectory.isBlank()
+                ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
+                :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+            play.setDisable(true); playStatus.setText("Starting Minecraft "+selectedVersion+"…");
+            CompletableFuture.runAsync(()->{
+                try{
+                    launchService.launch(root,selectedVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
+                        line->System.out.println(line));
+                }catch(Exception ex){throw new RuntimeException(ex);}
+            }).whenComplete((ignored,error)->javafx.application.Platform.runLater(()->{
+                play.setDisable(false);
+                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();playStatus.setText("Launch failed: "+cause.getMessage());}
+                else playStatus.setText("Minecraft process started. Check the game window.");
+            }));
+        });
+        controls.getChildren().addAll(versions,loader,play); hero.getChildren().addAll(controls,playStatus);
         Button createInstance=small("＋ Create a new instance");
         createInstance.setOnAction(e->page("Instances"));
         hero.getChildren().add(createInstance);
