@@ -43,7 +43,7 @@ public final class InstanceManager {
                 sourceLabel = source.toString();
                 copySupportedContent(source, target);
             }
-            writePerformanceDefaults(target, version);
+            if (kind != Kind.MODPACK) writePerformanceDefaults(target, version);
             List<String> modules = kind == Kind.VANILLA ? List.of() : RELIAN_MODULES;
             InstanceManifest manifest = new InstanceManifest(cleanName, version,
                     kind == Kind.VANILLA ? "Vanilla" : (loader == null ? "Fabric" : loader), kind, sourceLabel,
