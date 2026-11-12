@@ -116,8 +116,10 @@ public final class TemurinRuntimeInstaller {
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(45))
                 .header("User-Agent", "RelianClient/0.1.0").GET().build();
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200 || response.body().length() > limit)
-            throw new IOException("Temurin runtime metadata request failed.");
+        if (response.statusCode() != 200 || response.body().length() > limit
+                || !"https".equalsIgnoreCase(response.uri().getScheme())
+                || !"api.adoptium.net".equalsIgnoreCase(response.uri().getHost()))
+            throw new IOException("Temurin runtime metadata request failed or redirected to an untrusted host.");
         return response.body();
     }
 
