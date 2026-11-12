@@ -40,6 +40,8 @@ public final class ModrinthPackImporter {
     private static final long MAX_ARCHIVE_BYTES = 1024L * 1024 * 1024;
     private static final long MAX_FILE_BYTES = 300L * 1024 * 1024;
     private static final long MAX_TOTAL_BYTES = 1024L * 1024 * 1024;
+    private static final long MAX_OVERRIDE_TOTAL_BYTES = 128L * 1024 * 1024;
+    private static final long MAX_OVERRIDE_FILE_BYTES = 32L * 1024 * 1024;
     private static final int MAX_ENTRIES = 20_000;
     private static final double MAX_COMPRESSION_RATIO = 150.0;
     private static final URI MODRINTH_CDN = URI.create("https://cdn.modrinth.com");
