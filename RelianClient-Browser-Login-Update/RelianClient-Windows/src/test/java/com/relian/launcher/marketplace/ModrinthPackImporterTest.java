@@ -46,6 +46,22 @@ class ModrinthPackImporterTest {
     }
 
     @Test
+    void neverOverwritesExistingInstanceFiles() throws Exception {
+        Path instance = instance("MODPACK");
+        Path existing = Files.createDirectories(instance.resolve("config")).resolve("user.cfg");
+        Files.writeString(existing, "keep this user file");
+        Path archive = temporary.resolve("overwrite.mrpack");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
+            put(zip, "modrinth.index.json", index("fabric-loader", "0.16.0"));
+            put(zip, "overrides/config/user.cfg", "replace attempt");
+        }
+
+        assertThrows(IOException.class, () -> ModrinthPackImporter.importPack(
+                archive, instance, "1.21.1", "Fabric"));
+        assertTrue(Files.readString(existing).equals("keep this user file"));
+    }
+
+    @Test
     void refusesToImportIntoVanillaInstance() throws Exception {
         Path instance = instance("VANILLA");
         Path archive = temporary.resolve("empty.mrpack");
