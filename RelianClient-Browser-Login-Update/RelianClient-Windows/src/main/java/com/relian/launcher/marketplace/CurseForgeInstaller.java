@@ -99,6 +99,11 @@ public final class CurseForgeInstaller {
                 response.body().close();
                 throw new IOException("CurseForge download failed with HTTP " + response.statusCode() + ".");
             }
+            String finalHost = response.uri().getHost();
+            if (finalHost == null || !(finalHost.equalsIgnoreCase("forgecdn.net") || finalHost.endsWith(".forgecdn.net"))) {
+                response.body().close();
+                throw new IOException("The final download destination is not a trusted Forge CDN host.");
+            }
             long declaredLength = response.headers().firstValueAsLong("Content-Length").orElse(-1);
             if (declaredLength > MAX_DOWNLOAD_BYTES) {
                 response.body().close();
@@ -173,7 +178,11 @@ public final class CurseForgeInstaller {
         int dot = name.lastIndexOf('.');
         String base = dot > 0 ? name.substring(0, dot) : name;
         String ext = dot > 0 ? name.substring(dot) : "";
-        return base + "-" + fileId.replaceAll("[^A-Za-z0-9_-]", "") + ext;
+        String suffix = fileId.replaceAll("[^A-Za-z0-9_-]", "");
+        String candidate = base + "-" + suffix + ext;
+        int counter = 2;
+        while (Files.exists(dir.resolve(candidate))) candidate = base + "-" + suffix + "-" + counter++ + ext;
+        return candidate;
     }
     private static String safeFileName(String value) {
         if (value == null) return "";
