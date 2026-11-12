@@ -58,7 +58,8 @@ public final class MinecraftLaunchCommandBuilder {
             Path jar = spec.librariesDirectory().resolve(relative.replace('\\', '/')).normalize();
             if (!jar.startsWith(spec.librariesDirectory().normalize()))
                 throw new IOException("Minecraft metadata contains an unsafe library path.");
-            if (!Files.isRegularFile(jar)) throw new IOException("A required Minecraft library is missing: " + relative);\n            classpath.add(jar.toString());
+            if (!Files.isRegularFile(jar)) throw new IOException("A required Minecraft library is missing: " + relative);
+            classpath.add(jar.toString());
         }
         Path clientJar = spec.versionDirectory().resolve(spec.versionId() + ".jar").normalize();
         classpath.add(clientJar.toString());
