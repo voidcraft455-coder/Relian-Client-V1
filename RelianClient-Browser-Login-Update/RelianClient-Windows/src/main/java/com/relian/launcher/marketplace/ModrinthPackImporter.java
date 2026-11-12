@@ -164,6 +164,8 @@ public final class ModrinthPackImporter {
             return new ImportResult(packName, packVersion, packMinecraft, loader, installed.size() - 1, 0);
         } catch (ArithmeticException ex) {
             throw new IOException("The modpack declares an invalid or excessive combined file size.", ex);
+        } catch (RuntimeException ex) {
+            throw new IOException("The Modrinth modpack manifest or archive metadata is malformed.", ex);
         } finally {
             deleteTree(stage);
             if (!complete) {
