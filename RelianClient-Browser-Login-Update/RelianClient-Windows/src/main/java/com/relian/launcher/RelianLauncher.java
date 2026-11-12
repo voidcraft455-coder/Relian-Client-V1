@@ -74,7 +74,7 @@ public class RelianLauncher extends Application {
         sub.setStyle("-fx-text-fill:"+MUTED+";-fx-font-size:9px;");
         bt.getChildren().addAll(n,sub); brand.getChildren().addAll(r,bt);
         v.getChildren().add(brand); Region gap=new Region(); gap.setPrefHeight(20); v.getChildren().add(gap);
-        for(String s:List.of("Home","Versions","Mods","Modpacks","Resource Packs","Shaders","Installed Content","Settings")) {
+        for(String s:List.of("Home","Instances","Versions","Mods","Modpacks","Resource Packs","Shaders","Installed Content","Settings")) {
             Button b=new Button(s); b.setMaxWidth(Double.MAX_VALUE); b.setAlignment(Pos.CENTER_LEFT);
             b.setPadding(new Insets(11,12,11,12)); b.setOnAction(e->page(s)); b.setId("nav-"+s);
             v.getChildren().add(b);
@@ -95,6 +95,7 @@ public class RelianLauncher extends Application {
         header.getChildren().addAll(title,spacer,account); content.getChildren().add(header);
         switch(name) {
             case "Home" -> content.getChildren().add(home());
+            case "Instances" -> content.getChildren().add(instancesPage());
             case "Versions" -> content.getChildren().add(versionPage());
             case "Mods" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.MOD));
             case "Modpacks" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.MODPACK));
@@ -160,6 +161,9 @@ public class RelianLauncher extends Application {
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
         play.setOnAction(e->info("Minecraft launching is not connected yet. This is the first launcher prototype."));
         controls.getChildren().addAll(versions,loader,play); hero.getChildren().add(controls);
+        Button createInstance=small("＋ Create a new instance");
+        createInstance.setOnAction(e->page("Instances"));
+        hero.getChildren().add(createInstance);
         HBox cards=new HBox(12);
         cards.getChildren().addAll(card("MOD MANAGER","Browse mods and check compatibility.","Open Mods",()->page("Mods")),
             card("RESOURCE PACKS","Manage textures and visual styles.","Open Packs",()->page("Resource Packs")),
@@ -273,6 +277,127 @@ public class RelianLauncher extends Application {
         page.getChildren().addAll(intro,location,controls,state,entries);
         if(!gameDirectory.isBlank()) scan.run();
         return page;
+    }
+
+
+    private VBox instancesPage() {
+        VBox box=new VBox(14);
+        box.getChildren().add(muted("Create an isolated Minecraft installation. Vanilla stays completely unmodified; the other three choices include Relian's client-module set."));
+        VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
+        Label nameLabel=new Label("Instance name"); nameLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        TextField name=new TextField(); name.setPromptText("My Minecraft instance");
+        Label typeLabel=new Label("Choose how to create it"); typeLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        ComboBox<String> type=new ComboBox<>();
+        type.getItems().addAll("Vanilla — clean Minecraft","Import — Prism / MultiMC / Lunar / Laby / Dawn / OneClient","Relian — Relian client + performance modules","Modpack — browse Modrinth modpacks");
+        type.setValue("Relian — Relian client + performance modules"); type.setMaxWidth(Double.MAX_VALUE); styleCombo(type);
+        ComboBox<String> version=new ComboBox<>(); version.getItems().setAll(versionList); version.setValue(versionList.contains("1.21.11")?"1.21.11":versionList.get(0)); styleCombo(version);
+        ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Fabric"); styleCombo(loader);
+        HBox versionRow=new HBox(10,version,loader); versionRow.setAlignment(Pos.CENTER_LEFT);
+        Label rootLabel=muted("Instances will be stored in: "+(gameDirectory.isBlank()?System.getProperty("user.home")+"/.relian/instances":gameDirectory+"/RelianInstances"));
+        Label importLabel=muted("No source instance selected.");
+        java.nio.file.Path[] importPath={null};
+        Button chooseImport=small("Choose existing instance folder");
+        chooseImport.setOnAction(e->{
+            DirectoryChooser chooser=new DirectoryChooser(); chooser.setTitle("Choose an existing Minecraft instance");
+            File selected=chooser.showDialog(shell.getScene().getWindow());
+            if(selected!=null){importPath[0]=selected.toPath();importLabel.setText("Import source: "+selected.getAbsolutePath());}
+        });
+        TextField modpackSearch=new TextField(); modpackSearch.setPromptText("Search Modrinth modpacks…");
+        Button searchPacks=small("Search modpacks");
+        javafx.scene.control.ListView<com.relian.launcher.marketplace.MarketplaceProject> packs=new javafx.scene.control.ListView<>();
+        packs.setPrefHeight(170);
+        packs.setCellFactory(view->new javafx.scene.control.ListCell<>(){
+            @Override protected void updateItem(com.relian.launcher.marketplace.MarketplaceProject item,boolean empty){
+                super.updateItem(item,empty);
+                setText(empty||item==null?null:item.title()+"  •  "+item.author()+"  •  "+item.source());
+            }
+        });
+        Label packStatus=muted("Search Modrinth to browse available modpacks.");
+        searchPacks.setOnAction(e->{
+            packStatus.setText("Searching Modrinth…"); packs.getItems().clear();
+            CompletableFuture.supplyAsync(()->{
+                try{return new com.relian.launcher.marketplace.ModrinthProvider().search(modpackSearch.getText(),
+                    com.relian.launcher.marketplace.ProjectType.MODPACK,version.getValue(),"",50);}
+                catch(Exception ex){throw new RuntimeException(ex);}
+            }).whenComplete((results,error)->javafx.application.Platform.runLater(()->{
+                if(error!=null){packStatus.setText("Modpack search failed: "+error.getMessage());return;}
+                packs.getItems().setAll(results); packStatus.setText(results.size()+" modpack(s) found. Select one to create its instance profile.");
+            }));
+        });
+        Button openPack=small("Open selected modpack page");
+        openPack.setOnAction(e->{
+            var selected=packs.getSelectionModel().getSelectedItem();
+            if(selected==null){info("Select a modpack first.");return;}
+            try{java.awt.Desktop.getDesktop().browse(selected.projectUrl());}
+            catch(Exception ex){info("Could not open the modpack page: "+ex.getMessage());}
+        });
+        VBox importBox=new VBox(8,chooseImport,importLabel);
+        VBox packBox=new VBox(8,modpackSearch,searchPacks,packs,packStatus,openPack);
+        type.setOnAction(e->{
+            importBox.setVisible(type.getValue().startsWith("Import")); importBox.setManaged(importBox.isVisible());
+            packBox.setVisible(type.getValue().startsWith("Modpack")); packBox.setManaged(packBox.isVisible());
+            loader.setDisable(type.getValue().startsWith("Vanilla"));
+        });
+        importBox.setVisible(false); importBox.setManaged(false);
+        packBox.setVisible(false); packBox.setManaged(false);
+        Button create=small("Create instance");
+        Label result=muted("Choose an option, then create your instance.");
+        create.setOnAction(e->{
+            String chosen=type.getValue(); var selectedPack=packs.getSelectionModel().getSelectedItem();
+            if(chosen.startsWith("Modpack")&&selectedPack==null){result.setText("Choose a modpack from the results first.");return;}
+            result.setText("Creating isolated instance…"); create.setDisable(true);
+            CompletableFuture.supplyAsync(()->{
+                try{
+                    java.nio.file.Path root=gameDirectory.isBlank()
+                        ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","instances")
+                        :java.nio.file.Path.of(gameDirectory).resolve("RelianInstances");
+                    var kind=chosen.startsWith("Vanilla")?com.relian.launcher.profiles.InstanceManager.Kind.VANILLA:
+                        chosen.startsWith("Import")?com.relian.launcher.profiles.InstanceManager.Kind.IMPORT:
+                        chosen.startsWith("Modpack")?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
+                        com.relian.launcher.profiles.InstanceManager.Kind.RELIAN;
+                    return com.relian.launcher.profiles.InstanceManager.create(root,name.getText(),version.getValue(),loader.getValue(),
+                        kind,importPath[0],selectedPack==null?"":selectedPack.title());
+                }catch(Exception ex){throw new RuntimeException(ex);}
+            }).whenComplete((created,error)->javafx.application.Platform.runLater(()->{
+                create.setDisable(false);
+                if(error!=null){result.setText("Could not create instance: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
+                String message="Created "+created.manifest().name()+" at "+created.directory()+".";
+                if(kindIncludesRelian(chosen)){
+                    message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
+                    if(loader.getValue().equals("Fabric")){
+                        result.setText(message+" Installing compatible Modrinth performance modules…");
+                        installRelianPerformanceMods(created.directory(),version.getValue(),result,message);
+                    }else result.setText(message+" Fabric performance modules were not auto-installed because "+loader.getValue()+" was selected; loader-specific module matching is still being added.");
+                }else result.setText(message+" This instance has no Relian modules, as requested for Vanilla.");
+            }));
+        });
+        panel.getChildren().addAll(nameLabel,name,typeLabel,type,versionRow,rootLabel,importBox,packBox,create,result);
+        box.getChildren().addAll(panel,
+            muted("Import copies game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens or launcher credentials."),
+            muted("Modpack browsing currently creates a profile linked to the selected pack; importing the actual .mrpack contents and resolving its dependencies is the next implementation step."));
+        return box;
+    }
+
+    private boolean kindIncludesRelian(String chosen){return !chosen.startsWith("Vanilla");}
+
+    private void installRelianPerformanceMods(java.nio.file.Path directory,String gameVersion,Label status,String summary){
+        CompletableFuture.runAsync(()->{
+            java.util.List<String> installed=new java.util.ArrayList<>(), skipped=new java.util.ArrayList<>();
+            String[][] modules={{"sodium","Sodium"},{"lithium","Lithium"},{"ferrite-core","FerriteCore"},
+                {"immediatelyfast","ImmediatelyFast"},{"entityculling","EntityCulling"},{"dynamic-fps","Dynamic FPS"}};
+            for(String[] module:modules){
+                try{
+                    var project=new com.relian.launcher.marketplace.MarketplaceProject(module[0],module[1],"Relian",
+                        "Relian recommended performance module",com.relian.launcher.marketplace.ProjectType.MOD,
+                        java.net.URI.create("https://modrinth.com/mod/"+module[0]),java.util.List.of("fabric"),"Modrinth");
+                    com.relian.launcher.marketplace.ModrinthInstaller.install(project,gameVersion,"Fabric",directory);
+                    installed.add(module[1]);
+                }catch(Exception ex){skipped.add(module[1]);}
+            }
+            javafx.application.Platform.runLater(()->status.setText(summary+" Installed: "+(installed.isEmpty()?"none":String.join(", ",installed))+
+                ". Not available for this version: "+(skipped.isEmpty()?"none":String.join(", ",skipped))+
+                ". A Fabric loader installer and full game launch pipeline are still required before these mods can run."));
+        });
     }
 
     private VBox settings(){
