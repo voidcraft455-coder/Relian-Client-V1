@@ -280,8 +280,81 @@ public class RelianLauncher extends Application {
     }
 
 
+    private java.nio.file.Path instancesRoot() {
+        return gameDirectory.isBlank()
+            ? java.nio.file.Path.of(System.getProperty("user.home"), ".relian", "instances")
+            : java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize().resolve("RelianInstances");
+    }
+
+    private VBox existingInstancesPanel() {
+        VBox panel=new VBox(10);
+        panel.setPadding(new Insets(18));
+        panel.setStyle(cardStyle());
+        HBox heading=new HBox(10);
+        heading.setAlignment(Pos.CENTER_LEFT);
+        Label title=new Label("Your instances");
+        title.setStyle("-fx-text-fill:"+FG+";-fx-font-size:16px;-fx-font-weight:bold;");
+        Region push=new Region(); HBox.setHgrow(push,Priority.ALWAYS);
+        Button refresh=small("Refresh");
+        heading.getChildren().addAll(title,push,refresh);
+        VBox rows=new VBox(8);
+        Label state=muted("Loading managed instances…");
+        Runnable load=()->{
+            rows.getChildren().clear();
+            state.setText("Loading managed instances…");
+            CompletableFuture.supplyAsync(()->{
+                try{return com.relian.launcher.profiles.InstanceManager.list(instancesRoot());}
+                catch(java.io.IOException ex){throw new RuntimeException(ex);}
+            }).whenComplete((items,error)->javafx.application.Platform.runLater(()->{
+                rows.getChildren().clear();
+                if(error!=null){state.setText("Could not read instances: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
+                if(items.isEmpty()){state.setText("No Relian-managed instances yet. Create one below.");return;}
+                state.setText(items.size()+" managed instance(s) • stored in "+instancesRoot());
+                for(var item:items){
+                    HBox row=new HBox(10);
+                    row.setAlignment(Pos.CENTER_LEFT);
+                    row.setPadding(new Insets(12));
+                    row.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:6;");
+                    VBox details=new VBox(3);
+                    Label name=new Label(item.manifest().name());
+                    name.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+                    String loader=item.manifest().loader()==null?"Unknown":item.manifest().loader();
+                    details.getChildren().addAll(name,muted("Minecraft "+item.manifest().minecraftVersion()+" • "+loader+" • "+item.manifest().kind()));
+                    Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
+                    Button open=small("Open folder");
+                    open.setOnAction(event->{
+                        try{
+                            if(java.awt.Desktop.isDesktopSupported()) java.awt.Desktop.getDesktop().open(item.directory().toFile());
+                            else info("Instance folder: "+item.directory());
+                        }catch(Exception ex){info("Could not open the instance folder: "+ex.getMessage());}
+                    });
+                    Button remove=small("Remove");
+                    remove.setOnAction(event->{
+                        Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
+                        confirm.setTitle("Remove instance");
+                        confirm.setHeaderText("Remove "+item.manifest().name()+"?");
+                        confirm.setContentText("This permanently deletes the selected Relian instance folder and its contents. It does not affect other instances or your default Minecraft folder.");
+                        confirm.initOwner(shell.getScene().getWindow());
+                        if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
+                        try{
+                            com.relian.launcher.profiles.InstanceManager.delete(instancesRoot(),item.directory());
+                            load.run();
+                        }catch(Exception ex){info("Could not remove this instance: "+ex.getMessage());}
+                    });
+                    row.getChildren().addAll(details,spacer,open,remove);
+                    rows.getChildren().add(row);
+                }
+            }));
+        };
+        refresh.setOnAction(event->load.run());
+        panel.getChildren().addAll(heading,state,rows);
+        load.run();
+        return panel;
+    }
+
     private VBox instancesPage() {
         VBox box=new VBox(14);
+        box.getChildren().add(existingInstancesPanel());
         box.getChildren().add(muted("Create an isolated Minecraft installation. Vanilla stays completely unmodified; the other three choices include Relian's client-module set."));
         VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
         Label nameLabel=new Label("Instance name"); nameLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
