@@ -46,7 +46,7 @@ public final class InstanceManager {
             writePerformanceDefaults(target);
             List<String> modules = kind == Kind.VANILLA ? List.of() : RELIAN_MODULES;
             InstanceManifest manifest = new InstanceManifest(cleanName, version,
-                    loader == null ? "Vanilla" : loader, kind, sourceLabel,
+                    kind == Kind.VANILLA ? "Vanilla" : (loader == null ? "Fabric" : loader), kind, sourceLabel,
                     modpackTitle == null ? "" : modpackTitle, modules);
             Files.writeString(target.resolve("relian-instance.json"), GSON.toJson(manifest),
                     StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
@@ -107,21 +107,24 @@ public final class InstanceManager {
 
     private static void writePerformanceDefaults(Path dir) throws IOException {
         Path options = dir.resolve("options.txt");
-        Properties p = new Properties();
-        if (Files.isRegularFile(options)) try (var in = Files.newInputStream(options)) { p.load(in); }
-        p.setProperty("renderDistance", "8");
-        p.setProperty("simulationDistance", "5");
-        p.setProperty("entityDistanceScaling", "0.75");
-        p.setProperty("particles", "1");
-        p.setProperty("clouds", "false");
-        p.setProperty("biomeBlendRadius", "0");
-        p.setProperty("entityShadows", "false");
-        p.setProperty("vsync", "false");
-        p.setProperty("maxFps", "260");
-        p.setProperty("graphicsMode", "0");
-        try (var out = Files.newOutputStream(options, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            p.store(out, "Relian performance defaults. Change these in Minecraft Video Settings any time.");
+        java.util.Map<String,String> values = new java.util.LinkedHashMap<>();
+        if (Files.isRegularFile(options)) for (String line : Files.readAllLines(options)) {
+            int split = line.indexOf(':');
+            if (split > 0) values.put(line.substring(0, split), line.substring(split + 1));
         }
+        values.put("renderDistance", "8");
+        values.put("simulationDistance", "5");
+        values.put("entityDistanceScaling", "0.75");
+        values.put("particles", "1");
+        values.put("clouds", "false");
+        values.put("biomeBlendRadius", "0");
+        values.put("entityShadows", "false");
+        values.put("vsync", "false");
+        values.put("maxFps", "260");
+        values.put("graphicsMode", "0");
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        values.forEach((key,value) -> lines.add(key + ":" + value));
+        Files.write(options, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     private static String safeName(String name) throws IOException {
