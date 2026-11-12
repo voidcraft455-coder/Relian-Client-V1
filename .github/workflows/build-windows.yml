@@ -32,7 +32,7 @@ jobs:
 
       - name: Build Windows installer
         working-directory: RelianClient-Browser-Login-Update/RelianClient-Windows
-        run: gradle test jpackage
+        run: gradle -Drelian.minecraft.integration=true test jpackage
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
