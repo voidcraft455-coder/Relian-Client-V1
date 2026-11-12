@@ -143,7 +143,7 @@ public final class HudEditorScreen extends Screen {
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
             int y = panelTop + 88 + i * 27;
-            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 32)) {
+            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 24)) {
                 selected = i;
                 if (inside(mouseX, mouseY, panelLeft + 265, y + 2, 62, 20)) {
                     HudConfig.get().modules.get(MODULES.get(i)).enabled =
