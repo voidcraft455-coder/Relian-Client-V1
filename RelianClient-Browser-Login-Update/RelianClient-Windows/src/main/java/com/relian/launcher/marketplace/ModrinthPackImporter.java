@@ -47,7 +47,7 @@ public final class ModrinthPackImporter {
     private static final URI MODRINTH_CDN = URI.create("https://cdn.modrinth.com");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(20))
-            .followRedirects(HttpClient.Redirect.NORMAL)
+            .followRedirects(HttpClient.Redirect.NEVER)
             .build();
 
     public record ImportResult(String packName, String packVersion, String minecraftVersion,
@@ -177,6 +177,7 @@ public final class ModrinthPackImporter {
         JsonObject index = null;
         Set<String> archiveNames = new HashSet<>();
         long declaredExpanded = 0;
+        long overrideBytes = 0;
         int count = 0;
         Enumeration<ZipArchiveEntry> entries = zip.getEntries();
         while (entries.hasMoreElements()) {
@@ -210,8 +211,13 @@ public final class ModrinthPackImporter {
                 if (relative.isBlank()) continue;
                 validateRelativePath(relative);
                 if (isProtectedPath(relative)) throw new IOException("The archive attempts to install a protected launcher or credential file.");
+                if (size > 32L * 1024 * 1024) throw new IOException("An override file exceeds the 32 MB safety limit: " + relative);
                 try (InputStream in = zip.getInputStream(entry)) {
-                    overrides.put(relative, readLimited(in, MAX_FILE_BYTES));
+                    byte[] content = readLimited(in, 32L * 1024 * 1024);
+                    overrideBytes = Math.addExact(overrideBytes, content.length);
+                    if (overrideBytes > 128L * 1024 * 1024)
+                        throw new IOException("Modpack overrides exceed the 128 MB safety limit.");
+                    overrides.put(relative, content);
                 }
             } else if (!name.startsWith("server-overrides/")) {
                 throw new IOException("The archive contains an unsupported top-level entry: " + name);
@@ -248,9 +254,7 @@ public final class ModrinthPackImporter {
     }
 
     private static void downloadAndVerify(PlannedFile file, Path target) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(file.url()).timeout(Duration.ofMinutes(4))
-                .header("User-Agent", "RelianClient/0.1.0 (Modrinth modpack importer)").GET().build();
-        HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = sendTrustedDownload(file.url());
         if (response.statusCode() != 200) {
             response.body().close();
             throw new IOException("A modpack file download failed with HTTP " + response.statusCode() + ": " + file.path());
@@ -296,6 +300,29 @@ public final class ModrinthPackImporter {
         Path target = safeResolve(stage.resolve("payload"), relative);
         Files.createDirectories(target.getParent());
         Files.move(downloaded, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    private static HttpResponse<InputStream> sendTrustedDownload(URI initial)
+            throws IOException, InterruptedException {
+        URI current = initial;
+        for (int redirects = 0; redirects <= 3; redirects++) {
+            if (!isTrustedHost(current)) throw new IOException("A modpack download redirected outside the trusted Modrinth CDN.");
+            HttpRequest request = HttpRequest.newBuilder(current).timeout(Duration.ofMinutes(4))
+                    .header("User-Agent", "RelianClient/0.1.0 (Modrinth modpack importer)").GET().build();
+            HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            int status = response.statusCode();
+            if (status >= 300 && status < 400) {
+                String location = response.headers().firstValue("Location").orElse("");
+                response.body().close();
+                if (location.isBlank() || redirects == 3)
+                    throw new IOException("The Modrinth CDN returned an invalid or excessive redirect chain.");
+                try { current = current.resolve(URI.create(location)); }
+                catch (IllegalArgumentException ex) { throw new IOException("The Modrinth CDN returned an invalid redirect URL.", ex); }
+                continue;
+            }
+            return response;
+        }
+        throw new IOException("The Modrinth CDN returned too many redirects.");
     }
 
     private static URI trustedDownloadUri(String value) throws IOException {
