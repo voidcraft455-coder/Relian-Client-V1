@@ -55,7 +55,7 @@ public final class MinecraftLaunchCommandBuilder {
             if (artifact == null) continue;
             String relative = string(artifact, "path");
             if (relative.isBlank()) continue;
-            Path jar = spec.librariesDirectory().resolve(relative.replace('\\\\', '/')).normalize();
+            Path jar = spec.librariesDirectory().resolve(relative.replace('\\', '/')).normalize();
             if (!jar.startsWith(spec.librariesDirectory().normalize()))
                 throw new IOException("Minecraft metadata contains an unsafe library path.");
             if (!Files.isRegularFile(jar)) throw new IOException("A required Minecraft library is missing: " + relative);\n            classpath.add(jar.toString());
