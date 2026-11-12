@@ -30,7 +30,7 @@ public final class MinecraftAccountAuthenticator {
              "RelyingParty":"http://auth.xboxlive.com","TokenType":"JWT"}
             """.formatted(escapeJson(microsoftAccessToken)));
         String xboxToken = required(xbox, "Token", "Xbox Live authentication failed.");
-        JsonObject claims = object(object(xbox, "DisplayClaims"), "xui");
+        JsonArray claims = array(object(xbox, "DisplayClaims"), "xui");
         String userHash = claims != null && claims.size() > 0 ? string(claims.get(0).getAsJsonObject(), "uhs") : "";
         if (userHash.isBlank()) throw new IOException("Xbox Live did not return a user hash.");
 
@@ -39,7 +39,7 @@ public final class MinecraftAccountAuthenticator {
              "RelyingParty":"rp://api.minecraftservices.com/","TokenType":"JWT"}
             """.formatted(escapeJson(xboxToken)));
         String xstsToken = required(xsts, "Token", "Xbox security authentication failed.");
-        JsonObject xui = object(object(xsts, "DisplayClaims"), "xui");
+        JsonArray xui = array(object(xsts, "DisplayClaims"), "xui");
         String xuid = xui != null && xui.size() > 0 ? string(xui.get(0).getAsJsonObject(), "xid") : "";
         if (xuid.isBlank() && xui != null && xui.size() > 0)
             xuid = string(xui.get(0).getAsJsonObject(), "uhs");
@@ -95,6 +95,9 @@ public final class MinecraftAccountAuthenticator {
     }
     private static String string(JsonObject object, String key) {
         return object != null && object.has(key) && !object.get(key).isJsonNull() ? object.get(key).getAsString() : "";
+    }
+    private static JsonArray array(JsonObject object, String key) {
+        return object != null && object.has(key) && object.get(key).isJsonArray() ? object.getAsJsonArray(key) : new JsonArray();
     }
     private static JsonObject object(JsonObject object, String key) {
         return object != null && object.has(key) && object.get(key).isJsonObject() ? object.getAsJsonObject(key) : null;
