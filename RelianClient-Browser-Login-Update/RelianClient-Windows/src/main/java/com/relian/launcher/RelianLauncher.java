@@ -363,6 +363,7 @@ public class RelianLauncher extends Application {
             result.setText("Creating isolated instance…"); create.setDisable(true);
             String selectedVersion=version.getValue(), selectedLoader=loader.getValue(), selectedName=name.getText();
             java.nio.file.Path selectedImport=importPath[0];
+            java.nio.file.Path selectedArchive=modpackArchive[0];
             String selectedPackTitle=selectedPack==null?"":selectedPack.title();
             CompletableFuture.supplyAsync(()->{
                 try{
@@ -392,7 +393,11 @@ public class RelianLauncher extends Application {
                 if(error!=null){result.setText("Could not create instance: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
                 String message="Created "+created.manifest().name()+" at "+created.directory()+".";
                 if(kindIncludesRelian(chosen)){
-                    message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";\n                    if(chosen.startsWith("Modpack")) message+=" The selected .mrpack files and client overrides were imported into this isolated instance.";
+                    if(chosen.startsWith("Modpack")) {
+                        message+=" Relian module manifest included. The selected .mrpack files and client overrides were imported into this isolated instance.";
+                    } else {
+                        message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
+                    }
                     if(selectedLoader.equals("Fabric")){
                         result.setText(message+" Installing compatible Modrinth performance modules…");
                         installRelianPerformanceMods(created.directory(),selectedVersion,result,message);
