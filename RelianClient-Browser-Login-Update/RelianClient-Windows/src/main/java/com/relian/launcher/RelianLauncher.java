@@ -391,6 +391,16 @@ public class RelianLauncher extends Application {
                 {"immediatelyfast","ImmediatelyFast"},{"entityculling","EntityCulling"},{"dynamic-fps","Dynamic FPS"}};
             for(String[] module:modules){
                 try{
+                    java.nio.file.Path modsDir=directory.resolve("mods");
+                    boolean alreadyPresent=false;
+                    if(java.nio.file.Files.isDirectory(modsDir)){
+                        try(var files=java.nio.file.Files.list(modsDir)){
+                            alreadyPresent=files.anyMatch(file->java.nio.file.Files.isRegularFile(file)
+                                && file.getFileName().toString().toLowerCase(java.util.Locale.ROOT).startsWith(module[0]+"-")
+                                && file.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith(".jar"));
+                        }
+                    }
+                    if(alreadyPresent){installed.add(module[1]+" (already present)");continue;}
                     var project=new com.relian.launcher.marketplace.MarketplaceProject(module[0],module[1],"Relian",
                         "Relian recommended performance module",com.relian.launcher.marketplace.ProjectType.MOD,
                         java.net.URI.create("https://modrinth.com/mod/"+module[0]),java.util.List.of("fabric"),"Modrinth");
@@ -398,7 +408,9 @@ public class RelianLauncher extends Application {
                     installed.add(module[1]);
                 }catch(Exception ex){skipped.add(module[1]);}
             }
-            javafx.application.Platform.runLater(()->status.setText(summary+" Installed: "+(installed.isEmpty()?"none":String.join(", ",installed))+
+            try{com.relian.launcher.profiles.InstanceManager.updateRelianModuleStatus(directory,installed,skipped);}
+            catch(Exception ignored){}
+            javafx.application.Platform.runLater(()->status.setText(summary+" Installed or already present: "+(installed.isEmpty()?"none":String.join(", ",installed))+
                 ". Not available for this version: "+(skipped.isEmpty()?"none":String.join(", ",skipped))+
                 ". A Fabric loader installer and full game launch pipeline are still required before these mods can run."));
         });
