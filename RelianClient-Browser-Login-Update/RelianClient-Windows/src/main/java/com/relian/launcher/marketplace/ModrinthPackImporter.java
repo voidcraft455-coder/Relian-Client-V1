@@ -44,7 +44,6 @@ public final class ModrinthPackImporter {
     private static final long MAX_OVERRIDE_FILE_BYTES = 32L * 1024 * 1024;
     private static final int MAX_ENTRIES = 20_000;
     private static final double MAX_COMPRESSION_RATIO = 150.0;
-    private static final URI MODRINTH_CDN = URI.create("https://cdn.modrinth.com");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(20))
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -101,17 +100,23 @@ public final class ModrinthPackImporter {
             for (PlannedFile file : downloads) {
                 String key = collisionKey(file.path());
                 if (!plannedPaths.add(key)) throw new IOException("The modpack contains duplicate destination paths: " + file.path());
-                plannedTotal = Math.addExact(plannedTotal, file.expectedSize());
-                if (plannedTotal > MAX_TOTAL_BYTES) throw new IOException("The modpack's declared downloads exceed the 1 GB safety limit.");
+                if (file.expectedSize() >= 0) {
+                    plannedTotal = Math.addExact(plannedTotal, file.expectedSize());
+                    if (plannedTotal > MAX_TOTAL_BYTES) throw new IOException("The modpack's declared downloads exceed the 1 GB safety limit.");
+                }
             }
             for (String overridePath : overrides.keySet()) {
                 String key = collisionKey(overridePath);
                 if (!plannedPaths.add(key)) throw new IOException("A modpack override conflicts with a downloaded file: " + overridePath);
             }
 
-            for (PlannedFile file : downloads) {
-                Path staged = stage.resolve("download-" + downloads.indexOf(file) + ".part");
-                downloadAndVerify(file, staged);
+            long downloadedTotal = 0;
+            for (int i = 0; i < downloads.size(); i++) {
+                PlannedFile file = downloads.get(i);
+                Path staged = stage.resolve("download-" + i + ".part");
+                downloadedTotal = Math.addExact(downloadedTotal, downloadAndVerify(file, staged));
+                if (downloadedTotal > MAX_TOTAL_BYTES)
+                    throw new IOException("The modpack's actual downloads exceed the 1 GB safety limit.");
                 writeStagedPath(stage, file.path(), staged);
             }
             for (Map.Entry<String, byte[]> override : overrides.entrySet()) {
@@ -165,8 +170,9 @@ public final class ModrinthPackImporter {
                 for (int i = installed.size() - 1; i >= 0; i--) {
                     try { Files.deleteIfExists(installed.get(i)); } catch (IOException ignored) {}
                 }
-                for (int i = createdDirectories.size() - 1; i >= 0; i--) {
-                    try { Files.deleteIfExists(createdDirectories.get(i)); } catch (IOException ignored) {}
+                createdDirectories.sort(java.util.Comparator.comparingInt(Path::getNameCount).reversed());
+                for (Path directory : createdDirectories) {
+                    try { Files.deleteIfExists(directory); } catch (IOException ignored) {}
                 }
             }
         }
@@ -253,7 +259,7 @@ public final class ModrinthPackImporter {
         return index;
     }
 
-    private static void downloadAndVerify(PlannedFile file, Path target) throws IOException, InterruptedException {
+    private static long downloadAndVerify(PlannedFile file, Path target) throws IOException, InterruptedException {
         HttpResponse<InputStream> response = sendTrustedDownload(file.url());
         if (response.statusCode() != 200) {
             response.body().close();
@@ -294,6 +300,7 @@ public final class ModrinthPackImporter {
             if (!actual.equalsIgnoreCase(file.hashes().get(digest.getKey())))
                 throw new IOException("Checksum verification failed for modpack file: " + file.path());
         }
+        return total;
     }
 
     private static void writeStagedPath(Path stage, String relative, Path downloaded) throws IOException {
