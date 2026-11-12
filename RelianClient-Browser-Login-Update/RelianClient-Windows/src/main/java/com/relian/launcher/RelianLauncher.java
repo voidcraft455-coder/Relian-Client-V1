@@ -96,16 +96,21 @@ public class RelianLauncher extends Application {
         switch(name) {
             case "Home" -> content.getChildren().add(home());
             case "Versions" -> content.getChildren().add(versionPage());
-            case "Mods" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.MOD));
-            case "Modpacks" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.MODPACK));
-            case "Resource Packs" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.RESOURCE_PACK));
-            case "Shaders" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.SHADER));
+            case "Mods" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.MOD));
+            case "Modpacks" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.MODPACK));
+            case "Resource Packs" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.RESOURCE_PACK));
+            case "Shaders" -> content.getChildren().add(marketplace(com.relian.launcher.marketplace.ProjectType.SHADER));
             default -> content.getChildren().add(settings());
         }
         ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background:"+backgroundColor+";-fx-background-color:"+backgroundColor+";-fx-border-color:transparent;");
         host.getChildren().add(scroll);
         if(shell.getLeft() instanceof VBox side) for(var node:side.getChildren()) if(node instanceof Button b) b.setStyle(navStyle(b.getText().equals(name)));
+    }
+
+    private com.relian.launcher.marketplace.MarketplaceBrowserPane marketplace(com.relian.launcher.marketplace.ProjectType type) {
+        java.nio.file.Path preferred = gameDirectory.isBlank() ? null : java.nio.file.Path.of(gameDirectory);
+        return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred);
     }
 
     private String navStyle(boolean selected) {
