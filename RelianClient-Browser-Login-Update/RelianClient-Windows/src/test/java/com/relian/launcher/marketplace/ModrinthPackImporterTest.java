@@ -46,6 +46,22 @@ class ModrinthPackImporterTest {
     }
 
     @Test
+    void importsClientOverridesAndWritesPackMetadata() throws Exception {
+        Path instance = instance("MODPACK");
+        Path archive = temporary.resolve("valid.mrpack");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
+            put(zip, "modrinth.index.json", index("fabric-loader", "0.16.0"));
+            put(zip, "overrides/config/relian-test.cfg", "enabled=true");
+        }
+
+        ModrinthPackImporter.ImportResult result = ModrinthPackImporter.importPack(
+                archive, instance, "1.21.1", "Fabric");
+        assertTrue(result.packName().equals("Test Pack"));
+        assertTrue(Files.readString(instance.resolve("config/relian-test.cfg")).equals("enabled=true"));
+        assertTrue(Files.readString(instance.resolve("relian-modpack.json")).contains("\"minecraftVersion\":\"1.21.1\""));
+    }
+
+    @Test
     void neverOverwritesExistingInstanceFiles() throws Exception {
         Path instance = instance("MODPACK");
         Path existing = Files.createDirectories(instance.resolve("config")).resolve("user.cfg");
