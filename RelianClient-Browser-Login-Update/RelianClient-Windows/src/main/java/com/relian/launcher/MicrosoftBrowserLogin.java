@@ -35,7 +35,7 @@ public final class MicrosoftBrowserLogin {
 
     private MicrosoftBrowserLogin() {}
 
-    public record LoginResult(boolean microsoftAuthenticated) {}
+    public record LoginResult(boolean microsoftAuthenticated, String accessToken) {}
 
     public static String getClientId() {
         String fromEnv = System.getenv("RELIAN_MS_CLIENT_ID");
@@ -80,8 +80,8 @@ public final class MicrosoftBrowserLogin {
             if (callbackError.get() != null) throw new IOException(callbackError.get());
             String code = authCode.get();
             if (code == null || code.isBlank()) throw new IOException("Microsoft did not return an authorization code.");
-            exchangeCode(clientId, code, redirectUri, verifier);
-            return new LoginResult(true);
+            String accessToken = exchangeCode(clientId, code, redirectUri, verifier);
+            return new LoginResult(true, accessToken);
         } finally {
             server.stop(0);
         }
@@ -115,7 +115,7 @@ public final class MicrosoftBrowserLogin {
         } finally { done.countDown(); }
     }
 
-    private static void exchangeCode(String clientId, String code, String redirectUri, String verifier) throws Exception {
+    private static String exchangeCode(String clientId, String code, String redirectUri, String verifier) throws Exception {
         String form = "client_id=" + enc(clientId)
                 + "&grant_type=authorization_code&code=" + enc(code)
                 + "&redirect_uri=" + enc(redirectUri)
@@ -132,6 +132,7 @@ public final class MicrosoftBrowserLogin {
         String token = jsonString(response.body(), "access_token");
         if (token == null || token.isBlank()) throw new IOException("Microsoft did not return an access token.");
         sessionAccessToken = token;
+        return token;
     }
 
     private static String jsonString(String json, String key) {
