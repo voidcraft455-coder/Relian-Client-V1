@@ -120,6 +120,11 @@ public final class ModrinthInstaller {
                 downloadResponse.body().close();
                 throw new IOException("Modrinth download failed with HTTP " + downloadResponse.statusCode() + ".");
             }
+            String finalHost = downloadResponse.uri().getHost();
+            if (finalHost == null || !(finalHost.equalsIgnoreCase("cdn.modrinth.com") || finalHost.endsWith(".modrinth.com"))) {
+                downloadResponse.body().close();
+                throw new IOException("The final download destination is not a trusted Modrinth CDN host.");
+            }
             long declaredLength = downloadResponse.headers().firstValueAsLong("Content-Length").orElse(-1);
             if (declaredLength > MAX_DOWNLOAD_BYTES) {
                 downloadResponse.body().close();
@@ -179,7 +184,12 @@ public final class ModrinthInstaller {
         String base = dot > 0 ? fileName.substring(0, dot) : fileName;
         String extension = dot > 0 ? fileName.substring(dot) : "";
         String suffix = versionId == null || versionId.isBlank() ? "relian" : versionId.replaceAll("[^A-Za-z0-9_-]", "");
-        return base + "-" + suffix + extension;
+        String candidateName = base + "-" + suffix + extension;
+        int counter = 2;
+        while (Files.exists(directory.resolve(candidateName))) {
+            candidateName = base + "-" + suffix + "-" + counter++ + extension;
+        }
+        return candidateName;
     }
 
     private static String normalizeLoader(String loader) throws IOException {
