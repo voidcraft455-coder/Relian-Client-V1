@@ -54,9 +54,11 @@ public final class HudConfig {
     private static Config defaults() {
         Config config = new Config();
         config.modules.put("fps", new ModuleSettings(true, 8, 8, 1.0f, 0xFFFFFFFF));
-        config.modules.put("coordinates", new ModuleSettings(true, 8, 30, 1.0f, 0xFFFFFFFF));
+        config.modules.put("coordinates", new ModuleSettings(true, 8, 30, 1.0f, 0xFF83B7FF));
         config.modules.put("keystrokes", new ModuleSettings(true, 8, 54, 1.0f, 0xFFFFFFFF));
         config.modules.put("armor", new ModuleSettings(true, 8, 112, 1.0f, 0xFFFFFFFF));
+        config.modules.put("ping", new ModuleSettings(true, 8, 150, 1.0f, 0xFF8FE3B0));
+        config.modules.put("held_item", new ModuleSettings(true, 8, 172, 1.0f, 0xFFFFD479));
         return config;
     }
 
