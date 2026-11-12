@@ -143,7 +143,7 @@ public final class ModrinthPackImporter {
                     if (relative.getNameCount() < 2 || !"payload".equals(relative.getName(0).toString())) continue;
                     targetRelative = relative.subpath(1, relative.getNameCount());
                 }
-                Path destination = safeResolve(instance, targetRelative.toString().replace('\\\\', '/'));
+                Path destination = safeResolve(instance, targetRelative.toString().replace('\\', '/'));
                 if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS))
                     throw new IOException("Import would overwrite an existing instance file: " + targetRelative);
                 createDirectoriesTracked(instance, destination.getParent(), createdDirectories);
@@ -384,14 +384,14 @@ public final class ModrinthPackImporter {
     }
 
     private static void validateArchiveName(String name, boolean directory) throws IOException {
-        if (name == null || name.isBlank() || name.indexOf('\\\\') >= 0 || name.startsWith("/") || name.startsWith("\\\\"))
+        if (name == null || name.isBlank() || name.indexOf('\\') >= 0 || name.startsWith("/") || name.startsWith("\\"))
             throw new IOException("The archive contains an unsafe entry name.");
         String normalized = directory && name.endsWith("/") ? name.substring(0, name.length() - 1) : name;
         validateRelativePath(normalized);
     }
 
     private static void validateRelativePath(String value) throws IOException {
-        if (value == null || value.isBlank() || value.indexOf('\\\\') >= 0 || value.startsWith("/")
+        if (value == null || value.isBlank() || value.indexOf('\\') >= 0 || value.startsWith("/")
                 || value.matches("^[A-Za-z]:.*") || value.indexOf('\0') >= 0)
             throw new IOException("The modpack contains an unsafe destination path.");
         String[] parts = value.split("/", -1);
@@ -431,7 +431,7 @@ public final class ModrinthPackImporter {
     }
 
     private static String collisionKey(String path) {
-        return path.replace('\\\\', '/').toLowerCase(Locale.ROOT);
+        return path.replace('\\', '/').toLowerCase(Locale.ROOT);
     }
 
     private static void createDirectoriesTracked(Path root, Path directory, List<Path> created) throws IOException {
