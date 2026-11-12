@@ -346,7 +346,7 @@ public final class ModrinthPackImporter {
     private static boolean isTrustedHost(URI uri) {
         return uri != null && "https".equalsIgnoreCase(uri.getScheme())
                 && "cdn.modrinth.com".equalsIgnoreCase(uri.getHost())
-                && uri.getUserInfo() == null;
+                && uri.getUserInfo() == null && (uri.getPort() == -1 || uri.getPort() == 443);
     }
 
     private static String validateLoader(JsonObject dependencies, String selectedLoader) throws IOException {
