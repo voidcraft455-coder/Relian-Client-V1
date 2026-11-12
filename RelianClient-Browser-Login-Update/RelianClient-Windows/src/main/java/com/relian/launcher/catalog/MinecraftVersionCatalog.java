@@ -42,7 +42,7 @@ public final class MinecraftVersionCatalog {
     }
 
     private boolean isAtLeast119(String id) {
-        String[] parts = id.split("\\\\.");
+        String[] parts = id.split("\\.");
         try {
             int major = Integer.parseInt(parts[0]);
             int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
