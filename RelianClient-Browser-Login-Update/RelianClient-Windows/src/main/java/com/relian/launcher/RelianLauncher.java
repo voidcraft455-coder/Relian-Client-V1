@@ -260,7 +260,7 @@ public class RelianLauncher extends Application {
                             String n=file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
                             if(!(n.endsWith(".jar")||n.endsWith(".zip"))) throw new java.io.IOException("Unsupported file type.");
                             java.nio.file.Files.delete(file);
-                            scan.run();
+                            refresh.fire();
                         }catch(java.io.IOException ex){info("Could not remove this file: "+ex.getMessage());}
                     });
                     row.getChildren().addAll(details,push,remove);entries.getChildren().add(row);
