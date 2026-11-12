@@ -4,6 +4,8 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
@@ -11,6 +13,9 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import java.io.File;
+import java.nio.file.Path;
 
 import java.awt.Desktop;
 import java.io.IOException;
@@ -133,8 +138,50 @@ public final class MarketplaceBrowserPane extends VBox {
         Button open = new Button("View project");
         open.setStyle("-fx-background-color:#303b4d;-fx-background-radius:4;-fx-text-fill:#e8edf5;-fx-padding:7 12;-fx-cursor:hand;");
         open.setOnAction(event -> openProject(project.projectUrl()));
-        card.getChildren().addAll(title, metadata, description, open);
+        HBox actions = new HBox(8, open);
+        if ("Modrinth".equalsIgnoreCase(project.source()) && project.type() != ProjectType.MODPACK) {
+            Button install = new Button("Install");
+            install.setStyle("-fx-background-color:#315b45;-fx-background-radius:4;-fx-text-fill:#e8fff0;-fx-padding:7 12;-fx-cursor:hand;");
+            install.setOnAction(event -> chooseInstallDirectory(project, install));
+            actions.getChildren().add(install);
+        }
+        card.getChildren().addAll(title, metadata, description, actions);
         return card;
+    }
+
+
+    private void chooseInstallDirectory(MarketplaceProject project, Button installButton) {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Choose your Minecraft game directory");
+        File selectedDirectory = chooser.showDialog(getScene().getWindow());
+        if (selectedDirectory == null) return;
+        String version = minecraftVersion.getText() == null ? "" : minecraftVersion.getText().trim();
+        String loader = loaderChoice.getValue();
+        if ("All loaders".equals(loader)) loader = "";
+        final String selectedLoader = loader;
+        installButton.setDisable(true);
+        setStatus("Checking compatibility and installing " + project.title() + "...");
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return ModrinthInstaller.install(project, version, selectedLoader, selectedDirectory.toPath());
+            } catch (IOException | InterruptedException ex) {
+                if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
+                throw new RuntimeException(ex);
+            }
+        }).whenComplete((installedPath, error) -> Platform.runLater(() -> {
+            installButton.setDisable(false);
+            if (error != null) {
+                Throwable cause = error.getCause() == null ? error : error.getCause();
+                setStatus("Install failed: " + safeMessage(cause));
+                return;
+            }
+            setStatus("Installed and checksum-verified: " + installedPath.getFileName());
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Relian Client");
+            alert.setHeaderText("Installation complete");
+            alert.setContentText("Installed " + project.title() + " to:\\n" + installedPath);
+            alert.showAndWait();
+        }));
     }
 
     private void openProject(URI uri) {
