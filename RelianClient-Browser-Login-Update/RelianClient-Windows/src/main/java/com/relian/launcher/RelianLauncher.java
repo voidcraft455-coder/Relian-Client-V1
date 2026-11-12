@@ -168,6 +168,10 @@ public class RelianLauncher extends Application {
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
         play.setOnAction(e->{
             if(minecraftSession==null){info("Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching.");return;}
+            if(!"Vanilla".equals(loader.getValue())){
+                playStatus.setText(loader.getValue()+" launching is not available yet. Select Vanilla for the supported launch path.");
+                return;
+            }
             String selectedVersion=versions.getValue();
             String javaPath=preferences.get("minecraft.java.path","");
             if(javaPath.isBlank()){playStatus.setText("Choose or install the compatible Java runtime in Settings first.");return;}
