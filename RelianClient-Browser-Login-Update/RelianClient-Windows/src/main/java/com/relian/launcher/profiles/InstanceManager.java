@@ -116,7 +116,7 @@ public final class InstanceManager {
         values.put("simulationDistance", "5");
         values.put("entityDistanceScaling", "0.75");
         values.put("particles", "1");
-        values.put("clouds", "false");
+        values.put("clouds", "0");
         values.put("biomeBlendRadius", "0");
         values.put("entityShadows", "false");
         values.put("vsync", "false");
