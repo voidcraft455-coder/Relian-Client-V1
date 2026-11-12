@@ -360,8 +360,14 @@ public final class ModrinthPackImporter {
             throw new IOException("The modpack contains an unsafe destination path.");
         String[] parts = value.split("/", -1);
         for (String part : parts) {
-            if (part.isBlank() || ".".equals(part) || "..".equals(part) || part.contains(":"))
-                throw new IOException("The modpack contains a path traversal or invalid path segment.");
+            String device = part.toUpperCase(Locale.ROOT);
+            int dot = device.indexOf('.');
+            if (dot >= 0) device = device.substring(0, dot);
+            if (part.isBlank() || ".".equals(part) || "..".equals(part) || part.contains(":")
+                    || part.matches(".*[<>|?*\\u0000-\\u001F].*") || part.endsWith(".") || part.endsWith(" ")
+                    || Set.of("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+                              "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9").contains(device))
+                throw new IOException("The modpack contains a path traversal or invalid Windows path segment.");
         }
     }
 
