@@ -23,7 +23,7 @@ public final class MinecraftPerformanceProfile {
         values.put("simulationDistance", preset == Preset.FPS_BOOST ? "4" : "6");
         values.put("entityDistanceScaling", preset == Preset.FPS_BOOST ? "0.5" : "0.75");
         values.put("particles", preset == Preset.FPS_BOOST ? "0" : "1");
-        values.put("clouds", "false");
+        values.put("clouds", "0");
         values.put("biomeBlendRadius", "0");
         values.put("entityShadows", "false");
         values.put("vsync", "false");
