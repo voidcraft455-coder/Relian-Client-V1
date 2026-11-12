@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of(
-        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome"
+        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block"
     );
     private int selected = 0;
     private boolean draggingPreview = false;
@@ -36,18 +36,18 @@ public final class HudEditorScreen extends Screen {
         for (int i = 0; i < MODULES.size(); i++) {
             String id = MODULES.get(i);
             HudConfig.ModuleSettings settings = HudConfig.get().modules.get(id);
-            int y = panelTop + 88 + i * 37;
+            int y = panelTop + 88 + i * 27;
             boolean active = i == selected;
-            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 32,
+            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 24,
                 active ? 0xFF26364D : 0xFF1C2635, 9);
-            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 7,
+            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 5,
                 active ? 0xFFFFFFFF : 0xFFD8E0EB);
             context.drawTextWithShadow(textRenderer,
-                Text.literal(settings.enabled ? "ENABLED" : "DISABLED"), panelLeft + 30, y + 22,
+                Text.literal(settings.enabled ? "ENABLED" : "DISABLED"), panelLeft + 30, y + 18,
                 settings.enabled ? 0xFF7EE0B0 : 0xFF8995A7);
-            drawButton(context, panelLeft + 265, y + 4, 62, 24, settings.enabled ? "ON" : "OFF",
+            drawButton(context, panelLeft + 265, y + 2, 62, 20, settings.enabled ? "ON" : "OFF",
                 settings.enabled ? 0xFF245A4C : 0xFF465164, mouseX, mouseY);
-            drawButton(context, panelLeft + 333, y + 4, 57, 24, "EDIT", 0xFF34445B, mouseX, mouseY);
+            drawButton(context, panelLeft + 333, y + 2, 57, 20, "EDIT", 0xFF34445B, mouseX, mouseY);
         }
 
         int px = panelLeft + 425;
@@ -128,6 +128,10 @@ public final class HudEditorScreen extends Screen {
             case "potions" -> "POTION EFFECTS";
             case "direction" -> "DIRECTION";
             case "biome" -> "BIOME DISPLAY";
+            case "speed" -> "MOVEMENT SPEED";
+            case "clock" -> "LOCAL CLOCK";
+            case "dimension" -> "DIMENSION";
+            case "target_block" -> "TARGET BLOCK";
             default -> id.toUpperCase();
         };
     }
@@ -138,10 +142,10 @@ public final class HudEditorScreen extends Screen {
         int px = panelLeft + 425;
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
-            int y = panelTop + 88 + i * 37;
+            int y = panelTop + 88 + i * 27;
             if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 32)) {
                 selected = i;
-                if (inside(mouseX, mouseY, panelLeft + 265, y + 4, 62, 24)) {
+                if (inside(mouseX, mouseY, panelLeft + 265, y + 2, 62, 20)) {
                     HudConfig.get().modules.get(MODULES.get(i)).enabled =
                         !HudConfig.get().modules.get(MODULES.get(i)).enabled;
                     HudConfig.save();
