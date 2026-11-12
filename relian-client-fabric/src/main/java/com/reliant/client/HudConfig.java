@@ -59,6 +59,9 @@ public final class HudConfig {
         config.modules.put("armor", new ModuleSettings(true, 8, 112, 1.0f, 0xFFFFFFFF));
         config.modules.put("ping", new ModuleSettings(true, 8, 150, 1.0f, 0xFF8FE3B0));
         config.modules.put("held_item", new ModuleSettings(true, 8, 172, 1.0f, 0xFFFFD479));
+        config.modules.put("potions", new ModuleSettings(true, 8, 194, 1.0f, 0xFFB69CFF));
+        config.modules.put("direction", new ModuleSettings(true, 8, 238, 1.0f, 0xFF83B7FF));
+        config.modules.put("biome", new ModuleSettings(false, 8, 260, 1.0f, 0xFF8FE3B0));
         return config;
     }
 
