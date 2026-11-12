@@ -34,7 +34,8 @@ final class MinecraftDependencyInstaller {
     private static final Set<String> HOSTS = Set.of(
             "libraries.minecraft.net", "repo.maven.apache.org", "repo1.maven.org",
             "maven.fabricmc.net", "maven.minecraftforge.net", "resources.download.minecraft.net",
-            "piston-meta.mojang.com", "launchermeta.mojang.com");
+            "piston-meta.mojang.com", "launchermeta.mojang.com", "launcher.mojang.com",
+            "piston-data.mojang.com");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(20)).followRedirects(HttpClient.Redirect.NORMAL).build();
 
