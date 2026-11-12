@@ -82,7 +82,8 @@ public final class JavaRuntimeManager {
             int major = Integer.parseInt(parts[0]);
             int minor = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
             int patch = parts.length > 2 ? Integer.parseInt(parts[2].replaceAll("[^0-9].*$", "")) : 0;
-            if (major >= 26) return 25;\n            if (major > 1 || (major == 1 && (minor > 20 || (minor == 20 && patch >= 5)))) return 21;
+            if (major >= 26) return 25;
+            if (major > 1 || (major == 1 && (minor > 20 || (minor == 20 && patch >= 5)))) return 21;
             if (major == 1 && minor >= 18) return 17;
             if (major == 1 && minor == 17) return 16;
             return 8;
