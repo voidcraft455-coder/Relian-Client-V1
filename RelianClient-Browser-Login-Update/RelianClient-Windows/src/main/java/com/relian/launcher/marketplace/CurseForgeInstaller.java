@@ -69,7 +69,8 @@ public final class CurseForgeInstaller {
         if (selected == null) throw new IOException("No available CurseForge file was found.");
         String fileName = safeFileName(string(selected, "fileName"));
         String downloadUrl = string(selected, "downloadUrl");
-        String expectedHash = findSha1(selected.getAsJsonArray("hashes"));
+        JsonArray hashArray = selected.has("hashes") && selected.get("hashes").isJsonArray() ? selected.getAsJsonArray("hashes") : null;
+        String expectedHash = findSha1(hashArray);
         if (fileName.isBlank() || downloadUrl.isBlank() || expectedHash.isBlank()) {
             throw new IOException("CurseForge did not provide a direct download URL and SHA-1 checksum for this file.");
         }
