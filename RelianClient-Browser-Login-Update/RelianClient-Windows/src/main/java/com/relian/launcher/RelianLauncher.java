@@ -338,7 +338,7 @@ public class RelianLauncher extends Application {
                         if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
                         try{
                             com.relian.launcher.profiles.InstanceManager.delete(instancesRoot(),item.directory());
-                            load.run();
+                            refresh.fire();
                         }catch(Exception ex){info("Could not remove this instance: "+ex.getMessage());}
                     });
                     row.getChildren().addAll(details,spacer,open,remove);
