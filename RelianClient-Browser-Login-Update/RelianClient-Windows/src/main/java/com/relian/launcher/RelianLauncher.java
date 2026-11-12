@@ -313,6 +313,19 @@ public class RelianLauncher extends Application {
             }
         });
         Label packStatus=muted("Search Modrinth to browse available modpacks.");
+        java.nio.file.Path[] modpackArchive={null};
+        Label archiveLabel=muted("No .mrpack archive selected.");
+        Button chooseArchive=small("Choose .mrpack file");
+        chooseArchive.setOnAction(e->{
+            javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
+            chooser.setTitle("Choose a Modrinth modpack archive");
+            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Modrinth modpacks (*.mrpack)","*.mrpack"));
+            File selected=chooser.showOpenDialog(shell.getScene().getWindow());
+            if(selected!=null){
+                modpackArchive[0]=selected.toPath();
+                archiveLabel.setText("Archive: "+selected.getAbsolutePath());
+            }
+        });
         searchPacks.setOnAction(e->{
             packStatus.setText("Searching Modrinth…"); packs.getItems().clear();
             String query=modpackSearch.getText(), packVersion=version.getValue();
@@ -333,7 +346,7 @@ public class RelianLauncher extends Application {
             catch(Exception ex){info("Could not open the modpack page: "+ex.getMessage());}
         });
         VBox importBox=new VBox(8,chooseImport,importLabel);
-        VBox packBox=new VBox(8,modpackSearch,searchPacks,packs,packStatus,openPack);
+        VBox packBox=new VBox(8,modpackSearch,searchPacks,packs,packStatus,openPack,chooseArchive,archiveLabel);
         type.setOnAction(e->{
             importBox.setVisible(type.getValue().startsWith("Import")); importBox.setManaged(importBox.isVisible());
             packBox.setVisible(type.getValue().startsWith("Modpack")); packBox.setManaged(packBox.isVisible());
@@ -345,7 +358,8 @@ public class RelianLauncher extends Application {
         Label result=muted("Choose an option, then create your instance.");
         create.setOnAction(e->{
             String chosen=type.getValue(); var selectedPack=packs.getSelectionModel().getSelectedItem();
-            if(chosen.startsWith("Modpack")&&selectedPack==null){result.setText("Choose a modpack from the results first.");return;}
+            if(chosen.startsWith("Modpack")&&selectedPack==null){result.setText("Choose a modpack from the Modrinth results first.");return;}
+            if(chosen.startsWith("Modpack")&&modpackArchive[0]==null){result.setText("Choose the matching .mrpack file to import its actual files.");return;}
             result.setText("Creating isolated instance…"); create.setDisable(true);
             String selectedVersion=version.getValue(), selectedLoader=loader.getValue(), selectedName=name.getText();
             java.nio.file.Path selectedImport=importPath[0];
@@ -359,15 +373,26 @@ public class RelianLauncher extends Application {
                         chosen.startsWith("Import")?com.relian.launcher.profiles.InstanceManager.Kind.IMPORT:
                         chosen.startsWith("Modpack")?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
                         com.relian.launcher.profiles.InstanceManager.Kind.RELIAN;
-                    return com.relian.launcher.profiles.InstanceManager.create(root,selectedName,selectedVersion,selectedLoader,
+                    var created=com.relian.launcher.profiles.InstanceManager.create(root,selectedName,selectedVersion,selectedLoader,
                         kind,selectedImport,selectedPackTitle);
+                    if(kind==com.relian.launcher.profiles.InstanceManager.Kind.MODPACK){
+                        try{
+                            com.relian.launcher.marketplace.ModrinthPackImporter.importPack(
+                                selectedArchive,created.directory(),selectedVersion,selectedLoader);
+                        }catch(Exception importError){
+                            try{com.relian.launcher.profiles.InstanceManager.deleteIncompleteModpackInstance(created.directory());}
+                            catch(Exception cleanupError){importError.addSuppressed(cleanupError);}
+                            throw importError;
+                        }
+                    }
+                    return created;
                 }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((created,error)->javafx.application.Platform.runLater(()->{
                 create.setDisable(false);
                 if(error!=null){result.setText("Could not create instance: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
                 String message="Created "+created.manifest().name()+" at "+created.directory()+".";
                 if(kindIncludesRelian(chosen)){
-                    message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
+                    message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";\n                    if(chosen.startsWith("Modpack")) message+=" The selected .mrpack files and client overrides were imported into this isolated instance.";
                     if(selectedLoader.equals("Fabric")){
                         result.setText(message+" Installing compatible Modrinth performance modules…");
                         installRelianPerformanceMods(created.directory(),selectedVersion,result,message);
@@ -378,7 +403,7 @@ public class RelianLauncher extends Application {
         panel.getChildren().addAll(nameLabel,name,typeLabel,type,versionRow,rootLabel,importBox,packBox,create,result);
         box.getChildren().addAll(panel,
             muted("Import copies game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens or launcher credentials."),
-            muted("Modpack browsing currently creates a profile linked to the selected pack; importing the actual .mrpack contents and resolving its dependencies is the next implementation step."));
+            muted("For Modpack, select a Modrinth project and its matching .mrpack file. Relian validates the manifest, imports client files and overrides, and skips server-only content. Loader installation and dependency-aware game launching are still separate unfinished steps."));
         return box;
     }
 
