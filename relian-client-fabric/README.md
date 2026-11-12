@@ -1,23 +1,28 @@
-# Relian Client Fabric runtime (HUD milestone)
+# Relian Client Fabric runtime
 
-This is the first in-game runtime module, currently targeting **Minecraft Java 1.21.1 + Fabric**. It remains separate from the JavaFX launcher until the launcher has a complete loader/game installation and launch pipeline.
+This is the early in-game runtime for Minecraft Java **1.21.1 + Fabric**, separate from the JavaFX launcher until the game installation and launch pipeline is complete.
 
-## HUD
+## HUD editor
 
-- Press **Right Shift** to open/close the Relian HUD editor.
-- HUD modules: FPS, coordinates, keystrokes, armor durability, ping, and held-item durability.
-- The editor uses rounded panels and custom rounded controls.
-- Toggle modules, select a module, change its preset color, adjust scale, and drag in the preview area to change its position.
-- Settings persist in `config/relian-hud.json`.
-- The HUD draws rounded translucent panels in-game.
-- The editor does not pause single-player gameplay.
+Press **Right Shift** to open the HUD editor. The editor uses rounded panels and controls, and lets you toggle modules, select a module, cycle its color, adjust scale, and drag its preview position. Settings persist in `config/relian-hud.json`.
 
-This is an original Relian layout and visual system. It does not use Lunar Client or Dawn Client assets or source.
+Current HUD modules:
+- FPS counter
+- Coordinates
+- Keystrokes
+- Armor durability
+- Ping display
+- Held-item durability
+- Active potion effects and remaining duration
+- Facing direction
+- Biome name
+
+The in-game HUD uses rounded translucent backgrounds. This is an original Relian visual design, not Lunar Client or Dawn Client artwork.
 
 ## Build
 
-Run `gradle build` from this directory with Java 21 and internet access. The output mod jar is in `build/libs/`.
+Use Java 21 and run `gradle build` in this directory. The mod jar is produced in `build/libs/`.
 
 ## Current limits
 
-This is an early runtime milestone, not a full client. It does not implement combat automation, player targeting, hidden-player tracking, or anti-cheat bypasses. The HUD has not yet been tested in a live Minecraft session. The branded startup/loading overlay is **not implemented yet**. Launcher-to-game integration, additional module types, more granular layout controls, and support for other Minecraft versions remain future work.
+This is an early runtime milestone, not a complete client. It does not include combat automation, auto-aim, fast-crystal automation, player targeting, hidden-player tracking, or anti-cheat bypasses. The branded startup overlay has source code but has not yet been verified in a live Minecraft session. The runtime is not yet connected to the launcher's game installation and launch pipeline, and only targets 1.21.1 at present.
