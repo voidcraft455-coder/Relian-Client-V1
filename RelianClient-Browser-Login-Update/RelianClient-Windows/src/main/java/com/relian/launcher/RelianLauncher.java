@@ -5,8 +5,12 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.paint.Color;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.stage.DirectoryChooser;
+import java.io.File;
+import java.util.prefs.Preferences;
 import javafx.stage.Modality;
 import java.util.List;
 import java.util.ArrayList;
@@ -14,6 +18,10 @@ import java.util.concurrent.CompletableFuture;
 
 public class RelianLauncher extends Application {
     private static final String BG="#17191e", PANEL="#20232a", ALT="#292e37", FG="#f2f4f7", MUTED="#a6acb7", BLUE="#4d83d8";
+    private final Preferences preferences = Preferences.userNodeForPackage(RelianLauncher.class);
+    private String backgroundColor = preferences.get("background.color", BG);
+    private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
+    private String gameDirectory = preferences.get("game.directory", "");
     private final BorderPane shell = new BorderPane();
     private final StackPane host = new StackPane();
     private ComboBox<String> versions;
@@ -22,7 +30,7 @@ public class RelianLauncher extends Application {
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
     @Override public void start(Stage stage) {
-        shell.setStyle("-fx-background-color:"+BG+";");
+        shell.setStyle("-fx-background-color:"+backgroundColor+";");
         shell.setLeft(sidebar());
         shell.setCenter(host);
         page("Home");
@@ -95,7 +103,7 @@ public class RelianLauncher extends Application {
             default -> content.getChildren().add(settings());
         }
         ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background:"+BG+";-fx-background-color:"+BG+";-fx-border-color:transparent;");
+        scroll.setStyle("-fx-background:"+backgroundColor+";-fx-background-color:"+backgroundColor+";-fx-border-color:transparent;");
         host.getChildren().add(scroll);
         if(shell.getLeft() instanceof VBox side) for(var node:side.getChildren()) if(node instanceof Button b) b.setStyle(navStyle(b.getText().equals(name)));
     }
@@ -177,9 +185,61 @@ public class RelianLauncher extends Application {
         box.getChildren().addAll(muted(desc),row,empty);return box;
     }
     private VBox settings(){
-        VBox b=new VBox(12);for(String[] item:List.of(new String[]{"Game directory","Separate folders for each installation profile."},new String[]{"Memory allocation","Choose the RAM limit for Minecraft."},new String[]{"Java runtime","Select or manage a compatible Java runtime."},new String[]{"Launcher updates","Check for Relian launcher updates."})){
-            VBox row=new VBox(4);row.setPadding(new Insets(16));row.setStyle(cardStyle());Label t=new Label(item[0]);t.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");row.getChildren().addAll(t,muted(item[1]));b.getChildren().add(row);}
+        VBox b=new VBox(14);
+
+        VBox appearance=new VBox(10);
+        appearance.setPadding(new Insets(18)); appearance.setStyle(cardStyle());
+        Label appearanceTitle=new Label("Launcher appearance");
+        appearanceTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");
+        ColorPicker backgroundPicker=new ColorPicker(Color.web(backgroundColor));
+        Button applyBackground=small("Apply background color");
+        applyBackground.setOnAction(e->{
+            backgroundColor=toHex(backgroundPicker.getValue());
+            preferences.put("background.color",backgroundColor);
+            page("Settings");
+        });
+        appearance.getChildren().addAll(appearanceTitle,muted("Choose a solid launcher background. This uses a simple color fill rather than animated effects, keeping GPU use low."),backgroundPicker,applyBackground);
+
+        VBox performance=new VBox(10);
+        performance.setPadding(new Insets(18)); performance.setStyle(cardStyle());
+        Label performanceTitle=new Label("Minecraft memory limit");
+        performanceTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");
+        Label memoryValue=muted("Maximum Minecraft memory: "+memoryLimitMb+" MB");
+        Slider memorySlider=new Slider(1024,6144,memoryLimitMb);
+        memorySlider.setMajorTickUnit(1024); memorySlider.setMinorTickCount(3); memorySlider.setSnapToTicks(true); memorySlider.setShowTickMarks(true);
+        memorySlider.valueProperty().addListener((obs,oldValue,newValue)->memoryValue.setText("Maximum Minecraft memory: "+((int)Math.round(newValue.doubleValue()/256.0)*256)+" MB"));
+        Button saveMemory=small("Save memory limit");
+        saveMemory.setOnAction(e->{
+            memoryLimitMb=(int)Math.round(memorySlider.getValue()/256.0)*256;
+            preferences.putInt("memory.maxMb",memoryLimitMb);
+            memoryValue.setText("Saved: "+memoryLimitMb+" MB for future Minecraft launches");
+        });
+        performance.getChildren().addAll(performanceTitle,muted("This setting is for the Minecraft game process, not the Relian launcher. Start with 2–4 GB; avoid assigning nearly all your computer's RAM."),memorySlider,memoryValue,saveMemory);
+
+        VBox directories=new VBox(10);
+        directories.setPadding(new Insets(18)); directories.setStyle(cardStyle());
+        Label directoryTitle=new Label("Minecraft game directory");
+        directoryTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");
+        Label directoryValue=muted(gameDirectory.isBlank()?"Not selected — the default Minecraft directory will be used until profile support is ready.":gameDirectory);
+        Button chooseDirectory=small("Choose folder");
+        chooseDirectory.setOnAction(e->{
+            DirectoryChooser chooser=new DirectoryChooser(); chooser.setTitle("Choose Minecraft game directory");
+            File initial=gameDirectory.isBlank()?null:new File(gameDirectory);
+            if(initial!=null && initial.isDirectory()) chooser.setInitialDirectory(initial);
+            File selected=chooser.showDialog(shell.getScene().getWindow());
+            if(selected!=null){gameDirectory=selected.getAbsolutePath();preferences.put("game.directory",gameDirectory);directoryValue.setText(gameDirectory);}
+        });
+        directories.getChildren().addAll(directoryTitle,muted("Choose where Relian should store game files. Separate per-version profiles will be added with the game installer."),directoryValue,chooseDirectory);
+
+        VBox runtime=new VBox(4); runtime.setPadding(new Insets(16)); runtime.setStyle(cardStyle());
+        Label javaTitle=new Label("Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        runtime.getChildren().addAll(javaTitle,muted("Relian's launcher uses Java 21. Per-version Minecraft Java runtime selection is not connected yet."));
+        b.getChildren().addAll(appearance,performance,directories,runtime);
         return b;
+    }
+
+    private static String toHex(Color color){
+        return String.format("#%02X%02X%02X",Math.round(color.getRed()*255),Math.round(color.getGreen()*255),Math.round(color.getBlue()*255));
     }
     private void info(String message){Alert a=new Alert(Alert.AlertType.INFORMATION);a.setTitle("Relian Client");a.setHeaderText("Not connected yet");a.setContentText(message);a.showAndWait();}
     public static void main(String[] args){launch(args);}
