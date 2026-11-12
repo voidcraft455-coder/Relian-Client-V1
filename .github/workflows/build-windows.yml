@@ -30,7 +30,7 @@ jobs:
 
       - name: Build Windows installer
         working-directory: RelianClient-Browser-Login-Update/RelianClient-Windows
-        run: gradle jpackage
+        run: gradle test jpackage
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
