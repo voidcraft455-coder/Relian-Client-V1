@@ -315,9 +315,10 @@ public class RelianLauncher extends Application {
         Label packStatus=muted("Search Modrinth to browse available modpacks.");
         searchPacks.setOnAction(e->{
             packStatus.setText("Searching Modrinth…"); packs.getItems().clear();
+            String query=modpackSearch.getText(), packVersion=version.getValue();
             CompletableFuture.supplyAsync(()->{
-                try{return new com.relian.launcher.marketplace.ModrinthProvider().search(modpackSearch.getText(),
-                    com.relian.launcher.marketplace.ProjectType.MODPACK,version.getValue(),"",50);}
+                try{return new com.relian.launcher.marketplace.ModrinthProvider().search(query,
+                    com.relian.launcher.marketplace.ProjectType.MODPACK,packVersion,"",50);}
                 catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((results,error)->javafx.application.Platform.runLater(()->{
                 if(error!=null){packStatus.setText("Modpack search failed: "+error.getMessage());return;}
