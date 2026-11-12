@@ -153,6 +153,23 @@ public final class InstanceManager {
         return cleaned;
     }
 
+    /** Removes an instance created by a failed, not-yet-completed modpack import. */
+    public static void deleteIncompleteModpackInstance(Path directory) throws IOException {
+        Path target = directory.toAbsolutePath().normalize();
+        if (!Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(target)
+                || !Files.isRegularFile(target.resolve("relian-instance.json"), LinkOption.NOFOLLOW_LINKS)
+                || Files.exists(target.resolve("relian-modpack.json"), LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Refusing to remove a folder that is not an incomplete Relian modpack instance.");
+        }
+        String json = Files.readString(target.resolve("relian-instance.json"));
+        InstanceManifest manifest;
+        try { manifest = GSON.fromJson(json, InstanceManifest.class); }
+        catch (RuntimeException ex) { throw new IOException("The Relian instance manifest is invalid.", ex); }
+        if (manifest == null || manifest.kind() != Kind.MODPACK)
+            throw new IOException("Only an incomplete Modpack instance can be removed by this cleanup operation.");
+        deleteTree(target);
+    }
+
     private static void deleteTree(Path root) {
         if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return;
         try (var paths = Files.walk(root)) {
