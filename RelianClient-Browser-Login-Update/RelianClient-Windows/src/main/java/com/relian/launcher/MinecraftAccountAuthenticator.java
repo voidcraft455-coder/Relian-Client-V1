@@ -41,8 +41,6 @@ public final class MinecraftAccountAuthenticator {
         String xstsToken = required(xsts, "Token", "Xbox security authentication failed.");
         JsonArray xui = array(object(xsts, "DisplayClaims"), "xui");
         String xuid = xui != null && xui.size() > 0 ? string(xui.get(0).getAsJsonObject(), "xid") : "";
-        if (xuid.isBlank() && xui != null && xui.size() > 0)
-            xuid = string(xui.get(0).getAsJsonObject(), "uhs");
 
         JsonObject minecraft = post("https://api.minecraftservices.com/authentication/login_with_xbox",
                 "{\"identityToken\":\"XBL3.0 x=" + escapeJson(userHash) + ";" + escapeJson(xstsToken) + "\"}");
@@ -64,16 +62,16 @@ public final class MinecraftAccountAuthenticator {
         HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint)).timeout(Duration.ofSeconds(35))
                 .header("Content-Type", "application/json").header("Accept", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json)).build();
-        return send(request, null);
+        return send(request);
     }
 
     private static JsonObject get(String endpoint, String bearer) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint)).timeout(Duration.ofSeconds(35))
                 .header("Authorization", "Bearer " + bearer).header("Accept", "application/json").GET().build();
-        return send(request, null);
+        return send(request);
     }
 
-    private static JsonObject send(HttpRequest request, String ignored) throws IOException, InterruptedException {
+    private static JsonObject send(HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             String message = "Authentication request failed with HTTP " + response.statusCode() + ".";
