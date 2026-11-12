@@ -227,8 +227,6 @@ public final class ModrinthPackImporter {
             JsonObject env = file.has("env") && file.get("env").isJsonObject() ? file.getAsJsonObject("env") : new JsonObject();
             String client = optionalString(env, "client");
             String server = optionalString(env, "server");
-            if ("unsupported".equals(client) || "unsupported".equals(server) || "unsupported".equals(client) && "required".equals(server))
-                continue;
             if ("unsupported".equals(client)) continue;
             String path = requiredString(file, "path", "A modpack file entry is missing its destination path.");
             validateRelativePath(path);
@@ -363,8 +361,9 @@ public final class ModrinthPackImporter {
             String device = part.toUpperCase(Locale.ROOT);
             int dot = device.indexOf('.');
             if (dot >= 0) device = device.substring(0, dot);
+            boolean invalidCharacter = part.chars().anyMatch(ch -> ch < 32 || "<>|?*".indexOf(ch) >= 0);
             if (part.isBlank() || ".".equals(part) || "..".equals(part) || part.contains(":")
-                    || part.matches(".*[<>|?*\\u0000-\\u001F].*") || part.endsWith(".") || part.endsWith(" ")
+                    || invalidCharacter || part.endsWith(".") || part.endsWith(" ")
                     || Set.of("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
                               "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9").contains(device))
                 throw new IOException("The modpack contains a path traversal or invalid Windows path segment.");
@@ -373,11 +372,16 @@ public final class ModrinthPackImporter {
 
     private static boolean isProtectedPath(String path) {
         String lower = path.toLowerCase(Locale.ROOT);
-        String first = lower.contains("/") ? lower.substring(0, lower.indexOf('/')) : lower;
-        return Set.of("relian-instance.json", "relian-modules.json", "relian-modpack.json",
-                "launcher_profiles.json", "launcher_accounts.json", "accounts.json",
-                "credentials.json", "launcher", "auth", "msa", ".relian").contains(first)
-                || lower.endsWith(".token") || lower.endsWith(".credentials");
+        String[] segments = lower.split("/");
+        String leaf = segments[segments.length - 1];
+        if (Set.of("launcher_profiles.json", "launcher_accounts.json", "accounts.json",
+                "credentials.json", "usercache.json", "launcher_msa_credentials.json",
+                "relian-instance.json", "relian-modules.json", "relian-modpack.json").contains(leaf)
+                || leaf.endsWith(".token") || leaf.endsWith(".credentials")) return true;
+        for (String segment : segments) {
+            if (Set.of("launcher", "auth", "msa", ".relian").contains(segment)) return true;
+        }
+        return false;
     }
 
     private static Path safeResolve(Path root, String relative) throws IOException {
