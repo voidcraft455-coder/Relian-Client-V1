@@ -20,6 +20,8 @@ Relian Client is a Windows-first Minecraft Java launcher prototype built with Ja
 
 ## Important unfinished features
 
+The separate in-game Fabric runtime is currently an early client-side module project targeting Minecraft 1.21.1. It is not yet connected to the launch pipeline and does not imply compatibility across the launcher's full release catalog.
+
 This is not yet a complete Minecraft launcher. The Play button is still a placeholder. Official Minecraft installation and game launching, Fabric/Forge/NeoForge/Quilt loader installation, automatic loader setup from a modpack manifest, additional project dependency resolution beyond the files explicitly listed in the archive, loader-specific Relian module sets for Forge/NeoForge/Quilt, Xbox/XSTS/Minecraft Services authentication, entitlement checks, and secure long-lived credential storage remain to be implemented and tested.
 
 Microsoft OAuth currently authenticates the Microsoft identity only. It does not prove Minecraft ownership and does not make the game launchable. Never add a Microsoft client secret or personal account password to this project.
