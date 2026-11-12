@@ -18,4 +18,4 @@ Run `gradle build` from this directory with Java 21 and internet access. The out
 
 ## Current limits
 
-This is a first runtime milestone, not a full client. It does not implement combat automation, player targeting, hidden-player tracking, or anti-cheat bypasses. The custom Relian resource-loading splash, game launching, additional module types, direct mouse dragging, color customization, and support for other Minecraft versions are future work. The current HUD module has not been benchmarked in-game yet.
+This is a first runtime milestone, not a full client. It does not implement combat automation, player targeting, hidden-player tracking, or anti-cheat bypasses. The custom Relian resource-loading splash, game launching, additional module types, direct mouse dragging, a fully free-form color picker, and support for other Minecraft versions are future work. The loading overlay currently appears over the vanilla resource-loading splash rather than replacing every early startup frame. The current HUD module has not been benchmarked in-game yet.
