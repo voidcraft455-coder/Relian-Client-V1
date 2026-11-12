@@ -31,7 +31,7 @@ public class RelianLauncher extends Application {
     private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
-    @Override public void start(Stage stage) {
+    @Override public void stop() { launchService.close(); }\n\n    @Override public void start(Stage stage) {
         shell.setStyle("-fx-background-color:"+backgroundColor+";");
         shell.setLeft(sidebar());
         shell.setCenter(host);
@@ -160,7 +160,7 @@ public class RelianLauncher extends Application {
         hero.getChildren().addAll(eyebrow,welcome,muted("Choose an installation and launch Relian Client."));
         HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
         versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue("1.21.11"); versions.setPrefWidth(170); styleCombo(versions);
-        ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Fabric"); loader.setPrefWidth(150); styleCombo(loader);
+        ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Vanilla"); loader.setPrefWidth(150); styleCombo(loader);
         Button play=new Button("PLAY"); play.setPrefSize(150,42);
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
