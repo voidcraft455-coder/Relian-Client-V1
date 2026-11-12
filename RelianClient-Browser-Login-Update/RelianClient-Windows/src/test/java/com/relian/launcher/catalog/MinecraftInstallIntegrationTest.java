@@ -43,8 +43,8 @@ class MinecraftInstallIntegrationTest {
         assertTrue(result.libraries() > 0, "Expected verified Minecraft libraries.");
         assertTrue(result.nativeJars() > 0, "Expected Windows native libraries.");
         assertTrue(result.assets() > 0, "Expected Minecraft assets.");
-        assertTrue(Files.isRegularFile(temporaryDirectory.resolve("assets/indexes/17.json"))
-                || Files.list(temporaryDirectory.resolve("assets/indexes")).findAny().isPresent(),
-                "Expected a downloaded asset index.");
+        try (var indexes = Files.list(temporaryDirectory.resolve("assets/indexes"))) {
+            assertTrue(indexes.findAny().isPresent(), "Expected a downloaded asset index.");
+        }
     }
 }
