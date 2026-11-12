@@ -23,6 +23,9 @@ final class RelianHudRenderer {
         renderArmor(client, context, config);
         renderPing(client, context, config);
         renderHeldItem(client, context, config);
+        renderPotions(client, context, config);
+        renderDirection(client, context, config);
+        renderBiome(client, context, config);
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
@@ -69,6 +72,32 @@ final class RelianHudRenderer {
         } else {
             renderText(client, context, config, "held_item", List.of("HELD ITEM: " + stack.getName().getString()));
         }
+    }
+
+
+    private static void renderPotions(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        List<String> lines = new ArrayList<>();
+        for (var effect : client.player.getStatusEffects()) {
+            String name = effect.getEffectType().value().getName().getString();
+            int seconds = Math.max(0, effect.getDuration() / 20);
+            String duration = String.format(java.util.Locale.ROOT, "%d:%02d", seconds / 60, seconds % 60);
+            int level = effect.getAmplifier() + 1;
+            lines.add(name + (level > 1 ? " " + level : "") + " • " + duration);
+        }
+        if (lines.isEmpty()) lines.add("No active effects");
+        renderText(client, context, config, "potions", lines);
+    }
+
+    private static void renderDirection(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        String direction = client.player.getHorizontalFacing().asString().toUpperCase(java.util.Locale.ROOT);
+        renderText(client, context, config, "direction", List.of("FACING: " + direction));
+    }
+
+    private static void renderBiome(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        String biome = client.world.getBiome(client.player.getBlockPos()).getKey()
+            .map(key -> key.getValue().getPath().replace('_', ' '))
+            .orElse("unknown");
+        renderText(client, context, config, "biome", List.of("BIOME: " + biome));
     }
 
     private static void renderText(MinecraftClient client, DrawContext context, HudConfig.Config config,
