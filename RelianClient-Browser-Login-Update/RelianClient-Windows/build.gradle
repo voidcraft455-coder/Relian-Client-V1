@@ -10,7 +10,7 @@ version = '0.1.0'
 repositories { mavenCentral() }
 
 dependencies {
-    implementation 'com.google.code.gson:gson:2.13.1'
+    implementation 'com.google.code.gson:gson:2.13.1'\n    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
 }
 
 java {
@@ -26,7 +26,7 @@ application {
     mainClass = 'com.relian.launcher.RelianLauncher'
 }
 
-tasks.withType(JavaCompile).configureEach {
+tasks.withType(Test).configureEach {\n    useJUnitPlatform()\n}\n\ntasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
