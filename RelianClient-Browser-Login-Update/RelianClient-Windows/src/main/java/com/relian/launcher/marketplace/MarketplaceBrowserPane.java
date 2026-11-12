@@ -139,7 +139,7 @@ public final class MarketplaceBrowserPane extends VBox {
         open.setStyle("-fx-background-color:#303b4d;-fx-background-radius:4;-fx-text-fill:#e8edf5;-fx-padding:7 12;-fx-cursor:hand;");
         open.setOnAction(event -> openProject(project.projectUrl()));
         HBox actions = new HBox(8, open);
-        if ("Modrinth".equalsIgnoreCase(project.source()) && project.type() != ProjectType.MODPACK) {
+        if (project.type() != ProjectType.MODPACK) {
             Button install = new Button("Install");
             install.setStyle("-fx-background-color:#315b45;-fx-background-radius:4;-fx-text-fill:#e8fff0;-fx-padding:7 12;-fx-cursor:hand;");
             install.setOnAction(event -> chooseInstallDirectory(project, install));
@@ -163,7 +163,11 @@ public final class MarketplaceBrowserPane extends VBox {
         setStatus("Checking compatibility and installing " + project.title() + "...");
         CompletableFuture.supplyAsync(() -> {
             try {
-                return ModrinthInstaller.install(project, version, selectedLoader, selectedDirectory.toPath());
+                if ("Modrinth".equalsIgnoreCase(project.source())) {
+                    return ModrinthInstaller.install(project, version, selectedLoader, selectedDirectory.toPath());
+                }
+                String key = System.getenv("RELIAN_CURSEFORGE_API_KEY");
+                return CurseForgeInstaller.install(project, version, selectedLoader, selectedDirectory.toPath(), key);
             } catch (IOException | InterruptedException ex) {
                 if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
                 throw new RuntimeException(ex);
