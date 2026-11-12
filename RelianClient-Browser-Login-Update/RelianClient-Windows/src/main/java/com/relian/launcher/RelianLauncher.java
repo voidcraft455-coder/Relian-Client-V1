@@ -346,6 +346,9 @@ public class RelianLauncher extends Application {
             String chosen=type.getValue(); var selectedPack=packs.getSelectionModel().getSelectedItem();
             if(chosen.startsWith("Modpack")&&selectedPack==null){result.setText("Choose a modpack from the results first.");return;}
             result.setText("Creating isolated instance…"); create.setDisable(true);
+            String selectedVersion=version.getValue(), selectedLoader=loader.getValue(), selectedName=name.getText();
+            java.nio.file.Path selectedImport=importPath[0];
+            String selectedPackTitle=selectedPack==null?"":selectedPack.title();
             CompletableFuture.supplyAsync(()->{
                 try{
                     java.nio.file.Path root=gameDirectory.isBlank()
@@ -355,8 +358,8 @@ public class RelianLauncher extends Application {
                         chosen.startsWith("Import")?com.relian.launcher.profiles.InstanceManager.Kind.IMPORT:
                         chosen.startsWith("Modpack")?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
                         com.relian.launcher.profiles.InstanceManager.Kind.RELIAN;
-                    return com.relian.launcher.profiles.InstanceManager.create(root,name.getText(),version.getValue(),loader.getValue(),
-                        kind,importPath[0],selectedPack==null?"":selectedPack.title());
+                    return com.relian.launcher.profiles.InstanceManager.create(root,selectedName,selectedVersion,selectedLoader,
+                        kind,selectedImport,selectedPackTitle);
                 }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((created,error)->javafx.application.Platform.runLater(()->{
                 create.setDisable(false);
@@ -364,10 +367,10 @@ public class RelianLauncher extends Application {
                 String message="Created "+created.manifest().name()+" at "+created.directory()+".";
                 if(kindIncludesRelian(chosen)){
                     message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
-                    if(loader.getValue().equals("Fabric")){
+                    if(selectedLoader.equals("Fabric")){
                         result.setText(message+" Installing compatible Modrinth performance modules…");
-                        installRelianPerformanceMods(created.directory(),version.getValue(),result,message);
-                    }else result.setText(message+" Fabric performance modules were not auto-installed because "+loader.getValue()+" was selected; loader-specific module matching is still being added.");
+                        installRelianPerformanceMods(created.directory(),selectedVersion,result,message);
+                    }else result.setText(message+" Fabric performance modules were not auto-installed because "+selectedLoader+" was selected; loader-specific module matching is still being added.");
                 }else result.setText(message+" This instance has no Relian modules, as requested for Vanilla.");
             }));
         });
@@ -431,6 +434,30 @@ public class RelianLauncher extends Application {
             memoryValue.setText("Saved: "+memoryLimitMb+" MB for future Minecraft launches");
         });
         performance.getChildren().addAll(performanceTitle,muted("This setting is for the Minecraft game process, not the Relian launcher. Start with 2–4 GB; avoid assigning nearly all your computer's RAM."),memorySlider,memoryValue,saveMemory);
+        VBox fpsTools=new VBox(8); fpsTools.setPadding(new Insets(16)); fpsTools.setStyle(cardStyle());
+        Label fpsTitle=new Label("Minecraft FPS profile"); fpsTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        Label fpsTarget=muted("Choose a specific instance folder to tune. These settings change only that Minecraft instance's options.txt.");
+        ComboBox<String> fpsPreset=new ComboBox<>(); fpsPreset.getItems().addAll("FPS boost","Balanced","Keep current settings"); fpsPreset.setValue("FPS boost"); styleCombo(fpsPreset);
+        java.nio.file.Path[] fpsDirectory={null};
+        Button chooseFpsFolder=small("Choose instance folder");
+        chooseFpsFolder.setOnAction(e->{
+            DirectoryChooser chooser=new DirectoryChooser(); chooser.setTitle("Choose a Minecraft instance folder");
+            File selected=chooser.showDialog(shell.getScene().getWindow());
+            if(selected!=null){fpsDirectory[0]=selected.toPath();fpsTarget.setText("Selected instance: "+selected.getAbsolutePath());}
+        });
+        Button applyFps=small("Apply FPS profile");
+        applyFps.setOnAction(e->{
+            if(fpsDirectory[0]==null){info("Choose an instance folder first.");return;}
+            var preset=fpsPreset.getValue().equals("FPS boost")?com.relian.launcher.settings.MinecraftPerformanceProfile.Preset.FPS_BOOST:
+                fpsPreset.getValue().equals("Balanced")?com.relian.launcher.settings.MinecraftPerformanceProfile.Preset.BALANCED:
+                com.relian.launcher.settings.MinecraftPerformanceProfile.Preset.ORIGINAL;
+            try{
+                com.relian.launcher.settings.MinecraftPerformanceProfile.apply(fpsDirectory[0],preset);
+                fpsTarget.setText("Applied "+fpsPreset.getValue()+" to "+fpsDirectory[0]+". Restart Minecraft to see the changes.");
+            }catch(Exception ex){fpsTarget.setText("Could not apply the profile: "+ex.getMessage());}
+        });
+        fpsTools.getChildren().addAll(fpsTitle,muted("FPS Boost lowers Minecraft-only view distance, particles, clouds, biome blending, and entity rendering cost. It does not cap or change Windows CPU, GPU, or RAM availability for other applications."),fpsPreset,chooseFpsFolder,applyFps,fpsTarget);
+
 
         VBox directories=new VBox(10);
         directories.setPadding(new Insets(18)); directories.setStyle(cardStyle());
@@ -450,7 +477,7 @@ public class RelianLauncher extends Application {
         VBox runtime=new VBox(4); runtime.setPadding(new Insets(16)); runtime.setStyle(cardStyle());
         Label javaTitle=new Label("Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
         runtime.getChildren().addAll(javaTitle,muted("Relian's launcher uses Java 21. Per-version Minecraft Java runtime selection is not connected yet."));
-        b.getChildren().addAll(appearance,performance,directories,runtime);
+        b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime);
         return b;
     }
 
