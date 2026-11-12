@@ -595,6 +595,32 @@ public class RelianLauncher extends Application {
         Label javaTitle=new Label("Minecraft Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
         Label javaStatus=muted("Detect installed Java versions. Minecraft versions require different Java major versions.");
         ComboBox<String> javaChoices=new ComboBox<>(); javaChoices.setPrefWidth(650); styleCombo(javaChoices);
+        Button installJava=small("Download & install compatible Java");
+        installJava.setOnAction(event->{
+            String selectedVersion=versions==null || versions.getValue()==null?"1.21.1":versions.getValue();
+            int required=com.relian.launcher.runtime.JavaRuntimeManager.requiredMajor(selectedVersion);
+            javaStatus.setText("Downloading and verifying Eclipse Temurin Java "+required+"…");
+            installJava.setDisable(true);
+            CompletableFuture.supplyAsync(()->{
+                try{
+                    java.nio.file.Path root=gameDirectory.isBlank()
+                        ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","runtimes")
+                        :java.nio.file.Path.of(gameDirectory).resolve("runtimes");
+                    return com.relian.launcher.runtime.TemurinRuntimeInstaller.installWindows(required,root);
+                }catch(Exception ex){throw new RuntimeException(ex);}
+            }).whenComplete((executable,error)->javafx.application.Platform.runLater(()->{
+                installJava.setDisable(false);
+                if(error!=null){
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    javaStatus.setText("Java installation failed: "+cause.getMessage());
+                    return;
+                }
+                preferences.put("minecraft.java.path",executable.toString());
+                javaStatus.setText("Installed and checksum-verified Java "+required+".");
+                javaChoices.getItems().add("Java "+required+" — "+executable);
+                javaChoices.setValue("Java "+required+" — "+executable);
+            }));
+        });
         Button detectJava=small("Detect installed Java");
         detectJava.setOnAction(event->{
             detectJava.setDisable(true); javaStatus.setText("Scanning JAVA_HOME, PATH, and common Windows Java folders…");
@@ -622,7 +648,7 @@ public class RelianLauncher extends Application {
                 if(split>=0) preferences.put("minecraft.java.path",selected.substring(split+3));
             }
         });
-        runtime.getChildren().addAll(javaTitle,muted("Relian detects existing Java installations and recommends the required major version. It does not download or bundle game runtimes yet."),detectJava,javaChoices,javaStatus);
+        runtime.getChildren().addAll(javaTitle,muted("Detect existing Java installations or download a checksum-verified Eclipse Temurin runtime for the selected Minecraft version."),detectJava,installJava,javaChoices,javaStatus);
         b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime);
         return b;
     }
