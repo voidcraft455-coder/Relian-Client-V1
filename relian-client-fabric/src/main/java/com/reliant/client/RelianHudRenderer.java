@@ -4,6 +4,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
+import net.minecraft.util.hit.BlockHitResult;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
@@ -26,6 +29,10 @@ final class RelianHudRenderer {
         renderPotions(client, context, config);
         renderDirection(client, context, config);
         renderBiome(client, context, config);
+        renderSpeed(client, context, config);
+        renderClock(client, context, config);
+        renderDimension(client, context, config);
+        renderTargetBlock(client, context, config);
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
@@ -98,6 +105,31 @@ final class RelianHudRenderer {
             .map(key -> key.getValue().getPath().replace('_', ' '))
             .orElse("unknown");
         renderText(client, context, config, "biome", List.of("BIOME: " + biome));
+    }
+
+    private static void renderSpeed(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        double blocksPerSecond = client.player.getVelocity().horizontalLength() * 20.0;
+        renderText(client, context, config, "speed",
+            List.of(String.format(java.util.Locale.ROOT, "SPEED: %.2f blocks/s", blocksPerSecond)));
+    }
+
+    private static void renderClock(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        renderText(client, context, config, "clock",
+            List.of("LOCAL TIME: " + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))));
+    }
+
+    private static void renderDimension(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        String dimension = client.world.getRegistryKey().getValue().getPath().replace('_', ' ');
+        renderText(client, context, config, "dimension", List.of("DIMENSION: " + dimension));
+    }
+
+    private static void renderTargetBlock(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        if (client.crosshairTarget instanceof BlockHitResult hit) {
+            String block = client.world.getBlockState(hit.getBlockPos()).getBlock().getName().getString();
+            renderText(client, context, config, "target_block", List.of("LOOKING AT: " + block));
+        } else {
+            renderText(client, context, config, "target_block", List.of("LOOKING AT: —"));
+        }
     }
 
     private static void renderText(MinecraftClient client, DrawContext context, HudConfig.Config config,
