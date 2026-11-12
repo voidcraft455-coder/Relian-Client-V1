@@ -6,12 +6,17 @@
   "description": "Relian's client-side HUD and customization layer.",
   "environment": "client",
   "entrypoints": {
-    "client": ["com.reliant.client.RelianClientMod"]
+    "client": [
+      "com.reliant.client.RelianClientMod"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "1.21.1",
     "java": ">=21",
     "fabric-api": "*"
-  }
+  },
+  "mixins": [
+    "relian-client.mixins.json"
+  ]
 }
