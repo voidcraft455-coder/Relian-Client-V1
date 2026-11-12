@@ -1,0 +1,4 @@
+# Copy this file to auth.properties and set the Microsoft Entra application ID.
+# Relian must use its OWN registered public desktop application ID.
+# Do not put a client secret in this file.
+microsoft.clientId=YOUR_APPLICATION_CLIENT_ID
