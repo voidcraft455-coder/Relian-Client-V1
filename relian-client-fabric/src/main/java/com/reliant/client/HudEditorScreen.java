@@ -145,7 +145,7 @@ public final class HudEditorScreen extends Screen {
             }
         }
         if (inside(mouseX, mouseY, panelLeft + 590, panelTop + 15, 88, 27)) {
-            close();
+            closeEditor();
             return true;
         }
         if (inside(mouseX, mouseY, panelLeft + 18, panelTop + 382, 104, 25)) {
@@ -154,7 +154,7 @@ public final class HudEditorScreen extends Screen {
         }
         if (inside(mouseX, mouseY, panelLeft + 134, panelTop + 382, 104, 25)) {
             HudConfig.save();
-            close();
+            closeEditor();
             return true;
         }
         HudConfig.ModuleSettings settings = HudConfig.get().modules.get(MODULES.get(selected));
@@ -213,13 +213,13 @@ public final class HudEditorScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
-            close();
+            closeEditor();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    private void close() {
+    private void closeEditor() {
         HudConfig.save();
         if (client != null) client.setScreen(null);
     }
