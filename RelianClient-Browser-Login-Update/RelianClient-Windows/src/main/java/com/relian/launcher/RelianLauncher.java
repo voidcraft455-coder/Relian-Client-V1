@@ -178,7 +178,7 @@ public class RelianLauncher extends Application {
     private VBox versionPage(){
         VBox box=new VBox(12);
         box.getChildren().addAll(muted("Choose a Minecraft version. Download verified official client files into Relian's game directory."), 
-            muted("This stage installs the version metadata and client JAR only. Libraries, assets, Java runtime setup, Microsoft/Xbox authentication, and launching are not yet complete."));
+            muted("Install the official client JAR, version metadata, required libraries, Windows native archives, and asset objects with SHA-1 verification."));
         for(String ver:versionList){HBox row=new HBox(12);row.setAlignment(Pos.CENTER_LEFT);row.setPadding(new Insets(14));row.setStyle(cardStyle());
             VBox info=new VBox(3);Label t=new Label("Minecraft "+ver);t.setStyle("-fx-text-fill:"+FG+";-fx-font-size:14px;-fx-font-weight:bold;");
             Label state=muted("Official release • client file checksum will be verified");
@@ -211,8 +211,8 @@ public class RelianLauncher extends Application {
                 status.setText("Download failed: "+cause.getMessage());
                 return;
             }
-            status.setText("Verified client JAR ("+String.format(java.util.Locale.ROOT,"%.1f MB",result.clientBytes()/1048576.0)
-                +") saved to "+result.versionDirectory()+". Game libraries/assets and launch support are still pending.");
+            status.setText("Installed "+result.versionId()+": verified client JAR, "+result.libraries()+" libraries, "
+                +result.nativeJars()+" Windows native archives, and "+result.assets()+" asset objects. Java setup and game launch are separate steps.");
         }));
     }
     private VBox manager(String title,String desc){
@@ -591,9 +591,38 @@ public class RelianLauncher extends Application {
         });
         directories.getChildren().addAll(directoryTitle,muted("Choose where Relian should store game files. Separate per-version profiles will be added with the game installer."),directoryValue,chooseDirectory);
 
-        VBox runtime=new VBox(4); runtime.setPadding(new Insets(16)); runtime.setStyle(cardStyle());
-        Label javaTitle=new Label("Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
-        runtime.getChildren().addAll(javaTitle,muted("Relian's launcher uses Java 21. Per-version Minecraft Java runtime selection is not connected yet."));
+        VBox runtime=new VBox(8); runtime.setPadding(new Insets(16)); runtime.setStyle(cardStyle());
+        Label javaTitle=new Label("Minecraft Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        Label javaStatus=muted("Detect installed Java versions. Minecraft versions require different Java major versions.");
+        ComboBox<String> javaChoices=new ComboBox<>(); javaChoices.setPrefWidth(650); styleCombo(javaChoices);
+        Button detectJava=small("Detect installed Java");
+        detectJava.setOnAction(event->{
+            detectJava.setDisable(true); javaStatus.setText("Scanning JAVA_HOME, PATH, and common Windows Java folders…");
+            CompletableFuture.supplyAsync(()->com.relian.launcher.runtime.JavaRuntimeManager.detectInstalled())
+                .whenComplete((found,error)->javafx.application.Platform.runLater(()->{
+                    detectJava.setDisable(false); javaChoices.getItems().clear();
+                    if(error!=null){javaStatus.setText("Java detection failed: "+error.getMessage());return;}
+                    for(var item:found) javaChoices.getItems().add(item.toString());
+                    String selectedPath=preferences.get("minecraft.java.path","");
+                    int required=com.relian.launcher.runtime.JavaRuntimeManager.requiredMajor(versions==null?"1.21.1":versions.getValue());
+                    var compatible=com.relian.launcher.runtime.JavaRuntimeManager.findCompatible(found,versions==null?"1.21.1":versions.getValue());
+                    if(!selectedPath.isBlank()){
+                        for(var item:found) if(item.executable().toString().equals(selectedPath)) javaChoices.setValue(item.toString());
+                    }
+                    if(javaChoices.getValue()==null && compatible!=null) javaChoices.setValue(compatible.toString());
+                    javaStatus.setText(found.isEmpty()?"No Java installation was detected. Runtime downloads are the next step."
+                        :found.size()+" Java installation(s) found. Selected Minecraft version needs Java "+required+". "
+                        +(compatible==null?"No exact compatible runtime was found.":"A compatible runtime is available."));
+                }));
+        });
+        javaChoices.setOnAction(event->{
+            String selected=javaChoices.getValue();
+            if(selected!=null){
+                int split=selected.indexOf(" — ");
+                if(split>=0) preferences.put("minecraft.java.path",selected.substring(split+3));
+            }
+        });
+        runtime.getChildren().addAll(javaTitle,muted("Relian detects existing Java installations and recommends the required major version. It does not download or bundle game runtimes yet."),detectJava,javaChoices,javaStatus);
         b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime);
         return b;
     }
