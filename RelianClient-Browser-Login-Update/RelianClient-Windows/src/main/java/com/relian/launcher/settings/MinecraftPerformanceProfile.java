@@ -13,21 +13,24 @@ public final class MinecraftPerformanceProfile {
         Path root = gameDirectory.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) throw new IOException("The selected Minecraft instance folder does not exist.");
         Path file = root.resolve("options.txt");
-        Properties values = new Properties();
-        if (Files.isRegularFile(file)) try (var in = Files.newInputStream(file)) { values.load(in); }
-        if (preset == Preset.ORIGINAL) return;
-        values.setProperty("renderDistance", preset == Preset.FPS_BOOST ? "6" : "8");
-        values.setProperty("simulationDistance", preset == Preset.FPS_BOOST ? "4" : "6");
-        values.setProperty("entityDistanceScaling", preset == Preset.FPS_BOOST ? "0.5" : "0.75");
-        values.setProperty("particles", preset == Preset.FPS_BOOST ? "0" : "1");
-        values.setProperty("clouds", "false");
-        values.setProperty("biomeBlendRadius", "0");
-        values.setProperty("entityShadows", "false");
-        values.setProperty("vsync", "false");
-        values.setProperty("graphicsMode", "0");
-        values.setProperty("maxFps", "260");
-        try (var out = Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            values.store(out, "Relian " + preset + " video profile. Applies only to this Minecraft instance.");
+        java.util.Map<String,String> values = new java.util.LinkedHashMap<>();
+        if (Files.isRegularFile(file)) for (String line : Files.readAllLines(file)) {
+            int split = line.indexOf(':');
+            if (split > 0) values.put(line.substring(0, split), line.substring(split + 1));
         }
+        if (preset == Preset.ORIGINAL) return;
+        values.put("renderDistance", preset == Preset.FPS_BOOST ? "6" : "8");
+        values.put("simulationDistance", preset == Preset.FPS_BOOST ? "4" : "6");
+        values.put("entityDistanceScaling", preset == Preset.FPS_BOOST ? "0.5" : "0.75");
+        values.put("particles", preset == Preset.FPS_BOOST ? "0" : "1");
+        values.put("clouds", "false");
+        values.put("biomeBlendRadius", "0");
+        values.put("entityShadows", "false");
+        values.put("vsync", "false");
+        values.put("graphicsMode", "0");
+        values.put("maxFps", "260");
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        values.forEach((key,value) -> lines.add(key + ":" + value));
+        Files.write(file, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 }
