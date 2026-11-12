@@ -62,6 +62,10 @@ public final class HudConfig {
         config.modules.put("potions", new ModuleSettings(true, 8, 194, 1.0f, 0xFFB69CFF));
         config.modules.put("direction", new ModuleSettings(true, 8, 238, 1.0f, 0xFF83B7FF));
         config.modules.put("biome", new ModuleSettings(false, 8, 260, 1.0f, 0xFF8FE3B0));
+        config.modules.put("speed", new ModuleSettings(true, 8, 282, 1.0f, 0xFFFFD479));
+        config.modules.put("clock", new ModuleSettings(false, 8, 304, 1.0f, 0xFFFFFFFF));
+        config.modules.put("dimension", new ModuleSettings(false, 8, 326, 1.0f, 0xFF83B7FF));
+        config.modules.put("target_block", new ModuleSettings(false, 8, 348, 1.0f, 0xFF8FE3B0));
         return config;
     }
 
