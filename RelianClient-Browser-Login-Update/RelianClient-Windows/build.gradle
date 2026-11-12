@@ -29,6 +29,7 @@ application {
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    systemProperty 'relian.minecraft.integration', project.findProperty('relian.minecraft.integration') ?: 'false'
 }
 
 tasks.withType(JavaCompile).configureEach {
