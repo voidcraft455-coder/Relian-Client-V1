@@ -23,7 +23,7 @@ class MinecraftInstallIntegrationTest {
         assertEquals(17, JavaRuntimeManager.requiredMajor("1.20.4"));
         assertEquals(21, JavaRuntimeManager.requiredMajor("1.20.5"));
         assertEquals(21, JavaRuntimeManager.requiredMajor("1.21.1"));
-        assertEquals(21, JavaRuntimeManager.requiredMajor("26.3"));
+        assertEquals(25, JavaRuntimeManager.requiredMajor("26.3"));
     }
 
     @Test
