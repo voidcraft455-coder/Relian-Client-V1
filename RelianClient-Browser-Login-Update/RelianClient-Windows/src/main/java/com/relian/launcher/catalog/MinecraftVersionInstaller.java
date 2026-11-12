@@ -39,7 +39,8 @@ public final class MinecraftVersionInstaller {
     private MinecraftVersionInstaller() {}
 
     public record InstallResult(Path versionDirectory, Path metadataFile, Path clientJar,
-                                String versionId, long clientBytes) {}
+                                String versionId, long clientBytes, int libraries,
+                                int nativeJars, int assets) {}
 
     public static InstallResult install(MinecraftRelease release, Path gameDirectory,
                                         Consumer<String> progress)
@@ -97,8 +98,12 @@ public final class MinecraftVersionInstaller {
         long bytes = downloadVerified(clientUri, clientSha1, clientJar, MAX_CLIENT_BYTES);
 
         writeAtomically(metadataFile, metadataBytes);
-        status.accept("Verified client JAR and saved version metadata.");
-        return new InstallResult(versionDirectory, metadataFile, clientJar, id, bytes);
+        status.accept("Installing Minecraft libraries, Windows native files, and assets…");
+        MinecraftDependencyInstaller.Result dependencies =
+                MinecraftDependencyInstaller.install(metadata, root, status);
+        status.accept("Minecraft " + id + " files are installed and verified.");
+        return new InstallResult(versionDirectory, metadataFile, clientJar, id, bytes,
+                dependencies.libraries(), dependencies.nativeJars(), dependencies.assets());
     }
 
     private static byte[] getBytes(URI uri, long limit) throws IOException, InterruptedException {
