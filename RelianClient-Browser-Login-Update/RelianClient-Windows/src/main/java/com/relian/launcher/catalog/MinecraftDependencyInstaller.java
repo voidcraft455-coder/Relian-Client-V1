@@ -80,6 +80,16 @@ final class MinecraftDependencyInstaller {
             }
         }
 
+        JsonObject logging = object(metadata, "logging");
+        JsonObject clientLogging = object(logging, "client");
+        JsonObject loggingFile = object(clientLogging, "file");
+        if (loggingFile != null) {
+            String loggingId = string(loggingFile, "id");
+            if (!loggingId.matches("[A-Za-z0-9._-]{1,96}")) throw new IOException("Mojang supplied an invalid logging configuration ID.");
+            Path loggingPath = gameRoot.resolve("assets").resolve("log_configs").resolve(loggingId).normalize();
+            downloadArtifact(string(loggingFile, "url"), string(loggingFile, "sha1"), loggingPath, 4L * 1024 * 1024);
+        }
+
         JsonObject assetIndex = object(metadata, "assetIndex");
         if (assetIndex != null) {
             String indexId = string(assetIndex, "id");
