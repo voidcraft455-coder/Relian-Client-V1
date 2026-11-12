@@ -30,6 +30,7 @@ public final class MarketplaceBrowserPane extends VBox {
     private static final String MUTED = "#a6acb7";
 
     private final ProjectType fixedType;
+    private final Path preferredGameDirectory;
     private final TextField search = new TextField();
     private final TextField minecraftVersion = new TextField("1.21.11");
     private final ComboBox<String> providerChoice = new ComboBox<>();
@@ -39,7 +40,12 @@ public final class MarketplaceBrowserPane extends VBox {
     private final Button searchButton = new Button("Search");
 
     public MarketplaceBrowserPane(ProjectType fixedType) {
+        this(fixedType, null);
+    }
+
+    public MarketplaceBrowserPane(ProjectType fixedType, Path preferredGameDirectory) {
         this.fixedType = fixedType;
+        this.preferredGameDirectory = preferredGameDirectory;
         setSpacing(14);
         setPadding(new Insets(4, 0, 0, 0));
 
@@ -153,6 +159,9 @@ public final class MarketplaceBrowserPane extends VBox {
     private void chooseInstallDirectory(MarketplaceProject project, Button installButton) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Choose your Minecraft game directory");
+        if (preferredGameDirectory != null && java.nio.file.Files.isDirectory(preferredGameDirectory)) {
+            chooser.setInitialDirectory(preferredGameDirectory.toFile());
+        }
         File selectedDirectory = chooser.showDialog(getScene().getWindow());
         if (selectedDirectory == null) return;
         String version = minecraftVersion.getText() == null ? "" : minecraftVersion.getText().trim();
