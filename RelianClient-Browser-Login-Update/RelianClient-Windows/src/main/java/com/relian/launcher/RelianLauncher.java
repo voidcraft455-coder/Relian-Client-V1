@@ -9,6 +9,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 public class RelianLauncher extends Application {
@@ -18,7 +19,7 @@ public class RelianLauncher extends Application {
     private ComboBox<String> versions;
     private String active = "Home";
     private String accountLabel = "Sign in with Microsoft";
-    private final List<String> versionList = List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8");
+    private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
     @Override public void start(Stage stage) {
         shell.setStyle("-fx-background-color:"+BG+";");
@@ -29,6 +30,29 @@ public class RelianLauncher extends Application {
         stage.setMinWidth(900); stage.setMinHeight(600);
         stage.setScene(new Scene(shell,1120,700));
         stage.show();
+        loadVersionCatalog();
+    }
+
+
+    private void loadVersionCatalog() {
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return new com.relian.launcher.catalog.MinecraftVersionCatalog().fetchRelianTargets();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).whenComplete((releases, error) -> javafx.application.Platform.runLater(() -> {
+            if (error != null || releases == null || releases.isEmpty()) return;
+            String selected = versions == null ? null : versions.getValue();
+            versionList.clear();
+            for (com.relian.launcher.catalog.MinecraftRelease release : releases) versionList.add(release.id());
+            if (versions != null) {
+                versions.getItems().setAll(versionList);
+                if (selected != null && versionList.contains(selected)) versions.setValue(selected);
+                else if (!versionList.isEmpty()) versions.setValue(versionList.get(0));
+            }
+            if ("Versions".equals(active)) page("Versions");
+        }));
     }
 
     private VBox sidebar() {
