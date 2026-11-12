@@ -42,7 +42,7 @@ public class RelianLauncher extends Application {
         sub.setStyle("-fx-text-fill:"+MUTED+";-fx-font-size:9px;");
         bt.getChildren().addAll(n,sub); brand.getChildren().addAll(r,bt);
         v.getChildren().add(brand); Region gap=new Region(); gap.setPrefHeight(20); v.getChildren().add(gap);
-        for(String s:List.of("Home","Versions","Mods","Resource Packs","Shaders","Settings")) {
+        for(String s:List.of("Home","Versions","Mods","Modpacks","Resource Packs","Shaders","Settings")) {
             Button b=new Button(s); b.setMaxWidth(Double.MAX_VALUE); b.setAlignment(Pos.CENTER_LEFT);
             b.setPadding(new Insets(11,12,11,12)); b.setOnAction(e->page(s)); b.setId("nav-"+s);
             v.getChildren().add(b);
@@ -64,9 +64,10 @@ public class RelianLauncher extends Application {
         switch(name) {
             case "Home" -> content.getChildren().add(home());
             case "Versions" -> content.getChildren().add(versionPage());
-            case "Mods" -> content.getChildren().add(manager("Mods","Browse and manage compatible Minecraft mods."));
-            case "Resource Packs" -> content.getChildren().add(manager("Resource Packs","Install and organize resource packs."));
-            case "Shaders" -> content.getChildren().add(manager("Shaders","Manage shader packs for supported loaders."));
+            case "Mods" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.MOD));
+            case "Modpacks" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.MODPACK));
+            case "Resource Packs" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.RESOURCE_PACK));
+            case "Shaders" -> content.getChildren().add(new com.relian.launcher.marketplace.MarketplaceBrowserPane(com.relian.launcher.marketplace.ProjectType.SHADER));
             default -> content.getChildren().add(settings());
         }
         ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true);
