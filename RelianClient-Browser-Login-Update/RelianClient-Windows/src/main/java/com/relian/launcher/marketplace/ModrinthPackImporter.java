@@ -60,6 +60,8 @@ public final class ModrinthPackImporter {
             throws IOException, InterruptedException {
         if (archive == null || instanceDirectory == null) throw new IOException("Choose a modpack archive and an instance.");
         Path zipPath = archive.toAbsolutePath().normalize();
+        if (!zipPath.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".mrpack"))
+            throw new IOException("Choose a Modrinth .mrpack archive.");
         Path instance = instanceDirectory.toAbsolutePath().normalize();
         if (!Files.isRegularFile(zipPath, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(zipPath))
             throw new IOException("The selected .mrpack file is not a regular file.");
@@ -219,11 +221,11 @@ public final class ModrinthPackImporter {
                 if (relative.isBlank()) continue;
                 validateRelativePath(relative);
                 if (isProtectedPath(relative)) throw new IOException("The archive attempts to install a protected launcher or credential file.");
-                if (size > 32L * 1024 * 1024) throw new IOException("An override file exceeds the 32 MB safety limit: " + relative);
+                if (size > MAX_OVERRIDE_FILE_BYTES) throw new IOException("An override file exceeds the 32 MB safety limit: " + relative);
                 try (InputStream in = zip.getInputStream(entry)) {
-                    byte[] content = readLimited(in, 32L * 1024 * 1024);
+                    byte[] content = readLimited(in, MAX_OVERRIDE_FILE_BYTES);
                     overrideBytes = Math.addExact(overrideBytes, content.length);
-                    if (overrideBytes > 128L * 1024 * 1024)
+                    if (overrideBytes > MAX_OVERRIDE_TOTAL_BYTES)
                         throw new IOException("Modpack overrides exceed the 128 MB safety limit.");
                     overrides.put(relative, content);
                 }
