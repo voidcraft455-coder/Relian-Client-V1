@@ -47,6 +47,9 @@ final class MinecraftDependencyInstaller {
         int libraries = 0, nativeJars = 0, assets = 0;
         Path librariesRoot = gameRoot.resolve("libraries").normalize();
         Path nativesRoot = gameRoot.resolve("versions").resolve(metadata.get("id").getAsString()).resolve("natives").normalize();
+        if (hasSymlinkParent(librariesRoot) || hasSymlinkParent(nativesRoot)) {
+            throw new IOException("Relian refuses to install Minecraft dependencies through a symbolic link.");
+        }
         Files.createDirectories(librariesRoot);
         Files.createDirectories(nativesRoot);
 
@@ -80,6 +83,7 @@ final class MinecraftDependencyInstaller {
         JsonObject assetIndex = object(metadata, "assetIndex");
         if (assetIndex != null) {
             String indexId = string(assetIndex, "id");
+            if (!indexId.matches("[A-Za-z0-9._-]{1,64}")) throw new IOException("Mojang supplied an invalid asset index ID.");
             String indexUrl = string(assetIndex, "url");
             String indexSha1 = string(assetIndex, "sha1");
             Path indexFile = gameRoot.resolve("assets").resolve("indexes").resolve(indexId + ".json").normalize();
@@ -130,8 +134,11 @@ final class MinecraftDependencyInstaller {
         if (rawUrl.isBlank()) throw new IOException("Minecraft metadata contains an empty library URL.");
         URI uri = trustedUri(rawUrl);
         if (!expectedSha1.matches("(?i)[a-f0-9]{40}")) throw new IOException("Minecraft metadata contains a missing or invalid SHA-1 checksum.");
-        Files.createDirectories(destination.getParent());
         if (Files.isSymbolicLink(destination) || hasSymlinkParent(destination.getParent())) {
+            throw new IOException("Relian refuses to install Minecraft files through a symbolic link.");
+        }
+        Files.createDirectories(destination.getParent());
+        if (hasSymlinkParent(destination.getParent())) {
             throw new IOException("Relian refuses to install Minecraft files through a symbolic link.");
         }
         if (Files.isRegularFile(destination) && expectedSha1.equalsIgnoreCase(sha1(destination))) return;
@@ -181,8 +188,13 @@ final class MinecraftDependencyInstaller {
             while ((entry = zip.getNextEntry()) != null) {
                 if (entry.isDirectory() || entry.getName().startsWith("META-INF/")) continue;
                 Path output = safeResolve(destination, entry.getName());
+                if (Files.isSymbolicLink(output) || hasSymlinkParent(output.getParent())) {
+                    throw new IOException("A native archive attempted to write through a symbolic link.");
+                }
                 Files.createDirectories(output.getParent());
-                if (hasSymlinkParent(output.getParent())) throw new IOException("A native archive attempted to write through a symbolic link.");
+                if (Files.isSymbolicLink(output) || hasSymlinkParent(output.getParent())) {
+                    throw new IOException("A native archive attempted to write through a symbolic link.");
+                }
                 try (OutputStream out = Files.newOutputStream(output)) {
                     int count;
                     while ((count = zip.read(buffer)) != -1) out.write(buffer, 0, count);
