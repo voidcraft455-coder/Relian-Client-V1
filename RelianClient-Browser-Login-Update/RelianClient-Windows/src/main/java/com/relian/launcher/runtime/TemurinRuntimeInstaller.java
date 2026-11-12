@@ -93,7 +93,11 @@ public final class TemurinRuntimeInstaller {
             }
             Path extractedHome = extractedJava.getParent().getParent();
             if (Files.exists(destination)) throw new IOException("A partial Java runtime directory already exists; remove it before retrying.");
-            Files.move(extractedHome, destination, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(extractedHome, destination, StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ex) {
+                Files.move(extractedHome, destination);
+            }
             installed = true;
             return javaExe;
         } finally {
@@ -122,7 +126,7 @@ public final class TemurinRuntimeInstaller {
                 .header("User-Agent", "RelianClient/0.1.0").GET().build();
         HttpResponse<InputStream> response = HTTP.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() != 200 || !"https".equalsIgnoreCase(response.uri().getScheme())
-                || !"github.com".equalsIgnoreCase(response.uri().getHost())) {
+                || !( "github.com".equalsIgnoreCase(response.uri().getHost())\n                || "release-assets.githubusercontent.com".equalsIgnoreCase(response.uri().getHost())\n                || "objects.githubusercontent.com".equalsIgnoreCase(response.uri().getHost()))) {
             response.body().close();
             throw new IOException("Temurin runtime download failed or redirected to an untrusted host.");
         }
