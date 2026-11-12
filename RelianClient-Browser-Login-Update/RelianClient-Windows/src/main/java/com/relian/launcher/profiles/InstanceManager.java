@@ -43,7 +43,7 @@ public final class InstanceManager {
                 sourceLabel = source.toString();
                 copySupportedContent(source, target);
             }
-            writePerformanceDefaults(target);
+            writePerformanceDefaults(target, version);
             List<String> modules = kind == Kind.VANILLA ? List.of() : RELIAN_MODULES;
             InstanceManifest manifest = new InstanceManifest(cleanName, version,
                     kind == Kind.VANILLA ? "Vanilla" : (loader == null ? "Fabric" : loader), kind, sourceLabel,
@@ -70,6 +70,19 @@ public final class InstanceManager {
         if (Files.isDirectory(source.resolve(".minecraft"), LinkOption.NOFOLLOW_LINKS)) return source.resolve(".minecraft");
         if (Files.isDirectory(source.resolve("minecraft"), LinkOption.NOFOLLOW_LINKS)) return source.resolve("minecraft");
         return source;
+    }
+
+
+    public static void updateRelianModuleStatus(Path directory, List<String> installed, List<String> unavailable) throws IOException {
+        String status = unavailable.isEmpty() ? "installed" : (installed.isEmpty() ? "pending-install" : "partial");
+        Map<String,Object> manifest = new LinkedHashMap<>();
+        manifest.put("managedBy", "Relian Client");
+        manifest.put("status", status);
+        manifest.put("installed", List.copyOf(installed));
+        manifest.put("notAvailableForVersion", List.copyOf(unavailable));
+        manifest.put("note", "Third-party Modrinth performance modules. A compatible Fabric loader is required to run them.");
+        Files.writeString(directory.resolve("relian-modules.json"), GSON.toJson(manifest),
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     private static void copySupportedContent(Path source, Path target) throws IOException {
@@ -105,7 +118,7 @@ public final class InstanceManager {
         });
     }
 
-    private static void writePerformanceDefaults(Path dir) throws IOException {
+    private static void writePerformanceDefaults(Path dir, String version) throws IOException {
         Path options = dir.resolve("options.txt");
         java.util.Map<String,String> values = new java.util.LinkedHashMap<>();
         if (Files.isRegularFile(options)) for (String line : Files.readAllLines(options)) {
@@ -113,15 +126,21 @@ public final class InstanceManager {
             if (split > 0) values.put(line.substring(0, split), line.substring(split + 1));
         }
         values.put("renderDistance", "8");
-        values.put("simulationDistance", "5");
-        values.put("entityDistanceScaling", "0.75");
         values.put("particles", "1");
-        values.put("clouds", "0");
-        values.put("biomeBlendRadius", "0");
         values.put("entityShadows", "false");
         values.put("vsync", "false");
         values.put("maxFps", "260");
-        values.put("graphicsMode", "0");
+        if (version.startsWith("1.8.")) {
+            values.put("clouds", "false");
+            values.put("fancyGraphics", "false");
+            values.put("ao", "0");
+        } else {
+            values.put("simulationDistance", "5");
+            values.put("entityDistanceScaling", "0.75");
+            values.put("clouds", "0");
+            values.put("biomeBlendRadius", "0");
+            values.put("graphicsMode", "0");
+        }
         java.util.List<String> lines = new java.util.ArrayList<>();
         values.forEach((key,value) -> lines.add(key + ":" + value));
         Files.write(options, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
