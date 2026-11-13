@@ -33,6 +33,11 @@ final class RelianHudRenderer {
         renderClock(client, context, config);
         renderDimension(client, context, config);
         renderTargetBlock(client, context, config);
+        renderHealth(client, context, config);
+        renderHunger(client, context, config);
+        renderWorldTime(client, context, config);
+        renderServerInfo(client, context, config);
+        renderSessionTime(client, context, config);
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
@@ -130,6 +135,44 @@ final class RelianHudRenderer {
         } else {
             renderText(client, context, config, "target_block", List.of("LOOKING AT: —"));
         }
+    }
+
+
+    private static long sessionStartedAt;
+    private static void renderHealth(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        float health = client.player.getHealth();
+        float maxHealth = client.player.getMaxHealth();
+        renderText(client, context, config, "health", List.of(
+            String.format(java.util.Locale.ROOT, "HEALTH: %.1f / %.1f", health, maxHealth)));
+    }
+
+    private static void renderHunger(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        var hunger = client.player.getHungerManager();
+        renderText(client, context, config, "hunger", List.of(String.format(
+            java.util.Locale.ROOT, "FOOD: %d / 20  SAT: %.1f", hunger.getFoodLevel(), hunger.getSaturationLevel())));
+    }
+
+    private static void renderWorldTime(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        long ticks = Math.floorMod(client.world.getTimeOfDay(), 24000L);
+        int hour = (int) ((ticks / 1000 + 6) % 24);
+        int minute = (int) ((ticks % 1000) * 60 / 1000);
+        long day = Math.max(1, client.world.getTime() / 24000 + 1);
+        renderText(client, context, config, "world_time", List.of(String.format(
+            java.util.Locale.ROOT, "WORLD TIME: %02d:%02d  DAY %d", hour, minute, day)));
+    }
+
+    private static void renderServerInfo(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        String server = client.isInSingleplayer() ? "Singleplayer" :
+            client.getCurrentServerEntry() == null ? "Multiplayer" : client.getCurrentServerEntry().address;
+        int players = client.getNetworkHandler() == null ? 1 : client.getNetworkHandler().getPlayerList().size();
+        renderText(client, context, config, "server_info", List.of("SERVER: " + server, "PLAYERS: " + players));
+    }
+
+    private static void renderSessionTime(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        if (sessionStartedAt == 0L) sessionStartedAt = System.currentTimeMillis();
+        long seconds = Math.max(0, (System.currentTimeMillis() - sessionStartedAt) / 1000);
+        renderText(client, context, config, "session_time", List.of(String.format(
+            java.util.Locale.ROOT, "SESSION: %02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60)));
     }
 
     private static void renderText(MinecraftClient client, DrawContext context, HudConfig.Config config,
