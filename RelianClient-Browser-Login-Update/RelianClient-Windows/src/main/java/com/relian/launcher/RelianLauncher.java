@@ -23,6 +23,7 @@ public class RelianLauncher extends Application {
     private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
     private String gameDirectory = preferences.get("game.directory", "");
     private java.nio.file.Path activeInstanceDirectory = null;
+    private Runnable refreshInstancesAction = () -> {};
     private String activeInstanceVersion = preferences.get("active.instance.version", "");
     private String activeInstanceLoader = preferences.get("active.instance.loader", "");
     private final BorderPane shell = new BorderPane();
@@ -37,6 +38,13 @@ public class RelianLauncher extends Application {
     @Override public void stop() { launchService.close(); }
 
     @Override public void start(Stage stage) {
+        String savedInstance = preferences.get("active.instance.path", "");
+        if (!savedInstance.isBlank()) {
+            try {
+                java.nio.file.Path candidate = java.nio.file.Path.of(savedInstance).toAbsolutePath().normalize();
+                if (java.nio.file.Files.isDirectory(candidate) && java.nio.file.Files.isRegularFile(candidate.resolve("relian-instance.json"))) activeInstanceDirectory = candidate;
+            } catch (RuntimeException ignored) { activeInstanceDirectory = null; }
+        }
         shell.setStyle("-fx-background-color:"+backgroundColor+";");
         shell.setLeft(sidebar());
         shell.setCenter(host);
@@ -118,7 +126,8 @@ public class RelianLauncher extends Application {
     }
 
     private com.relian.launcher.marketplace.MarketplaceBrowserPane marketplace(com.relian.launcher.marketplace.ProjectType type) {
-        java.nio.file.Path preferred = gameDirectory.isBlank() ? null : java.nio.file.Path.of(gameDirectory);
+        java.nio.file.Path preferred = activeInstanceDirectory != null ? activeInstanceDirectory
+            : (gameDirectory.isBlank() ? null : java.nio.file.Path.of(gameDirectory));
         return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred);
     }
 
@@ -438,6 +447,7 @@ public class RelianLauncher extends Application {
             }));
         };
         refresh.setOnAction(event->load.run());
+        refreshInstancesAction=load;
         panel.getChildren().addAll(heading,state,rows);
         load.run();
         return panel;
@@ -453,7 +463,7 @@ public class RelianLauncher extends Application {
         Label typeLabel=new Label("Choose how to create it"); typeLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
         ComboBox<String> type=new ComboBox<>();
         type.getItems().addAll("Vanilla — clean Minecraft","Import — Prism / MultiMC / Lunar / Laby / Dawn / OneClient","Relian — Relian client + performance modules","Modpack — browse Modrinth modpacks");
-        type.setValue("Relian — Relian client + performance modules"); type.setMaxWidth(Double.MAX_VALUE); styleCombo(type);
+        type.setValue("Vanilla — clean Minecraft"); type.setMaxWidth(Double.MAX_VALUE); styleCombo(type);
         ComboBox<String> version=new ComboBox<>(); version.getItems().setAll(versionList); version.setValue(versionList.contains("1.21.11")?"1.21.11":versionList.get(0)); styleCombo(version);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Fabric"); styleCombo(loader);
         HBox versionRow=new HBox(10,version,loader); versionRow.setAlignment(Pos.CENTER_LEFT);
@@ -535,6 +545,7 @@ public class RelianLauncher extends Application {
                 preferences.put("active.instance.path",activeInstanceDirectory.toString());
                 preferences.put("active.instance.version",activeInstanceVersion);
                 preferences.put("active.instance.loader",activeInstanceLoader);
+                refreshInstancesAction.run();
                 String message="Created and selected "+created.manifest().name()+" at "+created.directory()+".";
                 result.setText(message+" Installing official Minecraft files into this isolated instance…");
                 installInstanceBaseFiles(created.directory(),selectedVersion,result,message);
