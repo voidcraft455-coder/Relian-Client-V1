@@ -66,6 +66,11 @@ public final class HudConfig {
         config.modules.put("clock", new ModuleSettings(false, 8, 304, 1.0f, 0xFFFFFFFF));
         config.modules.put("dimension", new ModuleSettings(false, 8, 326, 1.0f, 0xFF83B7FF));
         config.modules.put("target_block", new ModuleSettings(false, 8, 348, 1.0f, 0xFF8FE3B0));
+        config.modules.put("health", new ModuleSettings(true, 8, 370, 1.0f, 0xFFFF8E9E));
+        config.modules.put("hunger", new ModuleSettings(false, 8, 392, 1.0f, 0xFFFFD479));
+        config.modules.put("world_time", new ModuleSettings(false, 8, 414, 1.0f, 0xFF83B7FF));
+        config.modules.put("server_info", new ModuleSettings(false, 8, 436, 1.0f, 0xFF8FE3B0));
+        config.modules.put("session_time", new ModuleSettings(false, 8, 458, 1.0f, 0xFFFFFFFF));
         return config;
     }
 
