@@ -58,4 +58,6 @@ CurseForge modpack import is not implemented yet. Some CurseForge projects may n
 
 ## Build and verification status
 
-The Windows workflow runs the Windows launcher tests and jpackage build, plus the Fabric runtime build. The importer includes offline tests for manifest parsing, required-client filtering, path traversal, symlink rejection, destination safety, instance isolation, and Vanilla module separation. The post-change workflow result must be checked before this milestone is called verified. A live Modrinth download/import test still requires a real .mrpack archive and network access.
+<https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43519198560> completed successfully on 2026-11-13 for commit `608264fbe95c63eb6af78fc980729dbd095a43b5`. The Windows job ran `gradle --project-prop=relian.minecraft.integration=true test jpackage`; the Gradle test task, jpackage build, and installer artifact upload all succeeded. The Fabric runtime job also succeeded and uploaded its artifact. Offline importer tests cover manifest parsing, required-client filtering, path traversal, symlink rejection, oversized entries, destination safety, override precedence, instance isolation, and separation of Vanilla from Relian modules.
+
+A live Modrinth download/import test still requires a real .mrpack archive and network access. Loader runtime installation and complete modpack launch integration remain unimplemented.

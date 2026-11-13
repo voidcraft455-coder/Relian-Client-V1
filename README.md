@@ -4,7 +4,7 @@ Relian is an original Windows-first Minecraft Java launcher and an early Fabric 
 
 ## Download the Windows launcher
 
-1. Open the [latest successful GitHub Actions build](https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43373102276).
+1. Open the [latest successful GitHub Actions build](https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43519198560).
 2. Sign in to GitHub if prompted.
 3. Scroll to **Artifacts** and download **RelianClient-Windows-Installer**.
 4. Extract the downloaded ZIP.
@@ -63,7 +63,7 @@ Modules can be enabled or disabled, moved, resized, and recolored in the editor.
 
 ## Current limitations
 
-- Windows installer and Fabric runtime CI builds passed for the current revision, and both artifacts were uploaded.
+- Windows installer and Fabric runtime CI builds passed for commit `608264fbe95c63eb6af78fc980729dbd095a43b5`; the Windows `test jpackage` task and both artifact uploads succeeded in [workflow run 43519198560](https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43519198560).
 - A successful CI build is not the same as a verified live Minecraft session. The launcher/game launch path and the HUDs still need hands-on testing.
 - Microsoft sign-in needs the maintainer's public desktop application ID configuration and a real account test.
 - Only Vanilla game launching is wired into the launcher. Other loaders are not ready to launch.
