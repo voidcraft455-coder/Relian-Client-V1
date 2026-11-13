@@ -42,8 +42,8 @@ class ModrinthModpackImporterTest {
                 },
                 {
                   "path": "mods/optional.jar",
-                  "downloads": ["https://cdn.modrinth.com/data/example/optional.jar"],
-                  "hashes": {},
+                  "fileSize": 400000000,
+                  "hashes": {"sha256": "not-downloaded"},
                   "env": {"client": "optional", "server": "required"}
                 },
                 {
@@ -121,6 +121,9 @@ class ModrinthModpackImporterTest {
         assertEquals("1.21.1", created.manifest().minecraftVersion());
         assertEquals("Fabric", created.manifest().loader());
         assertEquals(InstanceManager.Kind.MODPACK, created.manifest().kind());
+        assertFalse(created.manifest().relianModules().isEmpty());
+        assertTrue(Files.isRegularFile(created.directory().resolve("relian-modules.json")));
+        assertTrue(Files.isRegularFile(created.directory().resolve("options.txt")));
         assertTrue(Files.isRegularFile(created.directory().resolve("config/pack.json")));
         assertTrue(Files.isRegularFile(created.directory().resolve("config/client.json")));
         assertEquals("{\"source\":\"client-overrides\"}",
@@ -162,6 +165,24 @@ class ModrinthModpackImporterTest {
                 () -> ModrinthModpackImporter.importPack(symlink, instances, "Symlink"));
         assertFalse(Files.exists(instances.resolve("Symlink")));
         assertTrue(InstanceManager.list(instances).isEmpty());
+    }
+
+    @Test
+    void importedAndRelianInstancesReceiveTheModuleManifestAndPerformanceDefaults() throws Exception {
+        Path instances = temp.resolve("managed-instances");
+        Path source = Files.createDirectories(temp.resolve("source-instance"));
+
+        var imported = InstanceManager.create(instances, "Imported", "1.21.1", "Fabric",
+                InstanceManager.Kind.IMPORT, source, "");
+        var relian = InstanceManager.create(instances, "Relian", "1.21.1", "Fabric",
+                InstanceManager.Kind.RELIAN, null, "");
+
+        for (var created : new InstanceManager.CreatedInstance[]{imported, relian}) {
+            assertFalse(created.manifest().relianModules().isEmpty());
+            assertTrue(Files.isRegularFile(created.directory().resolve("relian-modules.json")));
+            assertTrue(Files.isRegularFile(created.directory().resolve("options.txt")));
+            assertTrue(Files.readString(created.directory().resolve("options.txt")).contains("maxFps:260"));
+        }
     }
 
     @Test

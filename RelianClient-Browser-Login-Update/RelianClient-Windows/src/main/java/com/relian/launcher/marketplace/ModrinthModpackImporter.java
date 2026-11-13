@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -164,6 +163,9 @@ public final class ModrinthModpackImporter {
 
                 long size = entry.getSize();
                 long compressedSize = entry.getCompressedSize();
+                if (entry.isDirectory() && size != 0) {
+                    throw new IOException("A ZIP directory entry unexpectedly contains file data: " + name);
+                }
                 if (size < 0 || compressedSize < 0 || size > MAX_ENTRY_BYTES) {
                     throw new IOException("An archive entry has an unknown or excessive size: " + name);
                 }
@@ -255,7 +257,7 @@ public final class ModrinthModpackImporter {
                         metadata.loader(), InstanceManager.Kind.MODPACK, null, metadata.name());
                 Path gameRoot = staged.directory();
                 Map<String, WrittenFile> writtenFiles = new HashMap<>();
-                long[] totalBytes = {archiveUncompressedBytes};
+                long[] totalBytes = {0};
 
                 // The Modrinth file list is installed first; ordinary overrides
                 // are applied before client-overrides regardless of ZIP entry order.
@@ -282,6 +284,7 @@ public final class ModrinthModpackImporter {
                 published = true;
                 return new InstanceManager.CreatedInstance(finalTarget, staged.manifest());
             } catch (IOException | InterruptedException | RuntimeException ex) {
+                if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
                 if (published && Files.exists(finalTarget, LinkOption.NOFOLLOW_LINKS)) {
                     try {
                         InstanceManager.delete(root, finalTarget);
@@ -384,6 +387,7 @@ public final class ModrinthModpackImporter {
                     && !clientEnvironment.equals("unsupported")) {
                 throw new IOException("The manifest has an unknown client environment value for " + path + ".");
             }
+            if (!"required".equals(clientEnvironment)) continue;
 
             long fileSize = -1;
             if (file.has("fileSize") && !file.get("fileSize").isJsonNull()) {
@@ -413,10 +417,6 @@ public final class ModrinthModpackImporter {
             }
             String sha1 = hash(hashes, "sha1", 40, path);
             String sha512 = hash(hashes, "sha512", 128, path);
-
-            if (!"required".equals(clientEnvironment)) {
-                continue;
-            }
 
             if (!file.has("downloads") || !file.get("downloads").isJsonArray()) {
                 throw new IOException("A client-required file has an invalid downloads list: " + path);
@@ -786,17 +786,21 @@ public final class ModrinthModpackImporter {
                 readU16LE(file); // modification time
                 readU16LE(file); // modification date
                 readU32LE(file); // CRC-32
-                readU32LE(file); // compressed size
-                readU32LE(file); // uncompressed size
+                long compressedSize = readU32LE(file);
+                long uncompressedSize = readU32LE(file);
                 int nameLength = readU16LE(file);
                 int extraLength = readU16LE(file);
                 int commentLength = readU16LE(file);
                 int diskStart = readU16LE(file);
                 readU16LE(file); // internal attributes
                 long externalAttributes = readU32LE(file);
-                readU32LE(file); // local header offset
+                long localHeaderOffset = readU32LE(file);
 
-                if ((flags & 1) != 0 || (method != ZipEntry.STORED && method != ZipEntry.DEFLATED)
+                if (compressedSize == 0xffffffffL || uncompressedSize == 0xffffffffL
+                        || localHeaderOffset == 0xffffffffL) {
+                    throw new IOException("ZIP64 entries are not supported by the safe .mrpack importer.");
+                }
+                if ((flags & (1 | 0x40)) != 0 || (method != ZipEntry.STORED && method != ZipEntry.DEFLATED)
                         || diskStart != 0) {
                     throw new IOException("Encrypted, split, or unsupported ZIP entries are not accepted.");
                 }

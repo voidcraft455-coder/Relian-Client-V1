@@ -30,7 +30,7 @@ The launcher currently supports the Vanilla launch path only. Fabric, Forge, Neo
 3. Enter a new instance name and click **Create instance**. Relian reads the Minecraft version and loader version from `modrinth.index.json`; the selectors are not used to override the pack.
 4. Relian installs required client files and safe overrides into a temporary isolated instance, checks HTTPS downloads against any provided SHA-1/SHA-512 hashes, then publishes the instance when import succeeds. Optional and server-only files are skipped.
 
-The imported instance is selected and its official Minecraft base files are installed. The Fabric/Forge/NeoForge/Quilt loader runtime is not installed yet, so this does **not** mean the modpack is ready to launch. Its exact loader metadata is saved in `relian-modpack.json`.
+Relian selects the imported instance and then attempts to install the official Minecraft base files. The Fabric/Forge/NeoForge/Quilt loader runtime is not installed yet, so this does **not** mean the modpack is ready to launch. Its exact loader metadata is saved in `relian-modpack.json`.
 
 ## Download the Fabric HUD runtime
 
