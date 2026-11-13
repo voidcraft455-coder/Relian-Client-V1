@@ -69,7 +69,7 @@ public final class TemurinRuntimeInstaller {
                 byte[] buffer = new byte[32 * 1024];
                 while ((entry = zip.getNextEntry()) != null) {
                     if (++files > 100_000) throw new IOException("Temurin archive contains too many entries.");
-                    String name = entry.getName().replace('\\\\', '/');
+                    String name = entry.getName().replace('\\', '/');
                     if (name.startsWith("/") || name.matches("^[A-Za-z]:.*")) throw new IOException("Temurin archive contains an absolute path.");
                     Path output = staging.resolve(name).normalize();
                     if (!output.startsWith(staging)) throw new IOException("Temurin archive contains an unsafe path.");
