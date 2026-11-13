@@ -28,9 +28,12 @@ public final class InstanceManager {
         if (version == null || version.isBlank()) throw new IOException("Choose a Minecraft version.");
         Path root = instancesRoot.toAbsolutePath().normalize();
         Files.createDirectories(root);
+        if (Files.isSymbolicLink(root) || !Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("The instances location is not a safe directory.");
         Path target = root.resolve(cleanName).normalize();
-        if (!target.startsWith(root) || Files.exists(target)) throw new IOException("An instance with this name already exists.");
-        Files.createDirectories(target);
+        if (!target.startsWith(root) || target.equals(root) || Files.exists(target, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("An instance with this name already exists.");
+        Files.createDirectory(target);
         boolean complete = false;
         try {
             for (String folder : List.of("mods","config","resourcepacks","shaderpacks","saves","screenshots"))
@@ -43,7 +46,7 @@ public final class InstanceManager {
                 sourceLabel = source.toString();
                 copySupportedContent(source, target);
             }
-            writePerformanceDefaults(target, version);
+            if (kind != Kind.VANILLA) writePerformanceDefaults(target, version);
             List<String> modules = kind == Kind.VANILLA ? List.of() : RELIAN_MODULES;
             InstanceManifest manifest = new InstanceManifest(cleanName, version,
                     kind == Kind.VANILLA ? "Vanilla" : (loader == null ? "Fabric" : loader), kind, sourceLabel,
@@ -115,6 +118,17 @@ public final class InstanceManager {
         return source;
     }
 
+
+    public static String normalizeInstanceName(String name) throws IOException {
+        return safeName(name);
+    }
+
+    public static void applyPerformanceDefaults(Path directory, String version) throws IOException {
+        if (directory == null || Files.isSymbolicLink(directory)
+                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("The instance directory is not safe.");
+        writePerformanceDefaults(directory, version);
+    }
 
     public static void updateRelianModuleStatus(Path directory, List<String> installed, List<String> unavailable) throws IOException {
         String status = unavailable.isEmpty() ? "installed" : (installed.isEmpty() ? "pending-install" : "partial");

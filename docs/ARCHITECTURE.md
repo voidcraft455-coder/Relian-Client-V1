@@ -57,6 +57,9 @@ Multiplayer features must respect server rules. Do not implement features that a
 - Show project author, license, supported Minecraft versions, supported loaders, environment, dependencies, and source page.
 - Never silently install a server-only mod into a client profile.
 - Verify downloaded file hashes when provided; write files to a staging area before activation.
+- For Modrinth .mrpack archives, validate ZIP central-directory metadata, reject traversal/symlinks/special files and unsafe destinations, and enforce archive/file/total size ceilings.
+- Download only required client entries over verified HTTPS; skip optional and server-only entries and preserve Minecraft/loader metadata.
+- Publish a newly imported instance only after all required files and overrides have succeeded; never overwrite an existing instance or copy launcher credentials.
 - Back up profile manifests before changing installed mods.
 - Do not re-host third-party mod files without permission.
 

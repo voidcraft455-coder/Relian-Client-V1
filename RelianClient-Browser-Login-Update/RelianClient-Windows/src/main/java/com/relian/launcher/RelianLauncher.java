@@ -487,9 +487,21 @@ public class RelianLauncher extends Application {
                 setText(empty||item==null?null:item.title()+"  •  "+item.author()+"  •  "+item.source());
             }
         });
-        Label packStatus=muted("Search Modrinth to browse available modpacks.");
+        Label packStatus=muted("Choose a local Modrinth .mrpack file to import. Minecraft and loader versions are read from its manifest.");
+        java.nio.file.Path[] mrpackPath={null};
+        Button chooseMrpack=small("Choose local .mrpack file");
+        chooseMrpack.setOnAction(e->{
+            javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
+            chooser.setTitle("Choose a Modrinth modpack archive");
+            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Modrinth modpacks (*.mrpack)","*.mrpack"));
+            File selected=chooser.showOpenDialog(shell.getScene().getWindow());
+            if(selected!=null){
+                mrpackPath[0]=selected.toPath();
+                packStatus.setText("Selected "+selected.getName()+". The archive's Minecraft and loader metadata will override the selectors above.");
+            }
+        });
         searchPacks.setOnAction(e->{
-            packStatus.setText("Searching Modrinth…"); packs.getItems().clear();
+            packStatus.setText("Searching Modrinth project pages…"); packs.getItems().clear();
             String query=modpackSearch.getText(), packVersion=version.getValue();
             CompletableFuture.supplyAsync(()->{
                 try{return new com.relian.launcher.marketplace.ModrinthProvider().search(query,
@@ -497,7 +509,7 @@ public class RelianLauncher extends Application {
                 catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((results,error)->javafx.application.Platform.runLater(()->{
                 if(error!=null){packStatus.setText("Modpack search failed: "+error.getMessage());return;}
-                packs.getItems().setAll(results); packStatus.setText(results.size()+" modpack(s) found. Select one to create its instance profile.");
+                packs.getItems().setAll(results); packStatus.setText(results.size()+" Modrinth modpack project(s) found. Open a project page to obtain its .mrpack archive, then select the file above.");
             }));
         });
         Button openPack=small("Open selected modpack page");
@@ -508,22 +520,32 @@ public class RelianLauncher extends Application {
             catch(Exception ex){info("Could not open the modpack page: "+ex.getMessage());}
         });
         VBox importBox=new VBox(8,chooseImport,importLabel);
-        VBox packBox=new VBox(8,modpackSearch,searchPacks,packs,packStatus,openPack);
+        VBox packBox=new VBox(8,chooseMrpack,packStatus,modpackSearch,searchPacks,packs,openPack);
         type.setOnAction(e->{
+            boolean vanilla=type.getValue().startsWith("Vanilla");
+            boolean modpack=type.getValue().startsWith("Modpack");
             importBox.setVisible(type.getValue().startsWith("Import")); importBox.setManaged(importBox.isVisible());
-            packBox.setVisible(type.getValue().startsWith("Modpack")); packBox.setManaged(packBox.isVisible());
-            loader.setDisable(type.getValue().startsWith("Vanilla"));
+            packBox.setVisible(modpack); packBox.setManaged(packBox.isVisible());
+            loader.setDisable(vanilla||modpack);
+            version.setDisable(modpack);
         });
+        loader.setDisable(true);
         importBox.setVisible(false); importBox.setManaged(false);
         packBox.setVisible(false); packBox.setManaged(false);
         Button create=small("Create instance");
         Label result=muted("Choose an option, then create your instance.");
         create.setOnAction(e->{
-            String chosen=type.getValue(); var selectedPack=packs.getSelectionModel().getSelectedItem();
-            if(chosen.startsWith("Modpack")&&selectedPack==null){result.setText("Choose a modpack from the results first.");return;}
-            result.setText("Creating isolated instance…"); create.setDisable(true);
+            String chosen=type.getValue();
+            boolean importingModpack=chosen.startsWith("Modpack");
+            var selectedPack=packs.getSelectionModel().getSelectedItem();
+            if(importingModpack&&mrpackPath[0]==null){
+                result.setText("Choose a local .mrpack archive first. The selected Modrinth project page can be used to obtain the archive.");
+                return;
+            }
+            result.setText(importingModpack?"Validating and importing .mrpack into an isolated instance…":"Creating isolated instance…");
+            create.setDisable(true);
             String selectedVersion=version.getValue(), selectedLoader=loader.getValue(), selectedName=name.getText();
-            java.nio.file.Path selectedImport=importPath[0];
+            java.nio.file.Path selectedImport=importPath[0], selectedMrpack=mrpackPath[0];
             String selectedPackTitle=selectedPack==null?"":selectedPack.title();
             CompletableFuture.supplyAsync(()->{
                 try{
@@ -532,14 +554,21 @@ public class RelianLauncher extends Application {
                         :java.nio.file.Path.of(gameDirectory).resolve("RelianInstances");
                     var kind=chosen.startsWith("Vanilla")?com.relian.launcher.profiles.InstanceManager.Kind.VANILLA:
                         chosen.startsWith("Import")?com.relian.launcher.profiles.InstanceManager.Kind.IMPORT:
-                        chosen.startsWith("Modpack")?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
+                        importingModpack?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
                         com.relian.launcher.profiles.InstanceManager.Kind.RELIAN;
+                    if(importingModpack){
+                        return com.relian.launcher.marketplace.ModrinthModpackImporter.importPack(selectedMrpack,root,selectedName);
+                    }
                     return com.relian.launcher.profiles.InstanceManager.create(root,selectedName,selectedVersion,selectedLoader,
                         kind,selectedImport,selectedPackTitle);
                 }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((created,error)->javafx.application.Platform.runLater(()->{
                 create.setDisable(false);
-                if(error!=null){result.setText("Could not create instance: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
+                if(error!=null){
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    result.setText("Could not create instance: "+cause.getMessage());
+                    return;
+                }
                 activeInstanceDirectory=created.directory();
                 activeInstanceVersion=created.manifest().minecraftVersion();
                 activeInstanceLoader=created.manifest().loader()==null?"Vanilla":created.manifest().loader();
@@ -548,21 +577,30 @@ public class RelianLauncher extends Application {
                 preferences.put("active.instance.loader",activeInstanceLoader);
                 refreshInstancesAction.run();
                 String message="Created and selected "+created.manifest().name()+" at "+created.directory()+".";
+                String actualVersion=created.manifest().minecraftVersion();
+                if(importingModpack){
+                    message+=" Imported the client-required files and safe overrides from the .mrpack. The Relian module manifest and performance defaults are included; the exact loader version is recorded in relian-modpack.json.";
+                    result.setText(message+" Installing official Minecraft "+actualVersion+" base files…");
+                    installInstanceBaseFiles(created.directory(),actualVersion,result,
+                        message+" Loader runtime installation and full modpack game launch are not implemented yet.");
+                    return;
+                }
                 result.setText(message+" Installing official Minecraft files into this isolated instance…");
-                installInstanceBaseFiles(created.directory(),selectedVersion,result,message);
+                installInstanceBaseFiles(created.directory(),actualVersion,result,message);
                 if(kindIncludesRelian(chosen)){
                     message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
-                    if(selectedLoader.equals("Fabric")){
+                    if("Fabric".equals(selectedLoader)){
                         result.setText(message+" Installing compatible Modrinth performance modules…");
-                        installRelianPerformanceMods(created.directory(),selectedVersion,result,message);
+                        installRelianPerformanceMods(created.directory(),actualVersion,result,message);
                     }else result.setText(message+" Fabric performance modules were not auto-installed because "+selectedLoader+" was selected; loader-specific module matching is still being added.");
                 }else result.setText(message+" This instance has no Relian modules, as requested for Vanilla.");
             }));
         });
         panel.getChildren().addAll(nameLabel,name,typeLabel,type,versionRow,rootLabel,importBox,packBox,create,result);
         box.getChildren().addAll(panel,
-            muted("Import copies game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens or launcher credentials."),
-            muted("Modpack browsing currently creates a profile linked to the selected pack; importing the actual .mrpack contents and resolving its dependencies is the next implementation step."));
+            muted("Import copies supported game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens, launcher credentials, server lists, or unrelated launcher files."),
+            muted("The .mrpack importer reads modrinth.index.json, installs required client files and safe overrides into a new isolated instance, verifies HTTPS downloads against SHA-1/SHA-512 hashes when supplied, and rejects traversal, symlinks, oversized entries, and unsafe destinations. Optional and server-only files are skipped."),
+            muted("Minecraft and loader metadata are taken from the archive. Loader runtime installation and full modpack launch are not implemented yet; Relian performance modules are recorded but not injected into packs automatically to avoid conflicts."));
         return box;
     }
 

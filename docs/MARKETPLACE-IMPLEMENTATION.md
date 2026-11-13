@@ -24,7 +24,20 @@ For mods, resource packs, and shaders, the Install action:
 5. Verifies the file's SHA-512 digest against Modrinth's metadata.
 6. Installs into the standard `mods`, `resourcepacks`, or `shaderpacks` directory using a temporary file and a final move.
 
-Modrinth modpack import is not implemented yet.
+#### Modrinth .mrpack import
+
+The Instances page can import a local Modrinth `.mrpack` archive into a new isolated Relian instance.
+
+1. Select a local `.mrpack` file. Relian reads the root `modrinth.index.json` and requires format version 1 and the Minecraft game identifier.
+2. The exact Minecraft version and one declared loader (Fabric, Quilt, Forge, or NeoForge) are read from `dependencies`; the loader version is preserved in `relian-modpack.json`. A pack with conflicting loader declarations is rejected.
+3. Relian downloads only files whose client environment is `required`. Optional and server-only/unsupported files are skipped.
+4. Every download URL must be HTTPS on the standard port, without embedded credentials or fragments. Redirects are checked again, and hosts resolving to local/private addresses are rejected. TLS certificate validation is provided by the Java HTTP client.
+5. SHA-1 and SHA-512 are verified when the manifest supplies them. Declared and actual sizes are checked, with 300 MB per downloaded file and 2 GB total import limits.
+6. Archive validation rejects absolute paths, traversal, Windows drive/UNC paths, reserved names, duplicate/case-colliding entries, symbolic links, special files, Windows reparse-point entries, encrypted/split/ZIP64 archives, oversized entries, and extreme compression ratios.
+7. Only the managed game-content destinations are accepted (mods, config, resource packs, shader packs, selected mod configuration folders, saves, and a small set of video-option files). Account files, launcher profiles, server lists, and unrelated game-root files are not copied.
+8. The instance is built in a temporary sibling directory and published under its final name only after the import succeeds. Existing instances are never overwritten; failures clean up the staged instance. Relian's instance, module, and modpack manifests plus performance defaults are retained.
+
+The importer does **not** install Fabric/Forge/NeoForge/Quilt runtimes or make a modpack launchable by itself. Relian performance modules are recorded in the module manifest but are not injected into imported packs automatically, avoiding duplicate/conflicting mods. A compatible loader installer and integrated modpack launch path remain separate milestones.
 
 ### CurseForge
 
@@ -39,9 +52,10 @@ CurseForge modpack import is not implemented yet. Some CurseForge projects may n
 - Select the game directory belonging to the intended Minecraft installation, not the Relian source-code folder.
 - Mods must match the selected Minecraft version and loader. Relian does not currently install Fabric/Forge/NeoForge/Quilt loader runtimes.
 - Resource packs and shader packs are copied into their standard game directories. A compatible graphics mod (such as Iris or OptiFine, depending on the Minecraft version and loader) may still be needed to use shaders.
-- Installation is file-level only at this stage. Relian does not yet resolve required dependencies, check conflicting mods, create isolated profiles, or roll back an installation.
+- Individual mod/resource/shader installs remain file-level. Local Modrinth .mrpack imports now create isolated instances and install the archive's required client files and safe overrides, but do not resolve external dependencies beyond the archive manifest or install its loader runtime.
+- Modpack import is staged and cleaned up on failure. Existing instances and unrelated user files are not overwritten.
 - Review project pages and permissions before installing community content.
 
 ## Build and verification status
 
-These features have been committed to the repository, but a successful Windows Gradle build and live API/install test have not yet been confirmed. The next validation step is to run the Windows CI build, then test searches and installs using a disposable Minecraft game directory.
+The Windows workflow runs the Windows launcher tests and jpackage build, plus the Fabric runtime build. The importer includes offline tests for manifest parsing, required-client filtering, path traversal, symlink rejection, destination safety, instance isolation, and Vanilla module separation. The post-change workflow result must be checked before this milestone is called verified. A live Modrinth download/import test still requires a real .mrpack archive and network access.

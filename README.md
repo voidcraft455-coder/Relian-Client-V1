@@ -23,6 +23,15 @@ Only install artifacts from this repository's successful workflow. Windows may s
 
 The launcher currently supports the Vanilla launch path only. Fabric, Forge, NeoForge, and Quilt game launching are not yet connected. The Fabric HUD runtime is a separate mod artifact and is not automatically injected by the launcher.
 
+## Import a Modrinth modpack
+
+1. Download a `.mrpack` file from the modpack's Modrinth project page.
+2. Open **Instances**, choose **Modpack**, click **Choose local .mrpack file**, and select the archive.
+3. Enter a new instance name and click **Create instance**. Relian reads the Minecraft version and loader version from `modrinth.index.json`; the selectors are not used to override the pack.
+4. Relian installs required client files and safe overrides into a temporary isolated instance, checks HTTPS downloads against any provided SHA-1/SHA-512 hashes, then publishes the instance when import succeeds. Optional and server-only files are skipped.
+
+The imported instance is selected and its official Minecraft base files are installed. The Fabric/Forge/NeoForge/Quilt loader runtime is not installed yet, so this does **not** mean the modpack is ready to launch. Its exact loader metadata is saved in `relian-modpack.json`.
+
 ## Download the Fabric HUD runtime
 
 The same Actions run publishes **RelianClient-Fabric-1.21.1**. This is a separate Fabric mod artifact for Minecraft Java 1.21.1. Extract its ZIP and use the included JAR with a compatible Fabric 1.21.1 installation. Back up existing game files before testing mods.
@@ -59,7 +68,9 @@ Modules can be enabled or disabled, moved, resized, and recolored in the editor.
 - Microsoft sign-in needs the maintainer's public desktop application ID configuration and a real account test.
 - Only Vanilla game launching is wired into the launcher. Other loaders are not ready to launch.
 - The Fabric HUD runtime currently targets Minecraft Java 1.21.1 with Fabric.
-- Marketplace browsing and parts of content management are present, but complete loader installation, full modpack dependency resolution, and integrated Fabric runtime installation are still in progress.
+- Local Modrinth .mrpack import now reads the manifest, installs required client files and safe overrides into an isolated instance, checks HTTPS downloads and provided hashes, and rejects unsafe ZIP entries. Optional and server-only files are skipped.
+- The importer records the exact Minecraft and loader versions, but it does not install the loader runtime, resolve additional dependencies outside the .mrpack manifest, or provide a complete modpack launch pipeline.
+- Imported modpacks include Relian's module manifest and performance defaults; Relian performance mods are not injected automatically to avoid conflicts with the pack.
 - Relian does not include combat automation, auto-aim, fast-crystal automation, or anti-cheat bypasses.
 
 ## Build
