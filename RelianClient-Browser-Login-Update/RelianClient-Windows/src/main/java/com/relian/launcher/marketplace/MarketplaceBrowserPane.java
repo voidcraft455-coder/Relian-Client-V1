@@ -32,7 +32,7 @@ public final class MarketplaceBrowserPane extends VBox {
     private final ProjectType fixedType;
     private final Path preferredGameDirectory;
     private final TextField search = new TextField();
-    private final TextField minecraftVersion = new TextField("1.21.11");
+    private final TextField minecraftVersion;
     private final ComboBox<String> providerChoice = new ComboBox<>();
     private final ComboBox<String> loaderChoice = new ComboBox<>();
     private final VBox results = new VBox(10);
@@ -40,12 +40,17 @@ public final class MarketplaceBrowserPane extends VBox {
     private final Button searchButton = new Button("Search");
 
     public MarketplaceBrowserPane(ProjectType fixedType) {
-        this(fixedType, null);
+        this(fixedType, null, "1.21.11");
     }
 
     public MarketplaceBrowserPane(ProjectType fixedType, Path preferredGameDirectory) {
+        this(fixedType, preferredGameDirectory, "1.21.11");
+    }
+
+    public MarketplaceBrowserPane(ProjectType fixedType, Path preferredGameDirectory, String defaultMinecraftVersion) {
         this.fixedType = fixedType;
         this.preferredGameDirectory = preferredGameDirectory;
+        this.minecraftVersion = new TextField(defaultMinecraftVersion == null || defaultMinecraftVersion.isBlank() ? "1.21.11" : defaultMinecraftVersion);
         setSpacing(14);
         setPadding(new Insets(4, 0, 0, 0));
 
