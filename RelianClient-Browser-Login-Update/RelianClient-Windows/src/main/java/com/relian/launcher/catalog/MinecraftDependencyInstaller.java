@@ -63,9 +63,18 @@ final class MinecraftDependencyInstaller {
             JsonObject downloads = object(library, "downloads");
             JsonObject artifact = object(downloads, "artifact");
             if (artifact != null) {
-                Path target = safeResolve(librariesRoot, string(artifact, "path"));
+                String artifactPath = string(artifact, "path");
+                Path target = safeResolve(librariesRoot, artifactPath);
                 downloadArtifact(string(artifact, "url"), string(artifact, "sha1"), target, MAX_LIBRARY_BYTES);
                 libraries++;
+
+                // Since Minecraft 1.19, many LWJGL native JARs are declared as
+                // ordinary artifacts (their Maven filename carries the native
+                // classifier) instead of downloads.classifiers + natives.
+                if (isWindows() && isWindowsNativeArtifact(artifactPath, windowsNativeArchitecture())) {
+                    extractNativeJar(target, nativesRoot);
+                    nativeJars++;
+                }
             }
             JsonObject classifiers = object(downloads, "classifiers");
             JsonObject natives = object(library, "natives");
@@ -121,6 +130,23 @@ final class MinecraftDependencyInstaller {
             }
         }
         return new Result(libraries, nativeJars, assets);
+    }
+
+    private static boolean isWindowsNativeArtifact(String artifactPath, String architecture) {
+        if (artifactPath == null || artifactPath.isBlank()) return false;
+        String fileName = Path.of(artifactPath.replace('\\\\', '/')).getFileName().toString()
+                .toLowerCase(Locale.ROOT);
+        String marker = "-natives-windows";
+        int markerIndex = fileName.lastIndexOf(marker);
+        if (markerIndex < 0 || !fileName.endsWith(".jar")) return false;
+
+        String suffix = fileName.substring(markerIndex + marker.length(),
+                fileName.length() - ".jar".length());
+        if (suffix.isEmpty()) return true; // Generic Windows native build.
+        if (suffix.startsWith("-arm64")) return architecture.equals("arm64");
+        if (suffix.startsWith("-x86_64") || suffix.startsWith("-64")) return architecture.equals("64");
+        if (suffix.startsWith("-x86") || suffix.startsWith("-32")) return architecture.equals("32");
+        return false;
     }
 
     private static JsonObject findWindowsNativeArtifact(JsonObject classifiers, String nativeName, String architecture) {
