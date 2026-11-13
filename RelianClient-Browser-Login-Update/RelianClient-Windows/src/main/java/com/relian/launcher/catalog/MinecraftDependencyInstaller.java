@@ -134,7 +134,7 @@ final class MinecraftDependencyInstaller {
 
     private static boolean isWindowsNativeArtifact(String artifactPath, String architecture) {
         if (artifactPath == null || artifactPath.isBlank()) return false;
-        String fileName = Path.of(artifactPath.replace('\\\\', '/')).getFileName().toString()
+        String fileName = Path.of(artifactPath).getFileName().toString()
                 .toLowerCase(Locale.ROOT);
         String marker = "-natives-windows";
         int markerIndex = fileName.lastIndexOf(marker);
