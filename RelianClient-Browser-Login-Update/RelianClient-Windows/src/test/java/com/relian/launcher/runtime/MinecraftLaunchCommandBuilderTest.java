@@ -49,7 +49,7 @@ class MinecraftLaunchCommandBuilderTest {
         assertTrue(command.contains("12345678123412341234123456789abc"));
         assertTrue(command.stream().anyMatch(argument -> argument.contains(library.resolve("demo-1.0.jar").toString())));
         assertTrue(command.contains(assets.toString()));
-        assertTrue(command.contains(natives.toString()));
+        assertTrue(command.stream().anyMatch(argument -> argument.contains(natives.toString())));
     }
 
     @Test
