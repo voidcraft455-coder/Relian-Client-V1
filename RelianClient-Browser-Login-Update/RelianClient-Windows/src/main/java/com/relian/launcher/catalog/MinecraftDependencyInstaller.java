@@ -147,7 +147,30 @@ final class MinecraftDependencyInstaller {
             artifact = object(classifiers, candidate);
             if (artifact != null) return artifact;
         }
-        return null;
+
+        // Be tolerant of classifier keys that use x86_64/arm64 rather than
+        // the legacy 64/32 spelling in the platform's natives map.
+        String prefix = nativeName.replace("${arch}", "").replaceAll("[-_]$", "");
+        JsonObject unqualified = null;
+        for (var entry : classifiers.entrySet()) {
+            String key = entry.getKey().toLowerCase(Locale.ROOT);
+            if (!key.equals(prefix.toLowerCase(Locale.ROOT))
+                    && !key.startsWith(prefix.toLowerCase(Locale.ROOT) + "-")
+                    && !key.startsWith(prefix.toLowerCase(Locale.ROOT) + "_")) {
+                continue;
+            }
+            if (!entry.getValue().isJsonObject()) continue;
+            if (key.contains("arm64") && architecture.equals("arm64")) return entry.getValue().getAsJsonObject();
+            if ((key.contains("x86_64") || key.endsWith("-64") || key.endsWith("_64"))
+                    && architecture.equals("64")) return entry.getValue().getAsJsonObject();
+            if ((key.contains("x86") || key.endsWith("-32") || key.endsWith("_32"))
+                    && architecture.equals("32")) return entry.getValue().getAsJsonObject();
+            if (!key.contains("arm64") && !key.contains("x86") && !key.endsWith("-64")
+                    && !key.endsWith("_64") && !key.endsWith("-32") && !key.endsWith("_32")) {
+                unqualified = entry.getValue().getAsJsonObject();
+            }
+        }
+        return unqualified;
     }
 
     private static String windowsNativeArchitecture() {
