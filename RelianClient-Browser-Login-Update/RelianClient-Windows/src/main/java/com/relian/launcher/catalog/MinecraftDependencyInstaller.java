@@ -70,8 +70,9 @@ final class MinecraftDependencyInstaller {
             JsonObject classifiers = object(downloads, "classifiers");
             JsonObject natives = object(library, "natives");
             if (classifiers != null && natives != null && isWindows()) {
-                String classifier = string(natives, "windows").replace("${arch}", System.getProperty("os.arch", "").contains("64") ? "64" : "32");
-                JsonObject nativeArtifact = object(classifiers, classifier);
+                String nativeName = string(natives, "windows");
+                String architecture = windowsNativeArchitecture();
+                JsonObject nativeArtifact = findWindowsNativeArtifact(classifiers, nativeName, architecture);
                 if (nativeArtifact != null) {
                     Path jar = safeResolve(librariesRoot, string(nativeArtifact, "path"));
                     downloadArtifact(string(nativeArtifact, "url"), string(nativeArtifact, "sha1"), jar, MAX_LIBRARY_BYTES);
@@ -120,6 +121,39 @@ final class MinecraftDependencyInstaller {
             }
         }
         return new Result(libraries, nativeJars, assets);
+    }
+
+    private static JsonObject findWindowsNativeArtifact(JsonObject classifiers, String nativeName, String architecture) {
+        if (nativeName == null || nativeName.isBlank()) return null;
+        String expanded = nativeName.replace("${arch}", architecture);
+        JsonObject artifact = object(classifiers, expanded);
+        if (artifact != null) return artifact;
+
+        // Some Mojang metadata sets publish architecture-suffixed classifier keys
+        // even when the platform mapping omits the ${arch} placeholder.
+        List<String> candidates = new ArrayList<>();
+        if (architecture.equals("arm64")) {
+            candidates.add(nativeName + "-arm64");
+            candidates.add(nativeName + "-64");
+        } else if (architecture.equals("64")) {
+            candidates.add(nativeName + "-64");
+            candidates.add(nativeName + "-arm64");
+        } else {
+            candidates.add(nativeName + "-32");
+            candidates.add(nativeName + "-x86");
+        }
+        candidates.add(nativeName);
+        for (String candidate : candidates) {
+            artifact = object(classifiers, candidate);
+            if (artifact != null) return artifact;
+        }
+        return null;
+    }
+
+    private static String windowsNativeArchitecture() {
+        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        if (arch.contains("aarch64") || arch.contains("arm64")) return "arm64";
+        return arch.contains("64") ? "64" : "32";
     }
 
     private static boolean allowedByRules(JsonObject library) {
