@@ -128,7 +128,7 @@ public class RelianLauncher extends Application {
     private com.relian.launcher.marketplace.MarketplaceBrowserPane marketplace(com.relian.launcher.marketplace.ProjectType type) {
         java.nio.file.Path preferred = activeInstanceDirectory != null ? activeInstanceDirectory
             : (gameDirectory.isBlank() ? null : java.nio.file.Path.of(gameDirectory));
-        return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred);
+        return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred, activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion);
     }
 
     private String navStyle(boolean selected) {
@@ -188,7 +188,7 @@ public class RelianLauncher extends Application {
         hero.getChildren().addAll(eyebrow,welcome,muted("Choose an installation and launch Relian Client."));
         HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
         versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue(activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion); versions.setPrefWidth(170); styleCombo(versions);
-        ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Vanilla"); loader.setPrefWidth(150); styleCombo(loader);
+        ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue(activeInstanceLoader.isBlank() ? "Vanilla" : activeInstanceLoader); loader.setPrefWidth(150); styleCombo(loader);
         Button play=new Button("PLAY"); play.setPrefSize(150,42);
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
