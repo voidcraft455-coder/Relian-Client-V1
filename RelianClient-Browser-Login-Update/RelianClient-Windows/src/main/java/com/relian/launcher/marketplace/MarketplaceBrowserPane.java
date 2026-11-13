@@ -157,13 +157,16 @@ public final class MarketplaceBrowserPane extends VBox {
 
 
     private void chooseInstallDirectory(MarketplaceProject project, Button installButton) {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Choose your Minecraft game directory");
+        File selectedDirectory;
         if (preferredGameDirectory != null && java.nio.file.Files.isDirectory(preferredGameDirectory)) {
-            chooser.setInitialDirectory(preferredGameDirectory.toFile());
+            selectedDirectory = preferredGameDirectory.toFile();
+            setStatus("Installing into the selected Relian instance: " + selectedDirectory.getAbsolutePath());
+        } else {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Choose your Minecraft game directory");
+            selectedDirectory = chooser.showDialog(getScene().getWindow());
+            if (selectedDirectory == null) return;
         }
-        File selectedDirectory = chooser.showDialog(getScene().getWindow());
-        if (selectedDirectory == null) return;
         String version = minecraftVersion.getText() == null ? "" : minecraftVersion.getText().trim();
         String loader = loaderChoice.getValue();
         if ("All loaders".equals(loader)) loader = "";
