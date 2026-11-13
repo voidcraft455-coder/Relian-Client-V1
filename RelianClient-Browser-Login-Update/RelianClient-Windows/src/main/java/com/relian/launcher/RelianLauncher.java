@@ -22,6 +22,9 @@ public class RelianLauncher extends Application {
     private String backgroundColor = preferences.get("background.color", BG);
     private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
     private String gameDirectory = preferences.get("game.directory", "");
+    private java.nio.file.Path activeInstanceDirectory = null;
+    private String activeInstanceVersion = preferences.get("active.instance.version", "");
+    private String activeInstanceLoader = preferences.get("active.instance.loader", "");
     private final BorderPane shell = new BorderPane();
     private final StackPane host = new StackPane();
     private ComboBox<String> versions;
@@ -128,10 +131,24 @@ public class RelianLauncher extends Application {
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
     private void signIn() {
-        String clientId = MicrosoftBrowserLogin.getClientId();
+        String clientId = preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId());
         if (clientId == null || clientId.isBlank() || clientId.equals("YOUR_APPLICATION_CLIENT_ID")) {
-            info("Browser sign-in is wired into Relian, but it needs the launcher's Microsoft application ID. The developer must register Relian as a public desktop application and put that ID in auth.properties. You do not need to give Relian your Microsoft password.");
-            return;
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Microsoft application setup");
+            dialog.setHeaderText("Configure Microsoft sign-in");
+            dialog.setContentText("Paste a Microsoft Entra public desktop-app Application (client) ID. Relian uses browser sign-in with PKCE; never enter your Microsoft password or a client secret here.");
+            dialog.initOwner(shell.getScene().getWindow());
+            var answer = dialog.showAndWait();
+            if (answer.isEmpty() || answer.get().trim().isBlank()) {
+                info("Microsoft sign-in needs a valid public desktop application client ID. You can configure it later in Settings.");
+                return;
+            }
+            clientId = answer.get().trim();
+            if (!clientId.matches("(?i)[a-f0-9-]{36}")) {
+                info("That does not look like a Microsoft application client ID. It should be a 36-character GUID. No account information was sent.");
+                return;
+            }
+            preferences.put("microsoft.clientId", clientId);
         }
         accountLabel = "Opening Microsoft sign-in…";
         page(active);
@@ -161,7 +178,7 @@ public class RelianLauncher extends Application {
         welcome.setStyle("-fx-text-fill:"+FG+";-fx-font-size:28px;-fx-font-weight:bold;");
         hero.getChildren().addAll(eyebrow,welcome,muted("Choose an installation and launch Relian Client."));
         HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
-        versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue("1.21.11"); versions.setPrefWidth(170); styleCombo(versions);
+        versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue(activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion); versions.setPrefWidth(170); styleCombo(versions);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Vanilla"); loader.setPrefWidth(150); styleCombo(loader);
         Button play=new Button("PLAY"); play.setPrefSize(150,42);
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
@@ -169,15 +186,17 @@ public class RelianLauncher extends Application {
         play.setOnAction(e->{
             if(minecraftSession==null){info("Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching.");return;}
             if(!"Vanilla".equals(loader.getValue())){
-                playStatus.setText(loader.getValue()+" launching is not available yet. Select Vanilla for the supported launch path.");
+                playStatus.setText(loader.getValue()+" instances need a matching loader runtime. The current build can only launch Vanilla instances; it will not silently start a modded profile as Vanilla.");
                 return;
             }
             String selectedVersion=versions.getValue();
             String javaPath=preferences.get("minecraft.java.path","");
             if(javaPath.isBlank()){playStatus.setText("Choose or install the compatible Java runtime in Settings first.");return;}
-            java.nio.file.Path root=gameDirectory.isBlank()
-                ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
-                :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+            java.nio.file.Path root=activeInstanceDirectory != null
+                ? activeInstanceDirectory.toAbsolutePath().normalize()
+                : (gameDirectory.isBlank()
+                    ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
+                    :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize());
             play.setDisable(true); playStatus.setText("Starting Minecraft "+selectedVersion+"…");
             CompletableFuture.runAsync(()->{
                 try{
@@ -382,6 +401,17 @@ public class RelianLauncher extends Application {
                     String loader=item.manifest().loader()==null?"Unknown":item.manifest().loader();
                     details.getChildren().addAll(name,muted("Minecraft "+item.manifest().minecraftVersion()+" • "+loader+" • "+item.manifest().kind()));
                     Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
+                    Button select=small("Use this instance");
+                    select.setOnAction(event->{
+                        activeInstanceDirectory=item.directory();
+                        activeInstanceVersion=item.manifest().minecraftVersion();
+                        activeInstanceLoader=item.manifest().loader()==null?"Vanilla":item.manifest().loader();
+                        preferences.put("active.instance.path",activeInstanceDirectory.toString());
+                        preferences.put("active.instance.version",activeInstanceVersion);
+                        preferences.put("active.instance.loader",activeInstanceLoader);
+                        state.setText("Active instance: "+item.manifest().name()+" • Minecraft "+activeInstanceVersion+" • "+activeInstanceLoader);
+                        info("Selected "+item.manifest().name()+". Choose the same version on Home to launch this instance.");
+                    });
                     Button open=small("Open folder");
                     open.setOnAction(event->{
                         try{
@@ -402,7 +432,7 @@ public class RelianLauncher extends Application {
                             refresh.fire();
                         }catch(Exception ex){info("Could not remove this instance: "+ex.getMessage());}
                     });
-                    row.getChildren().addAll(details,spacer,open,remove);
+                    row.getChildren().addAll(details,spacer,select,open,remove);
                     rows.getChildren().add(row);
                 }
             }));
@@ -499,7 +529,15 @@ public class RelianLauncher extends Application {
             }).whenComplete((created,error)->javafx.application.Platform.runLater(()->{
                 create.setDisable(false);
                 if(error!=null){result.setText("Could not create instance: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
-                String message="Created "+created.manifest().name()+" at "+created.directory()+".";
+                activeInstanceDirectory=created.directory();
+                activeInstanceVersion=created.manifest().minecraftVersion();
+                activeInstanceLoader=created.manifest().loader()==null?"Vanilla":created.manifest().loader();
+                preferences.put("active.instance.path",activeInstanceDirectory.toString());
+                preferences.put("active.instance.version",activeInstanceVersion);
+                preferences.put("active.instance.loader",activeInstanceLoader);
+                String message="Created and selected "+created.manifest().name()+" at "+created.directory()+".";
+                result.setText(message+" Installing official Minecraft files into this isolated instance…");
+                installInstanceBaseFiles(created.directory(),selectedVersion,result,message);
                 if(kindIncludesRelian(chosen)){
                     message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
                     if(selectedLoader.equals("Fabric")){
@@ -514,6 +552,22 @@ public class RelianLauncher extends Application {
             muted("Import copies game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens or launcher credentials."),
             muted("Modpack browsing currently creates a profile linked to the selected pack; importing the actual .mrpack contents and resolving its dependencies is the next implementation step."));
         return box;
+    }
+
+
+    private void installInstanceBaseFiles(java.nio.file.Path instanceDirectory,String version,Label status,String summary){
+        CompletableFuture.supplyAsync(()->{
+            try{
+                var catalog=new com.relian.launcher.catalog.MinecraftVersionCatalog();
+                var release=catalog.fetchAllReleases().stream().filter(item->item.id().equals(version)).findFirst()
+                    .orElseThrow(()->new java.io.IOException("Minecraft "+version+" is not available in Mojang's release manifest."));
+                return com.relian.launcher.catalog.MinecraftVersionInstaller.install(release,instanceDirectory,
+                    message->javafx.application.Platform.runLater(()->status.setText(message)));
+            }catch(Exception ex){throw new RuntimeException(ex);}
+        }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
+            if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText(summary+" Minecraft files could not be installed: "+cause.getMessage());return;}
+            status.setText(summary+" Installed Minecraft "+installed.versionId()+" with "+installed.libraries()+" libraries, "+installed.nativeJars()+" Windows native archives, and "+installed.assets()+" assets. The instance is selected. Vanilla launch is supported; Fabric/Forge loader launch is still being connected.");
+        }));
     }
 
     private boolean kindIncludesRelian(String chosen){return !chosen.startsWith("Vanilla");}
@@ -679,7 +733,20 @@ public class RelianLauncher extends Application {
             }
         });
         runtime.getChildren().addAll(javaTitle,muted("Detect existing Java installations or download a checksum-verified Eclipse Temurin runtime for the selected Minecraft version."),detectJava,installJava,javaChoices,javaStatus);
-        b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime);
+        VBox account=new VBox(8); account.setPadding(new Insets(16)); account.setStyle(cardStyle());
+        Label accountTitle=new Label("Microsoft account connection"); accountTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        TextField clientIdField=new TextField(preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId()));
+        clientIdField.setPromptText("Microsoft public desktop application client ID (GUID)");
+        Button saveClientId=small("Save Microsoft application ID");
+        Label accountHelp=muted("Relian requires a Microsoft Entra app registration configured as a public desktop application with XboxLive.signin permission and localhost redirect support. Enter only the public Application (client) ID; never enter a client secret or password.");
+        saveClientId.setOnAction(event->{
+            String value=clientIdField.getText()==null?"":clientIdField.getText().trim();
+            if(!value.matches("(?i)[a-f0-9-]{36}")){accountHelp.setText("Enter a valid 36-character Application (client) ID GUID.");return;}
+            preferences.put("microsoft.clientId",value);
+            accountHelp.setText("Microsoft application ID saved. Return to Home and select Sign in with Microsoft.");
+        });
+        account.getChildren().addAll(accountTitle,clientIdField,saveClientId,accountHelp);
+        b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime,account);
         return b;
     }
 
