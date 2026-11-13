@@ -140,8 +140,8 @@ public class RelianLauncher extends Application {
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
     private void signIn() {
-        String clientId = preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId());
-        if (clientId == null || clientId.isBlank() || clientId.equals("YOUR_APPLICATION_CLIENT_ID")) {
+        String configuredClientId = preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId());
+        if (configuredClientId == null || configuredClientId.isBlank() || configuredClientId.equals("YOUR_APPLICATION_CLIENT_ID")) {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("Microsoft application setup");
             dialog.setHeaderText("Configure Microsoft sign-in");
@@ -152,13 +152,14 @@ public class RelianLauncher extends Application {
                 info("Microsoft sign-in needs a valid public desktop application client ID. You can configure it later in Settings.");
                 return;
             }
-            clientId = answer.get().trim();
-            if (!clientId.matches("(?i)[a-f0-9-]{36}")) {
+            configuredClientId = answer.get().trim();
+            if (!configuredClientId.matches("(?i)[a-f0-9-]{36}")) {
                 info("That does not look like a Microsoft application client ID. It should be a 36-character GUID. No account information was sent.");
                 return;
             }
-            preferences.put("microsoft.clientId", clientId);
+            preferences.put("microsoft.clientId", configuredClientId);
         }
+        final String clientId = configuredClientId;
         accountLabel = "Opening Microsoft sign-in…";
         page(active);
         CompletableFuture.runAsync(() -> {
