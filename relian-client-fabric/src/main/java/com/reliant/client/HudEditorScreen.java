@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of(
-        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block"
+        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time"
     );
     private int selected = 0;
     private boolean draggingPreview = false;
@@ -36,9 +36,9 @@ public final class HudEditorScreen extends Screen {
         for (int i = 0; i < MODULES.size(); i++) {
             String id = MODULES.get(i);
             HudConfig.ModuleSettings settings = HudConfig.get().modules.get(id);
-            int y = panelTop + 88 + i * 27;
+            int y = panelTop + 88 + i * 20;
             boolean active = i == selected;
-            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 24,
+            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 18,
                 active ? 0xFF26364D : 0xFF1C2635, 9);
             context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 5,
                 active ? 0xFFFFFFFF : 0xFFD8E0EB);
@@ -132,6 +132,11 @@ public final class HudEditorScreen extends Screen {
             case "clock" -> "LOCAL CLOCK";
             case "dimension" -> "DIMENSION";
             case "target_block" -> "TARGET BLOCK";
+            case "health" -> "HEALTH DISPLAY";
+            case "hunger" -> "HUNGER / SATURATION";
+            case "world_time" -> "WORLD CLOCK / DAY";
+            case "server_info" -> "SERVER / PLAYER COUNT";
+            case "session_time" -> "SESSION TIMER";
             default -> id.toUpperCase();
         };
     }
@@ -142,10 +147,10 @@ public final class HudEditorScreen extends Screen {
         int px = panelLeft + 425;
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
-            int y = panelTop + 88 + i * 27;
-            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 24)) {
+            int y = panelTop + 88 + i * 20;
+            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 18)) {
                 selected = i;
-                if (inside(mouseX, mouseY, panelLeft + 265, y + 2, 62, 20)) {
+                if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 16)) {
                     HudConfig.get().modules.get(MODULES.get(i)).enabled =
                         !HudConfig.get().modules.get(MODULES.get(i)).enabled;
                     HudConfig.save();
