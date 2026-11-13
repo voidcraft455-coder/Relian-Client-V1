@@ -1,43 +1,39 @@
-# Relian Client (early development)
+# Relian Client Windows launcher
 
-Relian Client is a Windows-first Minecraft Java launcher prototype built with Java 21 and JavaFX.
+Relian is an early-access Windows-first Minecraft Java launcher built with Java 21 and JavaFX.
+
+## Download and install
+
+Use the `RelianClient-Windows-Installer` artifact from the latest successful [GitHub Actions build](https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43373102276). Download the artifact ZIP, extract it, run the included `.exe` installer, and follow the prompts. The installer creates Start-menu and desktop shortcuts.
+
+## First-run guide
+
+1. Open **Settings**.
+2. Under **Minecraft Java runtime**, click **Download & install compatible Java**. Relian downloads and checksum-verifies Eclipse Temurin for the currently selected Minecraft version.
+3. Open **Versions** and click **Download client files** beside the version you want. Wait for the official client JAR, libraries, Windows native archives, and asset objects to finish installing and verifying.
+4. Return to **Home**, select that same version, and choose **Vanilla** in the loader menu.
+5. Microsoft browser sign-in is wired to the launcher, but it requires the project maintainer to register a public desktop application and configure its application ID in `auth.properties`. The current installer does not include a configured application ID. Until the maintainer supplies that configuration, Minecraft sign-in and the Play action cannot complete. Never provide your Microsoft password to an unofficial prompt.
+6. After the application ID is configured, sign in with the Microsoft account that owns Minecraft Java Edition. Relian checks Xbox access and Minecraft entitlement before enabling a launch session.
+7. Click **PLAY** to test the Vanilla launch path. If the game fails to start, record the exact status message and attach the launcher console output when reporting the issue.
 
 ## Implemented foundations
 
-- Windows installer packaging through GitHub Actions and Gradle `jpackage`.
-- Mojang official release catalog for releases from 1.19 onward, plus 1.8.8 and 1.8.9.
-- Modrinth marketplace search for mods, modpacks, resource packs, and shaders.
-- CurseForge marketplace search through its official API when `RELIAN_CURSEFORGE_API_KEY` is configured.
-- Individual Modrinth and CurseForge mod/resource-pack/shader downloads with file-type checks, size limits, trusted HTTPS download hosts, and publisher checksum verification when metadata is available.
-- Four-choice instance creator: clean Vanilla, import an existing instance, Relian client profile, and Modrinth modpack browsing.
-- Isolated instance directories with a Relian manifest; non-Vanilla choices include the Relian module manifest.
-- Safe import foundation for Prism/MultiMC-style folders and game content from other clients: mods, configs, resource packs, shaders, saves, screenshots, and options. Launcher/account credentials are not copied.
-- Minecraft-only FPS video presets for new and existing instances. They tune render/simulation distance, particles, clouds, biome blending, entity shadows, VSync, and graphics quality without changing Windows process priority or restricting other apps.
-- Fabric profiles attempt to install compatible Sodium, Lithium, FerriteCore, ImmediatelyFast, EntityCulling, and Dynamic FPS releases from Modrinth with checksum verification.
-- Saved launcher background color, Minecraft memory-limit preference, and selected game-directory preference.
-- Installed Content page that scans the selected game directory's `mods`, `resourcepacks`, and `shaderpacks` folders and supports confirmed removal of individual `.jar` / `.zip` files.
-- Microsoft browser OAuth foundation using authorization-code flow with PKCE.
+- Windows installer packaging through Gradle `jpackage`.
+- Mojang official release catalog, client JAR installation, library/native installation, and asset downloads with checksum verification.
+- Java runtime detection and checksum-verified Eclipse Temurin installation.
+- Vanilla launch command construction and Minecraft process management.
+- Microsoft browser OAuth with PKCE and Xbox/XSTS/Minecraft Services authentication flow; a registered public application ID is still required.
+- Instance management and isolated profile foundations.
+- Modrinth marketplace search and download foundations, plus CurseForge search when an API key is configured.
+- Resource-pack, shader, mod, and modpack browsing foundations.
+- Installed-content listing and safe file-removal foundations.
+- Minecraft-local performance presets and launcher preferences.
 
-## Important unfinished features
+## Current limitations
 
-This is not yet a complete Minecraft launcher. The Play button is still a placeholder. Official Minecraft installation and game launching, loader installation, actual .mrpack archive import/dependency resolution, loader-specific Relian module sets for Forge/NeoForge/Quilt, Xbox/XSTS/Minecraft Services authentication, entitlement checks, and secure long-lived credential storage remain to be implemented and tested.
-
-Microsoft OAuth currently authenticates the Microsoft identity only. It does not prove Minecraft ownership and does not make the game launchable. Never add a Microsoft client secret or personal account password to this project.
-
-The memory-limit setting is a saved preference for a future game-launch process; it does not change the launcher's own JVM memory allocation yet. The FPS presets only edit the selected Minecraft instance's options.txt. They are quality/performance trade-offs, not a guaranteed FPS increase, and they do not change Windows CPU/GPU priorities or other applications' resource access. The preset's 260 FPS ceiling applies only inside that Minecraft instance.
-
-The Installed Content page only manages individual files in the three standard content folders. It does not resolve dependencies, remove config files, manage modpack profiles, or guarantee that removing a mod will leave another mod working.
-
-See `BUILD-WINDOWS.md` before building and `docs/MARKETPLACE-IMPLEMENTATION.md` for marketplace behavior and current limitations.
-
-## Instance creation and FPS settings
-
-The Instances page provides four paths:
-1. **Vanilla** creates a clean profile without Relian modules.
-2. **Import** copies supported game content from a selected instance folder. Prism/MultiMC-style `.minecraft` subfolders are detected; account tokens and launcher credentials are excluded.
-3. **Relian** creates a Fabric-first profile and attempts to install compatible Modrinth performance mods.
-4. **Modpack** searches Modrinth and creates a profile associated with the selected pack. The actual `.mrpack` archive importer and dependency resolver are not complete yet.
-
-Every non-Vanilla profile receives a Relian module manifest. The automatic module download currently targets Fabric only; selecting Forge, NeoForge, or Quilt records the modules but does not yet install a compatible loader-specific set. A Fabric loader installer and the game launch pipeline are still required before installed mods can run.
-
-FPS settings are Minecraft-local. They lower a few expensive visual settings in the selected profile and do not reserve or throttle Windows CPU, GPU, or memory for other programs. Actual FPS depends on hardware, shaders, worlds, drivers, and mod compatibility. No FPS benchmark has been run as part of this repository change.
+- The Windows build and installer artifact are verified by CI, but a real end-to-end sign-in and Minecraft launch has not yet been verified on a user's PC.
+- Microsoft public application ID configuration is required before sign-in works.
+- Only Vanilla launching is wired. Fabric, Forge, NeoForge, and Quilt launching are not ready.
+- The separate Fabric 1.21.1 HUD runtime is not automatically installed by this launcher.
+- Marketplace and modpack features are not a complete dependency-resolving mod manager. Full loader integration and actual `.mrpack` installation remain in progress.
+- Do not treat a successful installer build as proof that every feature is complete.
