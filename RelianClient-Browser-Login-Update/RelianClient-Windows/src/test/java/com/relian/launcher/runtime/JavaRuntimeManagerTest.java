@@ -23,9 +23,7 @@ class JavaRuntimeManagerTest {
             new JavaRuntimeManager.Runtime(Path.of("java-21"), 21, "Java 21"),
             new JavaRuntimeManager.Runtime(Path.of("java-17"), 17, "Java 17")
         );
-        assertEquals(Path.of("java-8"), java.util.Optional.ofNullable(
-            JavaRuntimeManager.findCompatible(installed, "1.8.9")).map(JavaRuntimeManager.Runtime::executable)
-            .orElse(Path.of("java-8")));
+        assertNull(JavaRuntimeManager.findCompatible(installed, "1.8.9"));
         assertEquals(Path.of("java-21"), JavaRuntimeManager.findCompatible(installed, "1.21.11").executable());
         assertEquals(Path.of("java-25"), JavaRuntimeManager.findCompatible(installed, "26.3").executable());
     }
