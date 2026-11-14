@@ -656,9 +656,10 @@ public class RelianLauncher extends Application {
                 Process check=new ProcessBuilder(candidate.toString(),"-version").redirectErrorStream(true).start();
                 if(check.waitFor(5,java.util.concurrent.TimeUnit.SECONDS)){
                     String output=new String(check.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
-                    java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?:version|openjdk)\\s+\\"?([0-9]+)").matcher(output);
+                    java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?:version|openjdk)[^0-9]*([0-9]+)(?:[.]([0-9]+))?").matcher(output);
                     if(matcher.find()){
-                        int major=Integer.parseInt(matcher.group(1));
+                        int first=Integer.parseInt(matcher.group(1));
+                        int major=first==1&&matcher.group(2)!=null?Integer.parseInt(matcher.group(2)):first;
                         if(major==required)return candidate;
                     }
                 }else check.destroyForcibly();
