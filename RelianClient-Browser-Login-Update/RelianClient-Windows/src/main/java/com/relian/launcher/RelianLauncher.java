@@ -495,6 +495,26 @@ public class RelianLauncher extends Application {
                         state.setText("Active instance: "+item.manifest().name()+" • Minecraft "+activeInstanceVersion+" • "+activeInstanceLoader);
                         info("Selected "+item.manifest().name()+". Choose the same version on Home to launch this instance.");
                     });
+                    Button installHud=small("Install Relian HUD");
+                    boolean hudCompatible="1.21.1".equals(item.manifest().minecraftVersion())
+                        && "Fabric".equalsIgnoreCase(loader);
+                    installHud.setDisable(!hudCompatible);
+                    installHud.setTooltip(new Tooltip(hudCompatible
+                        ? "Install or update Relian's in-game HUD for this Fabric 1.21.1 instance."
+                        : "Relian's bundled HUD currently supports Fabric 1.21.1 only."));
+                    installHud.setOnAction(event->{
+                        installHud.setDisable(true);
+                        CompletableFuture.supplyAsync(()->{
+                            try{return com.relian.launcher.profiles.FabricHudRuntimeInstaller.installBundled(
+                                item.directory(),item.manifest().minecraftVersion(),loader);}
+                            catch(Exception ex){throw new RuntimeException(ex);}
+                        }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
+                            installHud.setDisable(false);
+                            if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();
+                                info("Could not install Relian HUD: "+cause.getMessage());}
+                            else info("Relian HUD installed at "+installed+". Launch this instance with Fabric 1.21.1 and press Right Shift in-game.");
+                        }));
+                    });
                     Button open=small("Open folder");
                     open.setOnAction(event->{
                         try{
@@ -515,7 +535,7 @@ public class RelianLauncher extends Application {
                             refresh.fire();
                         }catch(Exception ex){info("Could not remove this instance: "+ex.getMessage());}
                     });
-                    row.getChildren().addAll(details,spacer,select,open,remove);
+                    row.getChildren().addAll(details,spacer,select,installHud,open,remove);
                     rows.getChildren().add(row);
                 }
             }));
@@ -698,7 +718,8 @@ public class RelianLauncher extends Application {
     }
 
     private record InstanceInstallOutcome(com.relian.launcher.catalog.MinecraftVersionInstaller.InstallResult base,
-                                          com.relian.launcher.catalog.LoaderInstaller.Result loader) {}
+                                          com.relian.launcher.catalog.LoaderInstaller.Result loader,
+                                          String hudRuntimeStatus) {}
 
     private java.nio.file.Path compatibleJavaFor(String minecraftVersion) throws Exception {
         int required=com.relian.launcher.runtime.JavaRuntimeManager.requiredMajor(minecraftVersion);
@@ -739,6 +760,7 @@ public class RelianLauncher extends Application {
                 var base=com.relian.launcher.catalog.MinecraftVersionInstaller.install(release,instanceDirectory,
                     message->javafx.application.Platform.runLater(()->status.setText(message)));
                 com.relian.launcher.catalog.LoaderInstaller.Result loaderResult=null;
+                String hudRuntimeStatus=""; 
                 if(loader!=null&&!loader.equals("Vanilla")){
                     java.nio.file.Path javaExecutable=compatibleJavaFor(version);
                     loaderResult=com.relian.launcher.catalog.LoaderInstaller.install(loader,version,requestedLoaderVersion,instanceDirectory,javaExecutable,
@@ -748,8 +770,18 @@ public class RelianLauncher extends Application {
                     marker.put("loaderVersion",loaderResult.loaderVersion());marker.put("profileId",loaderResult.profileId());
                     java.nio.file.Files.writeString(instanceDirectory.resolve("relian-loader.json"),
                         new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(marker));
+                    if("Fabric".equalsIgnoreCase(loader)&&"1.21.1".equals(version)){
+                        try{
+                            var hud=com.relian.launcher.profiles.FabricHudRuntimeInstaller.installBundled(instanceDirectory,version,loader);
+                            hudRuntimeStatus=" Relian HUD installed at "+hud.getFileName()+".";
+                        }catch(java.io.IOException hudError){
+                            hudRuntimeStatus=" Relian HUD was not installed automatically: "+hudError.getMessage();
+                        }
+                    }else if("Fabric".equalsIgnoreCase(loader)){
+                        hudRuntimeStatus=" Relian's bundled HUD currently supports Minecraft 1.21.1 only.";
+                    }
                 }
-                return new InstanceInstallOutcome(base,loaderResult);
+                return new InstanceInstallOutcome(base,loaderResult,hudRuntimeStatus);
             }catch(Exception ex){throw new RuntimeException(ex);}
         }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
             if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText(summary+" Installation failed: "+cause.getMessage());return;}
@@ -759,7 +791,8 @@ public class RelianLauncher extends Application {
                 preferences.put("active.instance.profileId",activeInstanceProfileId);
                 preferences.put("active.instance.loader",activeInstanceLoader);
                 status.setText(summary+" Installed Minecraft "+installed.base().versionId()+" and "+installed.loader().loader()
-                    +" "+installed.loader().loaderVersion()+". Ready to launch profile "+installed.loader().profileId()+".");
+                    +" "+installed.loader().loaderVersion()+". Ready to launch profile "+installed.loader().profileId()+"."
+                    +installed.hudRuntimeStatus());
                 if(addRelianPerformanceMods&&"Fabric".equals(installed.loader().loader()))
                     installRelianPerformanceMods(instanceDirectory,version,status,summary+" Fabric loader installed.");
             }else{
