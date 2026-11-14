@@ -43,7 +43,10 @@ public class RelianLauncher extends Application {
         if (!savedInstance.isBlank()) {
             try {
                 java.nio.file.Path candidate = java.nio.file.Path.of(savedInstance).toAbsolutePath().normalize();
-                if (java.nio.file.Files.isDirectory(candidate) && java.nio.file.Files.isRegularFile(candidate.resolve("relian-instance.json"))) activeInstanceDirectory = candidate;
+                if (java.nio.file.Files.isDirectory(candidate) && java.nio.file.Files.isRegularFile(candidate.resolve("relian-instance.json"))) {
+                    activeInstanceDirectory = candidate;
+                    activeInstanceProfileId = readLoaderProfileId(candidate);
+                }
             } catch (RuntimeException ignored) { activeInstanceDirectory = null; }
         }
         shell.setStyle("-fx-background-color:"+backgroundColor+";");
@@ -648,9 +651,18 @@ public class RelianLauncher extends Application {
         int required=com.relian.launcher.runtime.JavaRuntimeManager.requiredMajor(minecraftVersion);
         String saved=preferences.get("minecraft.java.path","");
         if(!saved.isBlank()){
-            java.nio.file.Path candidate=java.nio.file.Path.of(saved);
-            for(var runtime:com.relian.launcher.runtime.JavaRuntimeManager.detectInstalled())
-                if(runtime.executable().equals(candidate.toAbsolutePath().normalize())&&runtime.majorVersion()==required)return candidate;
+            java.nio.file.Path candidate=java.nio.file.Path.of(saved).toAbsolutePath().normalize();
+            if(java.nio.file.Files.isRegularFile(candidate)){
+                Process check=new ProcessBuilder(candidate.toString(),"-version").redirectErrorStream(true).start();
+                if(check.waitFor(5,java.util.concurrent.TimeUnit.SECONDS)){
+                    String output=new String(check.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
+                    java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?:version|openjdk)\\\\s+\\\"?([0-9]+)").matcher(output);
+                    if(matcher.find()){
+                        int major=Integer.parseInt(matcher.group(1));
+                        if(major==required)return candidate;
+                    }
+                }else check.destroyForcibly();
+            }
         }
         var detected=com.relian.launcher.runtime.JavaRuntimeManager.findCompatible(
             com.relian.launcher.runtime.JavaRuntimeManager.detectInstalled(),minecraftVersion);
