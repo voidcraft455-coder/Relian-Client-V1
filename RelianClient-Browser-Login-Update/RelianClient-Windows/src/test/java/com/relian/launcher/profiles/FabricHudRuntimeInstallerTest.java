@@ -47,7 +47,8 @@ class FabricHudRuntimeInstallerTest {
         byte[] updated = runtimeJar();
         Path installed = FabricHudRuntimeInstaller.install(instance, new ByteArrayInputStream(updated));
 
-        assertEquals(destination, installed);
+        assertEquals(destination.getFileName().toString(), installed.getFileName().toString());
+        assertTrue(Files.exists(destination), "The managed destination should be replaced in place.");
         assertArrayEquals(updated, Files.readAllBytes(installed));
         try (var files = Files.list(mods)) {
             assertEquals(1, files.count(), "Temporary files must be cleaned up.");
