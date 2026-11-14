@@ -33,6 +33,10 @@ Each module has an enable/disable setting, screen position, scale, and color.
 
 Use Java 21 and run `gradle build` in this directory. The mod JAR is produced in `build/libs/`.
 
+## Cosmetic wardrobe status
+
+The Windows launcher includes a local asset library for skin, cape, wings, and hat PNG files. It validates supported texture dimensions and keeps the assets on the local computer. The current Fabric runtime does not yet render those custom assets on player models; importing an asset is not the same as equipping it or making it visible to other players.
+
 ## Current limits
 
 This is an early runtime milestone. It currently targets Fabric 1.21.1 and is distributed separately from the Windows launcher. The launcher does not yet install this runtime automatically. The expanded HUD code has passed the repository's Fabric CI build, but the modules still need testing in a live Minecraft session.
