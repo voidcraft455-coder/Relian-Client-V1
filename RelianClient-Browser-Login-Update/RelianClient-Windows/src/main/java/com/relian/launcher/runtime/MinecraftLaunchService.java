@@ -102,6 +102,7 @@ public final class MinecraftLaunchService implements AutoCloseable {
     }
 
     public boolean isRunning() { return processes.isRunning(); }
+    public java.util.concurrent.CompletableFuture<Integer> exitCode() { return processes.exitCode(); }
     public void stop() { processes.stop(); }
     @Override public void close() { processes.close(); }
 }
