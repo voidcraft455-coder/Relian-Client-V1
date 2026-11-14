@@ -7,16 +7,29 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.ByteArrayOutputStream;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class FabricHudRuntimeInstallerTest {
     @TempDir Path temp;
 
+    private byte[] runtimeJar() throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (JarOutputStream jar = new JarOutputStream(bytes)) {
+            jar.putNextEntry(new JarEntry("fabric.mod.json"));
+            jar.write("{\\"id\\":\\"relian_client\\",\\"depends\\":{\\"minecraft\\":\\"1.21.1\\"}}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            jar.closeEntry();
+        }
+        return bytes.toByteArray();
+    }
+
     @Test
     void installsBundledRuntimeBytesIntoManagedModsFolder() throws Exception {
         Path instance = Files.createDirectory(temp.resolve("instance"));
-        byte[] jar = new byte[] {'P', 'K', 3, 4, 1, 2, 3, 4};
+        byte[] jar = runtimeJar();
 
         Path installed = FabricHudRuntimeInstaller.install(instance, new ByteArrayInputStream(jar));
 
@@ -29,10 +42,9 @@ class FabricHudRuntimeInstallerTest {
     void safelyReplacesAnEarlierManagedRuntime() throws Exception {
         Path instance = Files.createDirectory(temp.resolve("instance"));
         Path mods = Files.createDirectory(instance.resolve("mods"));
-        Path destination = Files.write(mods.resolve(FabricHudRuntimeInstaller.FILE_NAME),
-                new byte[] {'P', 'K', 3, 4, 0});
+        Path destination = Files.write(mods.resolve(FabricHudRuntimeInstaller.FILE_NAME), runtimeJar());
 
-        byte[] updated = new byte[] {'P', 'K', 3, 4, 9, 8, 7};
+        byte[] updated = runtimeJar();
         Path installed = FabricHudRuntimeInstaller.install(instance, new ByteArrayInputStream(updated));
 
         assertEquals(destination, installed);
