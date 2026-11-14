@@ -29,7 +29,7 @@ Only install artifacts from this repository's successful workflow. The early-acc
 - **Installed content:** scan mods, resource packs, and shader packs; enable or disable supported files with reversible filename changes; remove files from managed folders with confirmation.
 - **Performance profiles:** apply Minecraft-only video settings to a selected instance.
 - **HUD Studio:** the launcher bundles its Fabric 1.21.1 HUD runtime into the Windows installer. Compatible Fabric 1.21.1 instances receive the HUD automatically after loader installation; existing instances have an **Install Relian HUD** action. The 18 utility modules support visibility, color, scale, dragging, and arrow-key positioning. Settings persist in `config/relian-hud.json`.
-- **Cosmetics:** maintain a local library of Minecraft skin PNGs. Imports are validated as 64×64 or legacy 64×32 images and stored locally. Use the official Minecraft skin-management page to equip an account skin; local imports do not upload or change the account.
+- **Cosmetic wardrobe:** organize local PNG assets in separate Skin, Cape, Wings, and Hat tabs. Imports are size-validated, limited to 2 MB, stored in category-specific folders, previewed in the launcher, and safely removable. Skin imports also retain the existing skin-library workflow. The current in-game runtime does not yet render custom capes, wings, or hats; the wardrobe is an asset library, not an equip/visibility claim. Use the official Minecraft skin-management page to equip an account skin.
 
 ## Fabric HUD runtime
 
