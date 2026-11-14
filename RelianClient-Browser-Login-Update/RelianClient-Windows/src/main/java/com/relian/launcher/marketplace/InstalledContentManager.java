@@ -1,12 +1,10 @@
 package com.relian.launcher.marketplace;
 
 import java.io.IOException;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -52,7 +50,15 @@ public final class InstalledContentManager {
     /** Rename a mod JAR to .jar.disabled, or restore it. No file contents are changed. */
     public static Path toggleMod(Path gameRoot, Path modFile) throws IOException {
         Path root = checkedRoot(gameRoot);
-        Path mods = root.resolve("mods").toRealPath();
+        Path modsDirectory = root.resolve("mods");
+        if (Files.isSymbolicLink(modsDirectory)
+                || !Files.isDirectory(modsDirectory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("The mods folder is missing or is not a safe directory.");
+        }
+        Path mods = modsDirectory.toRealPath();
+        if (!mods.getParent().equals(root)) {
+            throw new IOException("The mods folder resolves outside the selected game directory.");
+        }
         Path source = checkedChild(mods, modFile);
         String name = source.getFileName().toString();
         String lower = name.toLowerCase(Locale.ROOT);
@@ -63,11 +69,9 @@ public final class InstalledContentManager {
         Path target = mods.resolve(targetName).normalize();
         if (!target.getParent().equals(mods) || Files.exists(target, LinkOption.NOFOLLOW_LINKS))
             throw new IOException("The destination already exists or is not a safe mod path.");
-        try {
-            return Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException ex) {
-            return Files.move(source, target);
-        }
+        // A same-directory rename preserves file bytes and avoids Windows ATOMIC_MOVE
+        // failures caused by transient file scanners.
+        return Files.move(source, target);
     }
 
     public static void delete(Path gameRoot, Path contentFile) throws IOException {
