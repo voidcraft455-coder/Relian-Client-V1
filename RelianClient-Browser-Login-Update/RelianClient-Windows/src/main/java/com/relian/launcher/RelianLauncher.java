@@ -602,13 +602,13 @@ public class RelianLauncher extends Application {
                     result.setText(message+" Installing official Minecraft "+actualVersion+" base files…");
                     String importedLoader=created.manifest().loader()==null?"Vanilla":created.manifest().loader();
                     result.setText(message+" Installing official Minecraft files and "+importedLoader+" loader…");
-                    installInstanceBaseFiles(created.directory(),actualVersion,result,message,importedLoader,false);
+                    installInstanceBaseFiles(created.directory(),actualVersion,result,message,importedLoader,readModpackLoaderVersion(created.directory()),false);
                     return;
                 }
                 String instanceLoader=chosen.startsWith("Vanilla")?"Vanilla":selectedLoader;
                 message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
                 result.setText(message+" Installing official Minecraft files and "+instanceLoader+" loader…");
-                installInstanceBaseFiles(created.directory(),actualVersion,result,message,instanceLoader,
+                installInstanceBaseFiles(created.directory(),actualVersion,result,message,instanceLoader,"",
                     kindIncludesRelian(chosen)&&"Fabric".equals(instanceLoader));
             }));
         });
@@ -620,6 +620,16 @@ public class RelianLauncher extends Application {
         return box;
     }
 
+
+    private String readModpackLoaderVersion(java.nio.file.Path instanceDirectory) {
+        java.nio.file.Path marker=instanceDirectory.resolve("relian-modpack.json");
+        if(!java.nio.file.Files.isRegularFile(marker)||java.nio.file.Files.isSymbolicLink(marker))return "";
+        try{
+            var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(marker)).getAsJsonObject();
+            String version=json.has("loaderVersion")?json.get("loaderVersion").getAsString():"";
+            return version.matches("[0-9A-Za-z._+-]{1,64}")?version:"";
+        }catch(Exception ignored){return "";}
+    }
 
     private String readLoaderProfileId(java.nio.file.Path instanceDirectory) {
         java.nio.file.Path marker=instanceDirectory.resolve("relian-loader.json");
@@ -654,7 +664,7 @@ public class RelianLauncher extends Application {
     }
 
     private void installInstanceBaseFiles(java.nio.file.Path instanceDirectory,String version,Label status,
-                                          String summary,String loader,boolean addRelianPerformanceMods){
+                                          String summary,String loader,String requestedLoaderVersion,boolean addRelianPerformanceMods){
         CompletableFuture.supplyAsync(()->{
             try{
                 var catalog=new com.relian.launcher.catalog.MinecraftVersionCatalog();
@@ -665,7 +675,7 @@ public class RelianLauncher extends Application {
                 com.relian.launcher.catalog.LoaderInstaller.Result loaderResult=null;
                 if(loader!=null&&!loader.equals("Vanilla")){
                     java.nio.file.Path javaExecutable=compatibleJavaFor(version);
-                    loaderResult=com.relian.launcher.catalog.LoaderInstaller.install(loader,version,instanceDirectory,javaExecutable,
+                    loaderResult=com.relian.launcher.catalog.LoaderInstaller.install(loader,version,requestedLoaderVersion,instanceDirectory,javaExecutable,
                         message->javafx.application.Platform.runLater(()->status.setText(message)));
                     var marker=new java.util.LinkedHashMap<String,String>();
                     marker.put("loader",loader);marker.put("minecraftVersion",version);
