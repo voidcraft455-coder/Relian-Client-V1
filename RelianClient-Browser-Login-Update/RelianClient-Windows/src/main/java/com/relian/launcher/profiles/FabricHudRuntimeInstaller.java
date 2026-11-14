@@ -7,9 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 
 /** Installs the Relian-owned Fabric 1.21.1 HUD runtime bundled with the Windows launcher. */
 public final class FabricHudRuntimeInstaller {
@@ -54,9 +51,6 @@ public final class FabricHudRuntimeInstaller {
         Path temporary = Files.createTempFile(mods, ".relian-hud-", ".part");
         boolean installed = false;
         try {
-            MessageDigest digest;
-            try { digest = MessageDigest.getInstance("SHA-256"); }
-            catch (NoSuchAlgorithmException ex) { throw new IOException("SHA-256 is unavailable.", ex); }
             long total = 0;
             try (var output = Files.newOutputStream(temporary)) {
                 byte[] buffer = new byte[16 * 1024];
@@ -64,7 +58,6 @@ public final class FabricHudRuntimeInstaller {
                 while ((read = runtimeJar.read(buffer)) != -1) {
                     total += read;
                     if (total > MAX_BYTES) throw new IOException("The Relian HUD runtime exceeds the 128 MB safety limit.");
-                    digest.update(buffer, 0, read);
                     output.write(buffer, 0, read);
                 }
             }
