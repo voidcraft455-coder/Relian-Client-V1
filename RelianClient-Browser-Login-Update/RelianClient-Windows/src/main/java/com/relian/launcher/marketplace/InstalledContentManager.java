@@ -49,8 +49,10 @@ public final class InstalledContentManager {
 
     /** Backward-compatible mod-only toggle. */
     public static Path toggleMod(Path gameRoot, Path modFile) throws IOException {
-        if (modFile == null || modFile.toAbsolutePath().normalize().getParent() == null
-                || !modFile.toAbsolutePath().normalize().getParent().getFileName().toString().equals("mods")) {
+        Path normalized = modFile == null ? null : modFile.toAbsolutePath().normalize();
+        Path parent = normalized == null ? null : normalized.getParent();
+        if (parent == null || parent.getFileName() == null
+                || !parent.getFileName().toString().equals("mods")) {
             throw new IOException("Only files in the mods folder can be toggled as mods.");
         }
         return toggleContent(gameRoot, modFile);
@@ -103,6 +105,9 @@ public final class InstalledContentManager {
         if (!folder.equals("mods") && !folder.equals("resourcepacks") && !folder.equals("shaderpacks"))
             throw new IOException("The file is outside a supported content folder.");
         Path expectedParent = root.resolve(folder).toRealPath();
+        if (!expectedParent.getParent().equals(root)) {
+            throw new IOException("The content folder resolves outside the selected game directory.");
+        }
         Path source = checkedChild(expectedParent, normalized);
         String lower = source.getFileName().toString().toLowerCase(Locale.ROOT);
         if (!(lower.endsWith(".jar") || lower.endsWith(".jar.disabled") || lower.endsWith(".zip") || lower.endsWith(".zip.disabled")))
@@ -117,12 +122,18 @@ public final class InstalledContentManager {
     }
 
     private static Path checkedChild(Path expectedParent, Path candidate) throws IOException {
+        if (candidate == null) throw new IOException("Invalid content file path.");
         Path normalized = candidate.toAbsolutePath().normalize();
-        if (!expectedParent.equals(normalized.getParent())
-                || !Files.isRegularFile(normalized, LinkOption.NOFOLLOW_LINKS)
-                || Files.isSymbolicLink(normalized)
-                || !normalized.toRealPath().getParent().equals(expectedParent))
-            throw new IOException("The selected file is no longer a safe file in the expected content folder.");
-        return normalized;
+        if (!Files.isRegularFile(normalized, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(normalized)) {
+            throw new IOException("The selected file is no longer a regular, non-symbolic-link file.");
+        }
+        // Compare canonical paths rather than the caller's lexical spelling. Windows
+        // temporary directories can use an alias (for example an 8.3 path) that differs
+        // from toRealPath(), even though both paths identify the same directory.
+        Path real = normalized.toRealPath();
+        if (!expectedParent.equals(real.getParent())) {
+            throw new IOException("The selected file is outside the expected content folder.");
+        }
+        return real;
     }
 }
