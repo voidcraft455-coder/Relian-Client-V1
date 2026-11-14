@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Exchanges Microsoft OAuth for Xbox Live, XSTS, and Minecraft Services credentials. */
 public final class MinecraftAccountAuthenticator {
@@ -22,9 +23,17 @@ public final class MinecraftAccountAuthenticator {
 
     public static MinecraftLaunchCommandBuilder.Session authenticate(String microsoftAccessToken)
             throws IOException, InterruptedException {
+        return authenticate(microsoftAccessToken, ignored -> {});
+    }
+
+    /** Reports each verification boundary without exposing or logging bearer tokens. */
+    public static MinecraftLaunchCommandBuilder.Session authenticate(String microsoftAccessToken,
+            Consumer<String> progress) throws IOException, InterruptedException {
+        Consumer<String> status = progress == null ? ignored -> {} : progress;
         if (microsoftAccessToken == null || microsoftAccessToken.isBlank())
             throw new IOException("Microsoft sign-in did not provide an access token.");
 
+        status.accept("Checking Xbox Live account access…");
         JsonObject xbox = post("https://user.auth.xboxlive.com/user/authenticate", """
             {"Properties":{"AuthMethod":"RPS","SiteName":"user.auth.xboxlive.com","RpsTicket":"d=%s"},
              "RelyingParty":"http://auth.xboxlive.com","TokenType":"JWT"}
@@ -34,6 +43,7 @@ public final class MinecraftAccountAuthenticator {
         String userHash = claims != null && claims.size() > 0 ? string(claims.get(0).getAsJsonObject(), "uhs") : "";
         if (userHash.isBlank()) throw new IOException("Xbox Live did not return a user hash.");
 
+        status.accept("Verifying Xbox security (XSTS)…");
         JsonObject xsts = post("https://xsts.auth.xboxlive.com/xsts/authorize", """
             {"Properties":{"SandboxId":"RETAIL","UserTokens":["%s"]},
              "RelyingParty":"rp://api.minecraftservices.com/","TokenType":"JWT"}
@@ -42,19 +52,23 @@ public final class MinecraftAccountAuthenticator {
         JsonArray xui = array(object(xsts, "DisplayClaims"), "xui");
         String xuid = xui != null && xui.size() > 0 ? string(xui.get(0).getAsJsonObject(), "xid") : "";
 
+        status.accept("Requesting a Minecraft Services session…");
         JsonObject minecraft = post("https://api.minecraftservices.com/authentication/login_with_xbox",
                 "{\"identityToken\":\"XBL3.0 x=" + escapeJson(userHash) + ";" + escapeJson(xstsToken) + "\"}");
         String minecraftToken = required(minecraft, "access_token", "Minecraft Services rejected the Xbox account.");
 
+        status.accept("Checking Minecraft Java ownership…");
         JsonObject entitlements = get("https://api.minecraftservices.com/entitlements/mcstore", minecraftToken);
         JsonArray items = entitlements.has("items") && entitlements.get("items").isJsonArray()
                 ? entitlements.getAsJsonArray("items") : new JsonArray();
         if (items.isEmpty()) throw new IOException("This Microsoft account does not appear to own Minecraft Java Edition.");
 
+        status.accept("Retrieving the Minecraft Java profile…");
         JsonObject profile = get("https://api.minecraftservices.com/minecraft/profile", minecraftToken);
         String name = required(profile, "name", "Minecraft profile lookup failed.");
         String id = required(profile, "id", "Minecraft profile lookup failed.");
         if (!id.matches("(?i)[a-f0-9]{32}")) throw new IOException("Minecraft returned an invalid profile ID.");
+        status.accept("Minecraft account verified.");
         return new MinecraftLaunchCommandBuilder.Session(name, id, minecraftToken, xuid);
     }
 
