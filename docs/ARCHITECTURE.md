@@ -1,80 +1,64 @@
-# Relian Client architecture and build roadmap
+# Relian Client architecture and project status
 
-Relian is a Windows-first Minecraft: Java Edition launcher and client project. The launcher is a separate JavaFX application; Minecraft itself runs in an isolated game directory/profile with a version-specific Java runtime and loader.
+Relian is a Windows-first Minecraft: Java Edition launcher with a separate version-specific in-game client runtime. The launcher is a JavaFX desktop application; Minecraft runs in an isolated instance directory with its own version metadata, libraries, assets, native libraries, loader profile, and game options.
 
-## Product goals
-- Clean, restrained launcher UI inspired by the usability of Lunar Client and Dawn Client. Do not copy their logos, artwork, proprietary code, or exact assets.
-- Install and launch official Minecraft releases from 1.19 through 26.3, plus legacy 1.8.8 and 1.8.9.
-- Per-version profiles, independent game directories, memory settings, Java runtime selection, and loader selection.
-- Browse and install compatible mods and modpacks from Modrinth and CurseForge.
-- Browse and install resource packs and shaders with compatibility checks.
-- Original Relian HUD and quality-of-life modules, with configurable categories, keybinds, profiles, and settings.
-- Windows installer with bundled launcher runtime, Start Menu entry, and desktop shortcut.
+## Repository layout
 
-## Important compatibility model
-A launcher can install vanilla releases across the requested range, but one mod JAR cannot support every Minecraft release. Relian must use version-specific client adapters and build targets.
-- The launcher reads Mojang's version manifest and downloads the official client assets/libraries for the selected release.
-- The launcher selects a compatible Java runtime for each game version. The launcher runtime is independent of the runtime used by Minecraft.
-- Each modded profile records its Minecraft version, loader, loader version, and installed files.
-- Modern releases use supported Fabric / Forge / NeoForge targets where available. The legacy 1.8.8 and 1.8.9 targets are separate compatibility projects and must not share modern game hooks.
-- A version is marked **Vanilla supported** when it can be installed and launched, and **Relian features supported** only when the matching adapter has passed tests.
-- Mod marketplace results must be filtered by game version, loader, project type, and client/server environment before installation.
+- `RelianClient-Browser-Login-Update/RelianClient-Windows`: JavaFX launcher, authentication, version catalog/install, runtime provisioning, loader installation, marketplace, instances, cosmetics asset library, and Windows packaging.
+- `relian-client-fabric`: Fabric 1.21.1 client HUD runtime.
+- `.github/workflows/build-windows.yml`: builds the Fabric runtime, bundles it into the Windows launcher, runs Java tests, packages the Windows installer, and uploads artifacts.
+- `docs`: architecture, product requirements, marketplace behavior, and release status.
 
-Minecraft 26.3 currently requires Java 25. Do not hard-code Java 21 as the game runtime for all versions. The launcher may keep its own independently selected Java toolchain while provisioning the correct game runtime.
+## Current implemented capabilities
 
-## Planned project modules
-### Launcher
-- launcher-ui: JavaFX navigation, home screen, version selector, profiles, settings.
-- launcher-core: version manifest, metadata, downloads, checksums, library/native extraction, process launch.
-- auth: Microsoft browser sign-in and the complete Xbox/XSTS/Minecraft Services authentication flow. Never collect Microsoft passwords or ship a client secret.
-- profiles: isolated instances and per-profile settings.
-- installer: Windows packaging and updates.
+### Launcher and game runtime
 
-### Marketplace
-- marketplace-api: provider abstraction and normalized project/version models.
-- modrinth-provider: search, project details, version filtering, file metadata.
-- curseforge-provider: API-backed search and file metadata, subject to API-key and provider terms.
-- dependency-resolver: required dependencies, loader compatibility, conflicts, safe file installation.
-- content-manager: mods, modpacks, resource packs, and shaders.
+- Mojang version manifest and release selection.
+- Official Minecraft version metadata and client JAR downloads with hash validation.
+- Minecraft libraries, Windows native libraries, asset index, and asset downloads.
+- Java runtime discovery and checksum-verified Eclipse Temurin provisioning.
+- Launch command construction using inherited version metadata, JVM/game arguments, classpath, asset paths, and native paths.
+- Process start/stop monitoring and console output routing.
+- Instance creation, selection, import foundations, per-instance manifests, safe deletion, and directory separation.
+- Fabric, Quilt, Forge, and NeoForge installation support through their respective installer metadata where available.
+
+### Authentication
+
+- Microsoft system-browser OAuth authorization-code flow with PKCE.
+- Xbox Live and XSTS exchange, Minecraft Services login, Java entitlement check, and profile retrieval.
+- A valid public Microsoft desktop application ID must be configured. The launcher does not collect Microsoft passwords.
+- The local test profile is UI-only and cannot launch Minecraft.
+
+### Marketplace and content
+
+- Modrinth search and supported individual file installs with compatibility filtering and checksum validation.
+- CurseForge search and supported individual file installs when an API key is configured.
+- Modrinth `.mrpack` import into a staged isolated instance, with path, URL, hash, and size validation.
+- Installed-content listing, reversible mod toggles, and confirmed removal.
+- Resource pack and shader browsing/install foundations.
 
 ### In-game client
-- client-common: module registry, settings, keybinds, HUD framework, config persistence.
-- client-modern: version-specific modern game integration.
-- client-legacy-1.8.8 and client-legacy-1.8.9: isolated legacy integrations.
-- features: original performance, HUD, visual customization, and quality-of-life features.
 
-## Client module categories
-Initial safe and useful modules:
-- HUD: FPS, coordinates, direction, keystrokes, CPS display, armor status, potion status, ping, clock.
-- Visual customization: crosshair editor, hit-color feedback, interface scaling, zoom, cosmetic toggles.
-- Performance: FPS limiter, memory display, entity/render-distance presets, diagnostics.
-- Utility: screenshot manager, waypoint notes for worlds where allowed, profile switcher, config manager.
+- Fabric 1.21.1 runtime with 18 configurable utility HUD modules.
+- Right Shift opens HUD Studio; settings persist locally.
+- The HUD runtime is bundled into the Windows installer and automatically installed into compatible Fabric 1.21.1 instances.
 
-Multiplayer features must respect server rules. Do not implement features that automate attacks, target other players, evade server protections, or expose other players' private information. Any experimental modules should be disabled by default and clearly labeled.
+### Cosmetics
 
-## Marketplace safety and reliability
-- Use official provider APIs and comply with each provider's API terms and attribution requirements.
-- Show project author, license, supported Minecraft versions, supported loaders, environment, dependencies, and source page.
-- Never silently install a server-only mod into a client profile.
-- Verify downloaded file hashes when provided; write files to a staging area before activation.
-- For Modrinth .mrpack archives, validate ZIP central-directory metadata, reject traversal/symlinks/special files and unsafe destinations, and enforce archive/file/total size ceilings.
-- Download only required client entries over verified HTTPS; skip optional and server-only entries and preserve Minecraft/loader metadata.
-- Publish a newly imported instance only after all required files and overrides have succeeded; never overwrite an existing instance or copy launcher credentials.
-- Back up profile manifests before changing installed mods.
-- Do not re-host third-party mod files without permission.
+- Local skin, cape, wing, and hat PNG libraries with validation, preview, and safe deletion.
+- These assets are not yet rendered on the player model or synchronized to other players.
 
-## Development milestones
-1. Foundation: launcher shell, navigation, settings, profile model, version manifest reader.
-2. Vanilla launching: download metadata/assets/libraries, Java runtime provisioning, process launch, logs.
-3. Authentication: complete Microsoft-to-Minecraft authentication and secure token storage.
-4. Marketplace: Modrinth first, then CurseForge; compatibility filtering and dependency resolver.
-5. Content management: modpacks, resource packs, shaders, backups, updates.
-6. Modern client: shared module framework and the first modern version adapter.
-7. Legacy client: isolated 1.8.8 and 1.8.9 adapters.
-8. Windows release: signed/reproducible build, installer, update channel, crash reporting.
+## Verification boundaries
 
-## Current repository status
-The existing repository contains an early JavaFX launcher prototype, a Microsoft browser OAuth foundation, and a Windows packaging workflow. It is not yet a complete Minecraft launcher: the full Xbox/XSTS/Minecraft Services authentication, official version installation/launching, marketplace, mod loader installation, and in-game client modules still need implementation.
+A successful GitHub Actions run verifies the specific code revision's build, automated tests, and Windows packaging steps. It does not prove that Microsoft sign-in succeeds with the operator's app registration, that every Minecraft version or loader starts on physical Windows hardware, that all marketplace projects and modpacks are compatible, or that HUD modules render correctly in a live Minecraft session. Those require live integration tests and sometimes external configuration or user-provided accounts.
 
-## First implementation target
-Build the version catalog and isolated profile model before implementing the marketplace. This gives every later feature a reliable Minecraft version + loader + Java runtime target.
+## Remaining project milestones
+
+1. **Stabilization:** keep Windows CI green, add tests for launcher UI state and game launch metadata, and fix any live errors reported by users.
+2. **Marketplace completeness:** dependency graph resolver, backup/rollback, update checks, conflict warnings, richer metadata, and CurseForge modpack support where permitted.
+3. **Cosmetic rendering:** implement and test version-specific player-model rendering for local capes, wings, and hats; clearly label local-only visibility.
+4. **HUD expansion:** improve editor controls and add safe utility modules with per-version adapters and settings migration.
+5. **Release engineering:** code signing, versioned release artifacts, update channel, crash reports with privacy controls, and reproducible build documentation.
+6. **Compatibility validation:** live test Vanilla and supported loader profiles across a representative set of versions and real modpacks.
+
+Multiplayer features must respect server rules. Relian will focus on utility HUDs, performance tools, visual customization, and legitimate client features rather than automated attacks, targeting cheats, anti-cheat evasion, or hidden player tracking.
