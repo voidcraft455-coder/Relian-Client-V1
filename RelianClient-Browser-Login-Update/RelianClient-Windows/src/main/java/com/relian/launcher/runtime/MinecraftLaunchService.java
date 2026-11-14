@@ -45,7 +45,8 @@ public final class MinecraftLaunchService implements AutoCloseable {
                 ? metadata.getAsJsonObject("assetIndex").get("id").getAsString() : "";
         Path libraries = root.resolve("libraries");
         Path assets = root.resolve("assets");
-        Path natives = root.resolve("versions").resolve(resolved.baseVersion()).resolve("natives");
+        Path profileNatives = versionDirectory.resolve("natives");
+        Path natives = Files.isDirectory(profileNatives) ? profileNatives : root.resolve("versions").resolve(resolved.baseVersion()).resolve("natives");
         var spec = new MinecraftLaunchCommandBuilder.LaunchSpec(
                 javaExecutable, root, versionDirectory, libraries, assets, natives,
                 versionId, assetIndex, metadata.has("mainClass") ? metadata.get("mainClass").getAsString() : "",
