@@ -42,6 +42,29 @@ class InstalledContentManagerTest {
     }
 
     @Test
+    void listsResourcePacksAndShadersSeparately() throws Exception {
+        Path resourcePacks = Files.createDirectories(temp.resolve("resourcepacks"));
+        Path shaders = Files.createDirectories(temp.resolve("shaderpacks"));
+        Files.write(resourcePacks.resolve("clean-ui.zip"), new byte[] {5, 6});
+        Files.write(shaders.resolve("soft-light.zip"), new byte[] {7, 8, 9});
+
+        var all = InstalledContentManager.list(temp, InstalledContentManager.Category.ALL);
+        assertEquals(2, all.size());
+        assertTrue(all.stream().anyMatch(item -> item.kind() == InstalledContentManager.Kind.RESOURCE_PACK));
+        assertTrue(all.stream().anyMatch(item -> item.kind() == InstalledContentManager.Kind.SHADER));
+        assertEquals(1, InstalledContentManager.list(temp,
+                InstalledContentManager.Category.RESOURCE_PACKS).size());
+        assertEquals(1, InstalledContentManager.list(temp,
+                InstalledContentManager.Category.SHADERS).size());
+    }
+
+    @Test
+    void refusesToToggleWhenModsFolderIsMissing() throws Exception {
+        assertThrows(java.io.IOException.class,
+                () -> InstalledContentManager.toggleMod(temp, temp.resolve("mods").resolve("missing.jar")));
+    }
+
+    @Test
     void rejectsFilesOutsideManagedContentFolders() throws Exception {
         Path outside = Files.write(temp.resolve("outside.jar"), new byte[] {1});
         assertThrows(java.io.IOException.class, () -> InstalledContentManager.toggleMod(temp, outside));
