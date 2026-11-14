@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CosmeticAssetLibraryTest {
     @TempDir Path temp;
+    private Path library() { return temp.resolve("cosmetics"); }
 
     private Path png(String name, int width, int height) throws Exception {
         Path file = temp.resolve(name);
@@ -19,13 +20,13 @@ class CosmeticAssetLibraryTest {
 
     @Test
     void validatesAndImportsCapeWingsAndHatTextures() throws Exception {
-        Path cape = CosmeticAssetLibrary.importPng(CosmeticAssetLibrary.Category.CAPE, png("cape.png", 64, 32));
+        Path cape = CosmeticAssetLibrary.importPng(library(), CosmeticAssetLibrary.Category.CAPE, png("cape.png", 64, 32));
         Path wings = CosmeticAssetLibrary.importPng(CosmeticAssetLibrary.Category.WINGS, png("wings.png", 128, 64));
         Path hat = CosmeticAssetLibrary.importPng(CosmeticAssetLibrary.Category.HAT, png("hat.png", 128, 128));
         assertTrue(Files.isRegularFile(cape));
         assertTrue(Files.isRegularFile(wings));
         assertTrue(Files.isRegularFile(hat));
-        assertEquals(1, CosmeticAssetLibrary.list(CosmeticAssetLibrary.Category.CAPE).size());
+        assertEquals(1, CosmeticAssetLibrary.list(library(), CosmeticAssetLibrary.Category.CAPE).size());
         assertEquals(1, CosmeticAssetLibrary.list(CosmeticAssetLibrary.Category.WINGS).size());
         assertEquals(1, CosmeticAssetLibrary.list(CosmeticAssetLibrary.Category.HAT).size());
     }
@@ -50,7 +51,7 @@ class CosmeticAssetLibraryTest {
         assertNotEquals(first, second);
         Path outside = png("outside.png", 64, 32);
         assertThrows(java.io.IOException.class,
-            () -> CosmeticAssetLibrary.delete(CosmeticAssetLibrary.Category.CAPE, outside));
+            () -> CosmeticAssetLibrary.delete(library(), CosmeticAssetLibrary.Category.CAPE, outside));
         CosmeticAssetLibrary.delete(CosmeticAssetLibrary.Category.CAPE, first);
         assertEquals(1, CosmeticAssetLibrary.list(CosmeticAssetLibrary.Category.CAPE).size());
     }
