@@ -49,11 +49,11 @@ public final class InstalledContentManager {
 
     /** Backward-compatible mod-only toggle. */
     public static Path toggleMod(Path gameRoot, Path modFile) throws IOException {
-        Path updated = toggleContent(gameRoot, modFile);
-        if (!updated.getParent().getFileName().toString().equals("mods")) {
+        if (modFile == null || modFile.toAbsolutePath().normalize().getParent() == null
+                || !modFile.toAbsolutePath().normalize().getParent().getFileName().toString().equals("mods")) {
             throw new IOException("Only files in the mods folder can be toggled as mods.");
         }
-        return updated;
+        return toggleContent(gameRoot, modFile);
     }
 
     /** Reversibly enables or disables a managed mod, resource pack, or shader pack. */
