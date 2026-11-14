@@ -226,15 +226,24 @@ public class RelianLauncher extends Application {
                     ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
                     :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize());
             play.setDisable(true); playStatus.setText("Starting Minecraft "+selectedVersion+"…");
-            CompletableFuture.runAsync(()->{
+            CompletableFuture.supplyAsync(()->{
                 try{
-                    launchService.launch(root,launchVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
+                    return launchService.launch(root,launchVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
                         line->System.out.println(line));
                 }catch(Exception ex){throw new RuntimeException(ex);}
-            }).whenComplete((ignored,error)->javafx.application.Platform.runLater(()->{
-                play.setDisable(false);
-                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();playStatus.setText("Launch failed: "+cause.getMessage());}
-                else playStatus.setText("Minecraft process started. Check the game window.");
+            }).whenComplete((process,error)->javafx.application.Platform.runLater(()->{
+                if(error!=null){
+                    play.setDisable(false);
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    playStatus.setText("Launch failed: "+cause.getMessage());
+                }else{
+                    playStatus.setText("Minecraft is running. Close the game to return to Relian.");
+                    launchService.exitCode().whenComplete((code,exitError)->javafx.application.Platform.runLater(()->{
+                        play.setDisable(false);
+                        if(exitError!=null)playStatus.setText("Minecraft stopped. Exit status could not be read: "+exitError.getMessage());
+                        else playStatus.setText("Minecraft closed with exit code "+code+". Check the launcher output if it did not reach the title screen.");
+                    }));
+                }
             }));
         });
         controls.getChildren().addAll(versions,loader,play); hero.getChildren().addAll(controls,playStatus);
