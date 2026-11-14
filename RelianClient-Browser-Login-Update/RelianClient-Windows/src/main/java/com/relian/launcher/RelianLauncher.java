@@ -359,7 +359,7 @@ public class RelianLauncher extends Application {
     }
     private VBox installedContentPage(){
         VBox page=new VBox(14);
-        Label intro=muted("Manage mods, resource packs, and shaders in the selected Minecraft game directory. Mods can be temporarily disabled without deleting them.");
+        Label intro=muted("Manage mods, resource packs, and shaders in the selected Minecraft game directory. Toggle supported files on or off without deleting them.");
         Label location=muted(gameDirectory.isBlank()?"No game directory selected. Choose one in Settings first.":gameDirectory);
         ComboBox<String> category=new ComboBox<>();
         category.getItems().addAll("All content","Mods","Resource packs","Shaders");
@@ -394,7 +394,7 @@ public class RelianLauncher extends Application {
                 }
                 if(found.isEmpty()){state.setText("No installed files found in this category.");return;}
                 long enabledCount=found.stream().filter(com.relian.launcher.marketplace.InstalledContentManager.Item::enabled).count();
-                state.setText(found.size()+" file(s) found • "+enabledCount+" active • disabled mods are preserved on disk.");
+                state.setText(found.size()+" file(s) found • "+enabledCount+" active • disabled files are preserved on disk.");
                 for(var item:found){
                     java.nio.file.Path file=item.path();
                     HBox row=new HBox(10);row.setAlignment(Pos.CENTER_LEFT);row.setPadding(new Insets(12));row.setStyle(cardStyle());
@@ -404,20 +404,18 @@ public class RelianLauncher extends Application {
                     String typeLabel=switch(item.kind()){case MOD->"Mod";case RESOURCE_PACK->"Resource pack";case SHADER->"Shader pack";};
                     details.getChildren().addAll(name,muted(typeLabel+" • "+(item.enabled()?"Enabled":"Disabled")+" • "+size));
                     Region push=new Region();HBox.setHgrow(push,Priority.ALWAYS);
-                    if(item.kind()==com.relian.launcher.marketplace.InstalledContentManager.Kind.MOD){
-                        Button toggle=small(item.enabled()?"Disable":"Enable");
-                        toggle.setOnAction(event->{
-                            toggle.setDisable(true);
-                            try{
-                                var updated=com.relian.launcher.marketplace.InstalledContentManager.toggleMod(root,file);
-                                state.setText((item.enabled()?"Disabled ":"Enabled ")+updated.getFileName()+". The file contents were preserved.");
-                                refresh.fire();
-                            }catch(java.io.IOException ex){
-                                toggle.setDisable(false);info("Could not change mod state: "+ex.getMessage());
-                            }
-                        });
-                        row.getChildren().addAll(details,push,toggle);
-                    }else row.getChildren().addAll(details,push);
+                    Button toggle=small(item.enabled()?"Disable":"Enable");
+                    toggle.setOnAction(event->{
+                        toggle.setDisable(true);
+                        try{
+                            var updated=com.relian.launcher.marketplace.InstalledContentManager.toggleContent(root,file);
+                            state.setText((item.enabled()?"Disabled ":"Enabled ")+updated.getFileName()+". The file contents were preserved.");
+                            refresh.fire();
+                        }catch(java.io.IOException ex){
+                            toggle.setDisable(false);info("Could not change content state: "+ex.getMessage());
+                        }
+                    });
+                    row.getChildren().addAll(details,push,toggle);
                     Button remove=small("Remove");
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
