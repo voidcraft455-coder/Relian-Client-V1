@@ -43,7 +43,7 @@ public final class HudEditorScreen extends Screen {
             context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 5,
                 active ? 0xFFFFFFFF : 0xFFD8E0EB);
             context.drawTextWithShadow(textRenderer,
-                Text.literal(settings.enabled ? "ENABLED" : "DISABLED"), panelLeft + 30, y + 18,
+                Text.literal(settings.enabled ? "ON" : "OFF"), panelLeft + 190, y + 5,
                 settings.enabled ? 0xFF7EE0B0 : 0xFF8995A7);
             drawButton(context, panelLeft + 265, y + 2, 62, 20, settings.enabled ? "ON" : "OFF",
                 settings.enabled ? 0xFF245A4C : 0xFF465164, mouseX, mouseY);
@@ -55,16 +55,19 @@ public final class HudEditorScreen extends Screen {
         rounded(context, px, py, px + 255, py + 282, 0xFF101722, 12);
         context.drawTextWithShadow(textRenderer, Text.literal("LIVE HUD PREVIEW"), px + 14, py + 13, 0xFF83B7FF);
         rounded(context, px + 10, py + 36, px + 245, py + 235, 0xFF263342, 9);
-        context.drawTextWithShadow(textRenderer, Text.literal("Minecraft world preview"), px + 22, py + 49, 0xFF71839A);
-        context.drawTextWithShadow(textRenderer, Text.literal("FPS: 240"), px + 22, py + 75, 0xFFFFFFFF);
-        context.drawTextWithShadow(textRenderer, Text.literal("XYZ: 124 / 68 / -32"), px + 22, py + 91, 0xFF83B7FF);
-        context.drawTextWithShadow(textRenderer, Text.literal("W"), px + 22, py + 117, 0xFFFFFFFF);
-        context.drawTextWithShadow(textRenderer, Text.literal("A  S  D"), px + 22, py + 131, 0xFFFFFFFF);
-        context.drawTextWithShadow(textRenderer, Text.literal("PING: 34 ms"), px + 22, py + 153, 0xFF8FE3B0);
-        context.drawTextWithShadow(textRenderer, Text.literal("HELD ITEM: 92%"), px + 22, py + 169, 0xFFFFD479);
-        context.drawTextWithShadow(textRenderer, Text.literal("Armor: 98%  91%  84%"), px + 22, py + 185, 0xFFFFFFFF);
-        context.drawTextWithShadow(textRenderer, Text.literal("POTIONS: Speed II  1:24"), px + 22, py + 201, 0xFFB69CFF);
-        context.drawTextWithShadow(textRenderer, Text.literal("FACING: NORTH"), px + 22, py + 217, 0xFF83B7FF);
+        context.drawTextWithShadow(textRenderer, Text.literal("Selected module preview"), px + 22, py + 49, 0xFF71839A);
+        HudConfig.ModuleSettings previewSettings = HudConfig.get().modules.get(MODULES.get(selected));
+        String sample = previewText(MODULES.get(selected));
+        int previewX = px + 14 + (int) (previewSettings.x * 207.0 / Math.max(1, width));
+        int previewY = py + 62 + (int) (previewSettings.y * 158.0 / Math.max(1, height));
+        previewX = Math.max(px + 14, Math.min(px + 225, previewX));
+        previewY = Math.max(py + 62, Math.min(py + 218, previewY));
+        context.getMatrices().push();
+        context.getMatrices().translate(previewX, previewY, 0);
+        context.getMatrices().scale(previewSettings.scale, previewSettings.scale, 1.0f);
+        context.drawTextWithShadow(textRenderer, Text.literal(previewSettings.enabled ? sample : sample + " (hidden)"),
+            0, 0, previewSettings.enabled ? previewSettings.color : 0xFF8995A7);
+        context.getMatrices().pop();
         rounded(context, px + 10, py + 244, px + 245, py + 271, 0xFF24344A, 8);
         context.drawTextWithShadow(textRenderer, Text.literal("Drag in preview to move selected module"),
             px + 18, py + 253, 0xFFB9C7D8);
@@ -83,6 +86,30 @@ public final class HudEditorScreen extends Screen {
         drawButton(context, panelLeft + 134, panelTop + 470, 104, 25, "SAVE", 0xFF245A4C, mouseX, mouseY);
         context.drawTextWithShadow(textRenderer, Text.literal("RIGHT SHIFT  •  CLOSE"), panelLeft + 490,
             panelTop + 480, 0xFF7E8DA2);
+    }
+
+    private String previewText(String id) {
+        return switch (id) {
+            case "fps" -> "FPS: 240";
+            case "coordinates" -> "XYZ: 124 / 68 / -32";
+            case "keystrokes" -> "[W]  A  S  D";
+            case "armor" -> "ARMOR: 98%  91%  84%";
+            case "ping" -> "PING: 34 ms";
+            case "held_item" -> "HELD ITEM: 92%";
+            case "potions" -> "SPEED II  1:24";
+            case "direction" -> "FACING: NORTH";
+            case "biome" -> "BIOME: PLAINS";
+            case "speed" -> "SPEED: 4.32 blocks/s";
+            case "clock" -> "LOCAL TIME: 09:30";
+            case "dimension" -> "DIMENSION: OVERWORLD";
+            case "target_block" -> "LOOKING AT: STONE";
+            case "health" -> "HEALTH: 20.0 / 20.0";
+            case "hunger" -> "FOOD: 20 / 20  SAT: 5.0";
+            case "world_time" -> "WORLD TIME: 12:00  DAY 1";
+            case "server_info" -> "SERVER: Singleplayer";
+            case "session_time" -> "SESSION: 00:12:34";
+            default -> label(id);
+        };
     }
 
     private void drawButton(DrawContext context, int x, int y, int w, int h, String label,
