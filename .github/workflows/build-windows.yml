@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   build:
+    needs: build-fabric-runtime
     runs-on: windows-latest
 
     steps:
@@ -24,6 +25,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Download bundled Fabric HUD runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: RelianClient-Fabric-1.21.1
+          path: RelianClient-Browser-Login-Update/RelianClient-Windows/src/main/resources/client-runtime
+
+      - name: Name bundled HUD runtime
+        shell: pwsh
+        run: |
+          $source = Get-ChildItem 'RelianClient-Browser-Login-Update/RelianClient-Windows/src/main/resources/client-runtime' -Filter '*-0.1.0.jar' | Select-Object -First 1
+          if (-not $source) { throw 'The Fabric HUD runtime JAR was not found in the downloaded artifact.' }
+          Copy-Item $source.FullName 'RelianClient-Browser-Login-Update/RelianClient-Windows/src/main/resources/client-runtime/RelianClient-Fabric-1.21.1.jar' -Force
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -62,5 +76,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RelianClient-Fabric-1.21.1
-          path: relian-client-fabric/build/libs/*.jar
+          path: relian-client-fabric/build/libs/*-0.1.0.jar
           if-no-files-found: error
