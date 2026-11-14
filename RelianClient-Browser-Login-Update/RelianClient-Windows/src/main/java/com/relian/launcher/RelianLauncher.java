@@ -33,6 +33,7 @@ public class RelianLauncher extends Application {
     private String active = "Home";
     private String accountLabel = "Sign in with Microsoft";
     private com.relian.launcher.runtime.MinecraftLaunchCommandBuilder.Session minecraftSession;
+    private OfflineTestProfile offlineTestProfile;
     private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
 
@@ -169,16 +170,22 @@ public class RelianLauncher extends Application {
         CompletableFuture.runAsync(() -> {
             try {
                 MicrosoftBrowserLogin.LoginResult result = MicrosoftBrowserLogin.signIn(clientId);
-                var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken());
+                var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken(), stage ->
+                    javafx.application.Platform.runLater(() -> {
+                        accountLabel = stage;
+                        page(active);
+                    }));
                 javafx.application.Platform.runLater(() -> {
                     minecraftSession = verifiedSession;
+                    offlineTestProfile = null;
                     accountLabel = verifiedSession.username();
                     page(active);
                     info("Minecraft account verified: " + verifiedSession.username() + ". You can now launch installed Vanilla versions.");
                 });
             } catch (Exception ex) {
                 javafx.application.Platform.runLater(() -> {
-                    accountLabel = "Sign in with Microsoft";
+                    accountLabel = offlineTestProfile == null ? "Sign in with Microsoft"
+                        : "Offline test: " + offlineTestProfile.username();
                     page(active);
                     info("Microsoft sign-in did not complete: " + ex.getMessage());
                 });
@@ -198,7 +205,12 @@ public class RelianLauncher extends Application {
         play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
         play.setOnAction(e->{
-            if(minecraftSession==null){info("Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching.");return;}
+            if(minecraftSession==null){
+                info(offlineTestProfile == null
+                    ? "Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching."
+                    : "The Offline / Local Test Profile is only for previewing the launcher UI. Sign in with a Microsoft account that owns Minecraft Java Edition to launch the game.");
+                return;
+            }
             String selectedVersion=versions.getValue();
             String selectedLoader=loader.getValue();
             String launchVersion=selectedVersion;
@@ -248,6 +260,39 @@ public class RelianLauncher extends Application {
             }));
         });
         controls.getChildren().addAll(versions,loader,play); hero.getChildren().addAll(controls,playStatus);
+        VBox offlineCard = new VBox(9);
+        offlineCard.setPadding(new Insets(18));
+        offlineCard.setStyle(cardStyle());
+        Label offlineTitle = new Label("Offline / Local Test Profile");
+        offlineTitle.setStyle("-fx-text-fill:" + FG + ";-fx-font-size:15px;-fx-font-weight:bold;");
+        TextField offlineName = new TextField();
+        offlineName.setPromptText("Test name (3–16 letters, numbers, underscore)");
+        Label offlineStatus = muted("Use this to preview the launcher account UI without connecting an account. It is not a Minecraft login and cannot launch the game or access multiplayer.");
+        Button useOffline = small("Use local test profile");
+        Button clearOffline = small("Clear test profile");
+        useOffline.setOnAction(event -> {
+            try {
+                offlineTestProfile = OfflineTestProfile.create(offlineName.getText());
+                minecraftSession = null;
+                accountLabel = "Offline test: " + offlineTestProfile.username();
+                offlineStatus.setText("Local UI test profile active (" + offlineTestProfile.username()
+                    + "). No Microsoft/Xbox/Minecraft ownership was verified. Game launch remains locked until Microsoft sign-in succeeds.");
+                page(active);
+            } catch (IllegalArgumentException ex) {
+                offlineStatus.setText(ex.getMessage());
+            }
+        });
+        clearOffline.setOnAction(event -> {
+            offlineTestProfile = null;
+            if (minecraftSession == null) accountLabel = "Sign in with Microsoft";
+            offlineStatus.setText("Local test profile cleared. Microsoft sign-in is still required to launch Minecraft.");
+            page(active);
+        });
+        HBox offlineActions = new HBox(8, useOffline, clearOffline);
+        offlineCard.getChildren().addAll(offlineTitle,
+            muted("For launcher development and UI testing only. This does not provide cracked access, bypass account checks, or create an authenticated Minecraft identity."),
+            offlineName, offlineActions, offlineStatus);
+        hero.getChildren().addAll(controls,playStatus,offlineCard);
         Button createInstance=small("＋ Create a new instance");
         createInstance.setOnAction(e->page("Instances"));
         hero.getChildren().add(createInstance);
