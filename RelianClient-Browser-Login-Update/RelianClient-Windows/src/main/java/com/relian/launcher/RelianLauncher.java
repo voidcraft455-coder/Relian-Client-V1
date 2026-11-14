@@ -218,6 +218,7 @@ public class RelianLauncher extends Application {
             }else if(!"Vanilla".equals(selectedLoader)){
                 playStatus.setText("Create or select a "+selectedLoader+" instance first. Loaders are installed separately for each instance.");return;
             }
+            final String launchProfileVersion=launchVersion;
             String javaPath=preferences.get("minecraft.java.path","");
             if(javaPath.isBlank()){playStatus.setText("Choose or install the compatible Java runtime in Settings first.");return;}
             java.nio.file.Path root=activeInstanceDirectory != null
@@ -228,7 +229,7 @@ public class RelianLauncher extends Application {
             play.setDisable(true); playStatus.setText("Starting Minecraft "+selectedVersion+"…");
             CompletableFuture.supplyAsync(()->{
                 try{
-                    return launchService.launch(root,launchVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
+                    return launchService.launch(root,launchProfileVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
                         line->System.out.println(line));
                 }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((process,error)->javafx.application.Platform.runLater(()->{
