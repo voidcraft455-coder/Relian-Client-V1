@@ -843,79 +843,91 @@ public class RelianLauncher extends Application {
     private VBox cosmeticsPage(){
         VBox box=new VBox(14);
         VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
-        Label heading=new Label("Minecraft skin library");
+        Label heading=new Label("Relian Cosmetic Wardrobe");
         heading.setStyle("-fx-text-fill:"+FG+";-fx-font-size:16px;-fx-font-weight:bold;");
-        Label description=muted("Import and organize your own Minecraft skin PNG files. Relian validates the standard 64×64 or legacy 64×32 skin format and stores copies in its local skin library.");
-        Label location=muted("Library: "+com.relian.launcher.cosmetics.SkinLibraryManager.defaultLibraryRoot());
-        Label status=muted("Skins are local files. Importing does not upload, equip, or change your Minecraft account skin.");
+        Label description=muted("Organize custom PNG texture assets in separate Skin, Cape, Wings, and Hat libraries. Files stay on this computer.");
+        Label status=muted("Local library only: imported cosmetics are not uploaded, equipped, or rendered on your Minecraft character yet.");
+        TabPane categories=new TabPane();
+        categories.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        for(var category:com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.values()){
+            categories.getTabs().add(cosmeticCategoryTab(category,status));
+        }
+        panel.getChildren().addAll(heading,description,categories,status);
+        box.getChildren().addAll(panel,
+            muted("Texture size rules: skins 64×64 or 64×32; capes 64×32 or 128×64; wings 64×32 or 128×64; hats 64×64 or 128×128. PNG files are limited to 2 MB."),
+            muted("The current Fabric 1.21.1 runtime does not yet draw custom capes, wings, or hats on the player model. The wardrobe validates and organizes assets without pretending they are equipped. Account skin changes are managed on Minecraft.net."));
+        return box;
+    }
+
+    private Tab cosmeticCategoryTab(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category category, Label status){
+        VBox content=new VBox(10); content.setPadding(new Insets(12));
+        Label sizeHint=muted("Accepted PNG sizes: "+category.acceptedSizes()+" • Maximum 2 MB");
         VBox rows=new VBox(8);
-        Button refresh=small("Refresh library");
-        Button importSkin=small("Import PNG skin");
-        Button manageOnline=small("Manage skin on Minecraft.net");
-        manageOnline.setOnAction(event->{
-            try{java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://www.minecraft.net/msaprofile/mygames/editskin"));}
-            catch(Exception ex){info("Could not open Minecraft's official skin management page: "+ex.getMessage());}
-        });
+        Button importButton=small("Import "+category.label()+" PNG");
+        Button refreshButton=small("Refresh");
         Runnable load=()->{
             rows.getChildren().clear();
             try{
-                var skins=com.relian.launcher.cosmetics.SkinLibraryManager.list(
-                    com.relian.launcher.cosmetics.SkinLibraryManager.defaultLibraryRoot());
-                if(skins.isEmpty()){rows.getChildren().add(muted("No skins imported yet. Use Import PNG skin to add one."));}
-                for(var skin:skins){
-                    HBox row=new HBox(12); row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(9));
+                var assets=com.relian.launcher.cosmetics.CosmeticAssetLibrary.list(category);
+                if(assets.isEmpty())rows.getChildren().add(muted("No "+category.label().toLowerCase(java.util.Locale.ROOT)+" assets yet."));
+                for(var asset:assets){
+                    HBox row=new HBox(12); row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(8));
                     row.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:5;");
                     javafx.scene.image.ImageView preview=new javafx.scene.image.ImageView(
-                        new javafx.scene.image.Image(skin.toUri().toString(),56,56,true,false));
-                    preview.setFitWidth(56); preview.setFitHeight(56); preview.setPreserveRatio(true);
+                        new javafx.scene.image.Image(asset.toUri().toString(),64,64,true,false));
+                    preview.setFitWidth(64); preview.setFitHeight(64); preview.setPreserveRatio(true);
                     VBox details=new VBox(3);
-                    Label skinName=new Label(skin.getFileName().toString());
-                    skinName.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
-                    details.getChildren().addAll(skinName,muted("Validated Minecraft skin PNG • "+(FilesSize(skin)/1024)+" KB"));
+                    Label name=new Label(asset.getFileName().toString());
+                    name.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+                    details.getChildren().addAll(name,muted((FilesSize(asset)/1024)+" KB • Local asset"));
                     Region push=new Region(); HBox.setHgrow(push,Priority.ALWAYS);
                     Button remove=small("Remove");
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
-                        confirm.setTitle("Remove local skin");
-                        confirm.setHeaderText("Remove "+skin.getFileName()+"?");
-                        confirm.setContentText("This deletes only the copy in Relian's local skin library. It does not change the skin on your Minecraft account.");
+                        confirm.setTitle("Remove cosmetic asset");
+                        confirm.setHeaderText("Remove "+asset.getFileName()+"?");
+                        confirm.setContentText("This deletes only the local Relian library copy.");
                         confirm.initOwner(shell.getScene().getWindow());
                         if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
-                        try{com.relian.launcher.cosmetics.SkinLibraryManager.delete(
-                            com.relian.launcher.cosmetics.SkinLibraryManager.defaultLibraryRoot(),skin);
-                            status.setText("Removed "+skin.getFileName()+" from the local library."); rows.getChildren().remove(row);}
-                        catch(Exception ex){status.setText("Could not remove skin: "+ex.getMessage());}
+                        try{
+                            com.relian.launcher.cosmetics.CosmeticAssetLibrary.delete(category,asset);
+                            status.setText("Removed "+asset.getFileName()+".");
+                            load.run();
+                        }catch(Exception ex){status.setText("Could not remove asset: "+ex.getMessage());}
                     });
                     row.getChildren().addAll(preview,details,push,remove); rows.getChildren().add(row);
                 }
-                status.setText(skins.size()+" local skin(s). To equip one on your account, use the official Minecraft skin management page.");
-            }catch(Exception ex){status.setText("Could not read skin library: "+ex.getMessage());}
+                status.setText(assets.size()+" "+category.label().toLowerCase(java.util.Locale.ROOT)+" asset(s) stored locally.");
+            }catch(Exception ex){status.setText("Could not read "+category.label().toLowerCase(java.util.Locale.ROOT)+" library: "+ex.getMessage());}
         };
-        importSkin.setOnAction(event->{
+        importButton.setOnAction(event->{
             javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
-            chooser.setTitle("Import a Minecraft skin PNG");
-            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PNG skin files","*.png"));
+            chooser.setTitle("Import "+category.label()+" PNG");
+            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PNG files","*.png"));
             File selected=chooser.showOpenDialog(shell.getScene().getWindow());
             if(selected==null)return;
-            importSkin.setDisable(true); status.setText("Validating and importing "+selected.getName()+"…");
+            importButton.setDisable(true); status.setText("Validating "+selected.getName()+"…");
             CompletableFuture.supplyAsync(()->{
-                try{return com.relian.launcher.cosmetics.SkinLibraryManager.importSkin(
-                    com.relian.launcher.cosmetics.SkinLibraryManager.defaultLibraryRoot(),selected.toPath());}
+                try{return com.relian.launcher.cosmetics.CosmeticAssetLibrary.importPng(category,selected.toPath());}
                 catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
-                importSkin.setDisable(false);
-                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText("Skin import failed: "+cause.getMessage());}
-                else{status.setText("Imported "+installed.getFileName()+". This is a local copy; it has not been equipped.");load.run();}
+                importButton.setDisable(false);
+                if(error!=null){
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    status.setText("Import failed: "+cause.getMessage());
+                }else{
+                    status.setText("Imported "+installed.getFileName()+" as a local "+category.label().toLowerCase(java.util.Locale.ROOT)+" asset. It is not equipped in-game.");
+                    load.run();
+                }
             }));
         });
-        refresh.setOnAction(event->load.run());
-        HBox actions=new HBox(8,importSkin,refresh,manageOnline);
-        panel.getChildren().addAll(heading,description,location,actions,status,rows);
-        box.getChildren().addAll(panel,
-            muted("Account skin changes are performed by Minecraft's official website. Relian does not request or store your Microsoft password and does not claim local previews are visible to other players."),
-            muted("Custom capes, emotes, and accessories are not equipped by this library; those require Minecraft or server-side support."));
+        refreshButton.setOnAction(event->load.run());
+        HBox actions=new HBox(8,importButton,refreshButton);
+        ScrollPane scroll=new ScrollPane(rows); scroll.setFitToWidth(true); scroll.setPrefViewportHeight(260);
+        scroll.setStyle("-fx-background:transparent;-fx-background-color:transparent;-fx-border-color:transparent;");
+        content.getChildren().addAll(sizeHint,actions,scroll);
         load.run();
-        return box;
+        return new Tab(category.label(),content);
     }
 
     private long FilesSize(java.nio.file.Path path){
