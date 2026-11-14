@@ -1,12 +1,12 @@
 # Relian Client Fabric runtime
 
-Early in-game client runtime targeting Minecraft Java **1.21.1 + Fabric**.
+Relian's first in-game utility HUD runtime targets Minecraft Java **1.21.1 + Fabric** and Java 21.
 
-## HUD editor
+## HUD Studio
 
-Press **Right Shift** to open the HUD editor. The editor lets you toggle modules, select a module, cycle its color, adjust scale, and drag its preview position. Settings persist in `config/relian-hud.json`.
+Press **Right Shift** to open HUD Studio. You can enable or disable modules, select a module, adjust its color and scale, and drag its preview position. Settings persist in `config/relian-hud.json`.
 
-## HUD modules
+## Included utility modules
 
 - FPS counter
 - Coordinates
@@ -27,18 +27,22 @@ Press **Right Shift** to open the HUD editor. The editor lets you toggle modules
 - Server address and player count
 - Session timer
 
-Each module has an enable/disable setting, screen position, scale, and color.
+Each module has enable/disable state, screen position, scale, and color.
 
 ## Build
 
 Use Java 21 and run `gradle build` in this directory. The mod JAR is produced in `build/libs/`.
 
+## Installation
+
+The Windows launcher workflow builds this runtime and bundles it inside the Windows installer. When a compatible Fabric 1.21.1 instance is created, the launcher installs the HUD JAR into its `mods` directory. Existing compatible instances can use **Install Relian HUD** on the Instances page.
+
 ## Cosmetic wardrobe status
 
-The Windows launcher includes a local asset library for skin, cape, wings, and hat PNG files. It validates supported texture dimensions and keeps the assets on the local computer. The current Fabric runtime does not yet render those custom assets on player models; importing an asset is not the same as equipping it or making it visible to other players.
+The Windows launcher includes local asset libraries for skin, cape, wings, and hat PNG files. Assets are validated and stored on the user's computer. This Fabric runtime does not yet render custom capes, wings, or hats on player models; importing an asset does not equip it or make it visible to other players.
 
 ## Current limits
 
-This is an early runtime milestone. It currently targets Fabric 1.21.1 and is distributed separately from the Windows launcher. The launcher does not yet install this runtime automatically. The expanded HUD code has passed the repository's Fabric CI build, but the modules still need testing in a live Minecraft session.
+This runtime is a first version-specific adapter, not a universal mod. It targets Fabric 1.21.1 only. CI builds the JAR, and the launcher bundles it, but a live Minecraft 1.21.1 session is still required to verify the HUD editor and every module visually.
 
-The branded startup overlay also needs in-game verification. This runtime does not include combat automation, auto-aim, fast-crystal automation, hidden-player tracking, or anti-cheat bypasses.
+Relian focuses on utility HUDs and legitimate client features. It does not include automated attacks, auto-aim, fast-crystal automation, hidden-player tracking, or anti-cheat bypasses.
