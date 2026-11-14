@@ -589,6 +589,8 @@ public class RelianLauncher extends Application {
                 activeInstanceDirectory=created.directory();
                 activeInstanceVersion=created.manifest().minecraftVersion();
                 activeInstanceLoader=created.manifest().loader()==null?"Vanilla":created.manifest().loader();
+                activeInstanceProfileId="";
+                preferences.remove("active.instance.profileId");
                 preferences.put("active.instance.path",activeInstanceDirectory.toString());
                 preferences.put("active.instance.version",activeInstanceVersion);
                 preferences.put("active.instance.loader",activeInstanceLoader);
@@ -598,19 +600,16 @@ public class RelianLauncher extends Application {
                 if(importingModpack){
                     message+=" Imported the client-required files and safe overrides from the .mrpack. The Relian module manifest and performance defaults are included; the exact loader version is recorded in relian-modpack.json.";
                     result.setText(message+" Installing official Minecraft "+actualVersion+" base files…");
-                    installInstanceBaseFiles(created.directory(),actualVersion,result,
-                        message+" Loader runtime installation and full modpack game launch are not implemented yet.");
+                    String importedLoader=created.manifest().loader()==null?"Vanilla":created.manifest().loader();
+                    result.setText(message+" Installing official Minecraft files and "+importedLoader+" loader…");
+                    installInstanceBaseFiles(created.directory(),actualVersion,result,message,importedLoader,false);
                     return;
                 }
-                result.setText(message+" Installing official Minecraft files into this isolated instance…");
-                installInstanceBaseFiles(created.directory(),actualVersion,result,message);
-                if(kindIncludesRelian(chosen)){
-                    message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
-                    if("Fabric".equals(selectedLoader)){
-                        result.setText(message+" Installing compatible Modrinth performance modules…");
-                        installRelianPerformanceMods(created.directory(),actualVersion,result,message);
-                    }else result.setText(message+" Fabric performance modules were not auto-installed because "+selectedLoader+" was selected; loader-specific module matching is still being added.");
-                }else result.setText(message+" This instance has no Relian modules, as requested for Vanilla.");
+                String instanceLoader=chosen.startsWith("Vanilla")?"Vanilla":selectedLoader;
+                message+=" Relian module manifest and Minecraft-only FPS video defaults are included.";
+                result.setText(message+" Installing official Minecraft files and "+instanceLoader+" loader…");
+                installInstanceBaseFiles(created.directory(),actualVersion,result,message,instanceLoader,
+                    kindIncludesRelian(chosen)&&"Fabric".equals(instanceLoader));
             }));
         });
         panel.getChildren().addAll(nameLabel,name,typeLabel,type,versionRow,rootLabel,importBox,packBox,create,result);
