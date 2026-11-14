@@ -56,9 +56,9 @@ public final class MinecraftLaunchService implements AutoCloseable {
         return processes.start(command, root, output);
     }
 
-    private record ResolvedMetadata(JsonObject metadata, String baseVersion) {}
+    record ResolvedMetadata(JsonObject metadata, String baseVersion) {}
 
-    private static ResolvedMetadata resolveInheritedMetadata(Path root, JsonObject child, int depth) throws IOException {
+    static ResolvedMetadata resolveInheritedMetadata(Path root, JsonObject child, int depth) throws IOException {
         if (depth > 5) throw new IOException("Minecraft loader metadata has too many inheritance levels.");
         String id = child.has("id") ? child.get("id").getAsString() : "";
         if (!id.matches("[A-Za-z0-9._-]{1,96}")) throw new IOException("Minecraft loader metadata has an invalid version ID.");
