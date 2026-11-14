@@ -293,7 +293,7 @@ public class RelianLauncher extends Application {
         offlineCard.getChildren().addAll(offlineTitle,
             muted("For launcher development and UI testing only. This does not provide cracked access, bypass account checks, or create an authenticated Minecraft identity."),
             offlineName, offlineActions, offlineStatus);
-        hero.getChildren().addAll(controls,playStatus,offlineCard);
+        hero.getChildren().add(offlineCard);
         Button createInstance=small("＋ Create a new instance");
         createInstance.setOnAction(e->page("Instances"));
         hero.getChildren().add(createInstance);
@@ -994,7 +994,7 @@ public class RelianLauncher extends Application {
         directories.setPadding(new Insets(18)); directories.setStyle(cardStyle());
         Label directoryTitle=new Label("Minecraft game directory");
         directoryTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");
-        Label directoryValue=muted(gameDirectory.isBlank()?"Not selected — the default Minecraft directory will be used until profile support is ready.":gameDirectory);
+        Label directoryValue=muted(gameDirectory.isBlank()?"Not selected — Relian will use its default managed game directory.":gameDirectory);
         Button chooseDirectory=small("Choose folder");
         chooseDirectory.setOnAction(e->{
             DirectoryChooser chooser=new DirectoryChooser(); chooser.setTitle("Choose Minecraft game directory");
@@ -1003,7 +1003,7 @@ public class RelianLauncher extends Application {
             File selected=chooser.showDialog(shell.getScene().getWindow());
             if(selected!=null){gameDirectory=selected.getAbsolutePath();preferences.put("game.directory",gameDirectory);directoryValue.setText(gameDirectory);}
         });
-        directories.getChildren().addAll(directoryTitle,muted("Choose where Relian should store game files. Separate per-version profiles will be added with the game installer."),directoryValue,chooseDirectory);
+        directories.getChildren().addAll(directoryTitle,muted("Choose the base location for Relian-managed game files and isolated instances."),directoryValue,chooseDirectory);
 
         VBox runtime=new VBox(8); runtime.setPadding(new Insets(16)); runtime.setStyle(cardStyle());
         Label javaTitle=new Label("Minecraft Java runtime"); javaTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
