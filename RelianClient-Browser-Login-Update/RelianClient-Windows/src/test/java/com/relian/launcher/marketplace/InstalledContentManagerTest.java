@@ -59,6 +59,30 @@ class InstalledContentManagerTest {
     }
 
     @Test
+    void togglesResourcePacksAndShadersWithoutChangingTheirBytes() throws Exception {
+        Path resourcePacks = Files.createDirectories(temp.resolve("resourcepacks"));
+        Path shaders = Files.createDirectories(temp.resolve("shaderpacks"));
+        byte[] packBytes = new byte[] {9, 8, 7};
+        byte[] shaderBytes = new byte[] {6, 5, 4};
+        Path pack = Files.write(resourcePacks.resolve("pack.zip"), packBytes);
+        Path shader = Files.write(shaders.resolve("shader.zip"), shaderBytes);
+
+        Path disabledPack = InstalledContentManager.toggleContent(temp, pack);
+        Path disabledShader = InstalledContentManager.toggleContent(temp, shader);
+        assertTrue(disabledPack.getFileName().toString().endsWith(".zip.disabled"));
+        assertTrue(disabledShader.getFileName().toString().endsWith(".zip.disabled"));
+        assertArrayEquals(packBytes, Files.readAllBytes(disabledPack));
+        assertArrayEquals(shaderBytes, Files.readAllBytes(disabledShader));
+
+        assertFalse(InstalledContentManager.list(temp,
+                InstalledContentManager.Category.RESOURCE_PACKS).get(0).enabled());
+        assertFalse(InstalledContentManager.list(temp,
+                InstalledContentManager.Category.SHADERS).get(0).enabled());
+        assertTrue(InstalledContentManager.toggleContent(temp, disabledPack).getFileName().toString().endsWith(".zip"));
+        assertTrue(InstalledContentManager.toggleContent(temp, disabledShader).getFileName().toString().endsWith(".zip"));
+    }
+
+    @Test
     void refusesToToggleWhenModsFolderIsMissing() throws Exception {
         assertThrows(java.io.IOException.class,
                 () -> InstalledContentManager.toggleMod(temp, temp.resolve("mods").resolve("missing.jar")));
