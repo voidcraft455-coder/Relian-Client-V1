@@ -28,9 +28,22 @@ public final class HudConfig {
         try {
             Config loaded = GSON.fromJson(Files.readString(FILE), Config.class);
             current = loaded == null || loaded.modules == null ? defaults() : loaded;
-            for (String id : defaults().modules.keySet()) {
-                current.modules.putIfAbsent(id, defaults().modules.get(id));
+            Config fallback = defaults();
+            for (String id : fallback.modules.keySet()) {
+                ModuleSettings settings = current.modules.get(id);
+                if (settings == null) {
+                    current.modules.put(id, fallback.modules.get(id));
+                    continue;
+                }
+                ModuleSettings standard = fallback.modules.get(id);
+                settings.x = Math.max(0, Math.min(10000, settings.x));
+                settings.y = Math.max(0, Math.min(10000, settings.y));
+                if (!Float.isFinite(settings.scale)) settings.scale = standard.scale;
+                settings.scale = Math.max(0.5f, Math.min(2.0f, settings.scale));
+                if (settings.color == 0) settings.color = standard.color;
+                settings.color |= 0xFF000000;
             }
+            save();
         } catch (Exception ignored) {
             current = defaults();
             save();
@@ -40,7 +53,18 @@ public final class HudConfig {
     public static void save() {
         try {
             Files.createDirectories(FILE.getParent());
-            Files.writeString(FILE, GSON.toJson(current));
+            Path temporary = Files.createTempFile(FILE.getParent(), "relian-hud-", ".tmp");
+            try {
+                Files.writeString(temporary, GSON.toJson(current));
+                try {
+                    Files.move(temporary, FILE, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                    Files.move(temporary, FILE, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(temporary);
+            }
         } catch (IOException exception) {
             System.err.println("[Relian] Could not save HUD settings: " + exception.getMessage());
         }
