@@ -45,8 +45,12 @@ public final class CosmeticAssetLibrary {
     }
 
     public static Path directory(Category category) throws IOException {
+        return directory(root(), category);
+    }
+
+    public static Path directory(Path libraryRoot, Category category) throws IOException {
         if (category == null) throw new IOException("Choose a cosmetic category.");
-        Path base = prepareRoot();
+        Path base = prepareRoot(libraryRoot);
         Path folder = base.resolve(category.folder).normalize();
         if (!folder.getParent().equals(base)) throw new IOException("Invalid cosmetic category folder.");
         if (Files.exists(folder, LinkOption.NOFOLLOW_LINKS)
@@ -58,7 +62,11 @@ public final class CosmeticAssetLibrary {
     }
 
     public static Path importPng(Category category, Path source) throws IOException {
-        Path folder = directory(category);
+        return importPng(root(), category, source);
+    }
+
+    public static Path importPng(Path libraryRoot, Category category, Path source) throws IOException {
+        Path folder = directory(libraryRoot, category);
         if (source == null || Files.isSymbolicLink(source)
                 || !Files.isRegularFile(source, LinkOption.NOFOLLOW_LINKS)) {
             throw new IOException("Choose a regular PNG file.");
@@ -90,7 +98,11 @@ public final class CosmeticAssetLibrary {
     }
 
     public static List<Path> list(Category category) throws IOException {
-        Path folder = directory(category);
+        return list(root(), category);
+    }
+
+    public static List<Path> list(Path libraryRoot, Category category) throws IOException {
+        Path folder = directory(libraryRoot, category);
         List<Path> result = new ArrayList<>();
         try (DirectoryStream<Path> files = Files.newDirectoryStream(folder, "*.png")) {
             for (Path file : files) {
@@ -104,7 +116,11 @@ public final class CosmeticAssetLibrary {
     }
 
     public static void delete(Category category, Path file) throws IOException {
-        Path folder = directory(category);
+        delete(root(), category, file);
+    }
+
+    public static void delete(Path libraryRoot, Category category, Path file) throws IOException {
+        Path folder = directory(libraryRoot, category);
         if (file == null || Files.isSymbolicLink(file)) throw new IOException("Invalid cosmetic file.");
         Path candidate = file.toAbsolutePath().normalize();
         if (!folder.equals(candidate.getParent())
@@ -130,8 +146,9 @@ public final class CosmeticAssetLibrary {
         }
     }
 
-    private static Path prepareRoot() throws IOException {
-        Path root = root().toAbsolutePath().normalize();
+    private static Path prepareRoot(Path libraryRoot) throws IOException {
+        if (libraryRoot == null) throw new IOException("A cosmetics library folder is required.");
+        Path root = libraryRoot.toAbsolutePath().normalize();
         if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)
                 && (Files.isSymbolicLink(root) || !Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS))) {
             throw new IOException("Cosmetics library location is not a safe directory.");
