@@ -28,11 +28,12 @@ Only install artifacts from this repository's successful workflow. The early-acc
 - **Marketplace:** browse supported Modrinth and CurseForge project listings. Modrinth single-file installs check Minecraft/loader compatibility and verify SHA-512 before installing.
 - **Installed content:** scan mods, resource packs, and shader packs; enable or disable supported files with reversible filename changes; remove files from managed folders with confirmation.
 - **Performance profiles:** apply Minecraft-only video settings to a selected instance.
-- **HUD Studio:** the separate Fabric runtime includes 18 utility HUD modules. Toggle modules, change colors and scale, drag their preview positions, or use arrow keys for precise placement. Settings persist in `config/relian-hud.json`.
+- **HUD Studio:** the launcher bundles its Fabric 1.21.1 HUD runtime into the Windows installer. Compatible Fabric 1.21.1 instances receive the HUD automatically after loader installation; existing instances have an **Install Relian HUD** action. The 18 utility modules support visibility, color, scale, dragging, and arrow-key positioning. Settings persist in `config/relian-hud.json`.
+- **Cosmetics:** maintain a local library of Minecraft skin PNGs. Imports are validated as 64×64 or legacy 64×32 images and stored locally. Use the official Minecraft skin-management page to equip an account skin; local imports do not upload or change the account.
 
 ## Fabric HUD runtime
 
-The Fabric mod is published as the **RelianClient-Fabric-1.21.1** Actions artifact. It is separate from the Windows launcher and currently targets Minecraft Java 1.21.1 with Fabric. Install the JAR into the `mods` folder of a compatible Fabric 1.21.1 instance. Press **Right Shift** in-game to open HUD Studio.
+The Fabric mod is built as the **RelianClient-Fabric-1.21.1** Actions artifact and bundled into the Windows installer. When a Fabric 1.21.1 instance is created or its loader is installed, Relian copies the verified mod JAR into that instance's `mods` folder. Existing compatible instances can use **Install Relian HUD** in the Instances page. Press **Right Shift** in-game to open HUD Studio.
 
 Modules include FPS, coordinates, keystrokes, armor status, ping, held-item durability, potion effects, direction, biome, movement speed, local clock, dimension, target block, health, hunger/saturation, world time/day, server/player count, and session time.
 
@@ -41,8 +42,8 @@ Modules include FPS, coordinates, keystrokes, armor status, ping, held-item dura
 - CI builds and automated tests verify compilation and selected file-management/import behavior. A successful CI run does **not** prove that the launcher has been tested on your computer or that Minecraft has completed a live in-game session.
 - Microsoft sign-in still needs a correctly configured public application ID and a real account sign-in/ownership test.
 - The launcher installs loader profiles, but every Minecraft version and every third-party modpack combination still needs runtime testing.
-- The Fabric HUD runtime needs a live Minecraft 1.21.1 test. Its separate artifact is not automatically injected into launcher-created instances yet.
-- Modpack import installs required client files and safe overrides into an isolated instance, then the launcher installs the matching Minecraft base and loader profile when supported. Some packs may still need extra dependencies or manual troubleshooting.
+- The bundled Fabric HUD runtime and its automatic instance installer pass CI compilation/tests, but still need a live Minecraft 1.21.1 test.
+- Modpack import installs required client files and safe overrides into an isolated instance, then the launcher installs the matching Minecraft base and loader profile when supported. Some packs may still need extra dependencies or manual troubleshooting. The Relian HUD is added only to Fabric 1.21.1 packs to avoid injecting incompatible files.
 - Relian focuses on utility HUDs and legitimate client features. It does not provide combat automation, auto-aim, fast-crystal automation, hidden-player tracking, or anti-cheat bypasses.
 
 ## Build
