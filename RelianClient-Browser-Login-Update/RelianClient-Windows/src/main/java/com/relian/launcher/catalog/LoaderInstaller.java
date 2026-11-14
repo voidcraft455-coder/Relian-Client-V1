@@ -113,7 +113,7 @@ public final class LoaderInstaller {
             JsonObject entry = element.getAsJsonObject();
             JsonObject loader = object(entry, "loader");
             if (loader == null) continue;
-            if (requested.isBlank() && kind.equals("Fabric") && entry.has("stable") && !entry.get("stable").getAsBoolean()) continue;
+            if (requested.isBlank() && kind.equals("Fabric") && loader.has("stable") && !loader.get("stable").getAsBoolean()) continue;
             if (!requested.isBlank() && !requested.equals(string(loader, "version"))) continue;
             selected = loader;
             break;
