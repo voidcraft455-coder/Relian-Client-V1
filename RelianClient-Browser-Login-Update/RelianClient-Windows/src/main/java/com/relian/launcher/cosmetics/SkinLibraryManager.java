@@ -93,9 +93,7 @@ public final class SkinLibraryManager {
             throw new IOException("The skin library location is not a safe directory.");
         }
         Files.createDirectories(root);
-        Path canonical = root.toRealPath();
-        if (!canonical.equals(root)) throw new IOException("The skin library path resolves through an unexpected directory alias.");
-        return canonical;
+        return root.toRealPath();
     }
 
     private static String uniqueName(Path root, String base) {
