@@ -36,7 +36,16 @@ public final class LoaderInstaller {
     public static Result install(String loader, String minecraftVersion, Path gameRoot,
                                  Path javaExecutable, Consumer<String> progress)
             throws IOException, InterruptedException {
+        return install(loader, minecraftVersion, "", gameRoot, javaExecutable, progress);
+    }
+
+    public static Result install(String loader, String minecraftVersion, String requestedLoaderVersion,
+                                 Path gameRoot, Path javaExecutable, Consumer<String> progress)
+            throws IOException, InterruptedException {
         String kind = loader == null ? "" : loader.trim();
+        String requested = requestedLoaderVersion == null ? "" : requestedLoaderVersion.trim();
+        if (!requested.isBlank() && !requested.matches("[0-9A-Za-z._+-]{1,64}"))
+            throw new IOException("Invalid requested loader version.");
         if (!java.util.Set.of("Fabric", "Forge", "NeoForge", "Quilt").contains(kind))
             throw new IOException("Choose Fabric, Forge, NeoForge, or Quilt.");
         if (minecraftVersion == null || !minecraftVersion.matches("[0-9A-Za-z._-]{1,32}"))
@@ -46,12 +55,12 @@ public final class LoaderInstaller {
         Files.createDirectories(root);
         Consumer<String> status = progress == null ? ignored -> {} : progress;
         if (kind.equals("Fabric") || kind.equals("Quilt")) {
-            return installProfileLoader(kind, minecraftVersion, root, status);
+            return installProfileLoader(kind, minecraftVersion, requested, root, status);
         }
         if (javaExecutable == null || !Files.isRegularFile(javaExecutable))
             throw new IOException("Install a compatible Java runtime before installing " + kind + ".");
-        String loaderVersion = kind.equals("Forge")
-                ? latestForge(minecraftVersion, status) : latestNeoForge(minecraftVersion, status);
+        String loaderVersion = !requested.isBlank() ? requested : (kind.equals("Forge")
+                ? latestForge(minecraftVersion, status) : latestNeoForge(minecraftVersion, status));
         String installerUrl = kind.equals("Forge")
                 ? "https://maven.minecraftforge.net/net/minecraftforge/forge/" + minecraftVersion + "-" + loaderVersion
                     + "/forge-" + minecraftVersion + "-" + loaderVersion + "-installer.jar"
@@ -86,7 +95,7 @@ public final class LoaderInstaller {
         return result;
     }
 
-    private static Result installProfileLoader(String kind, String mc, Path root, Consumer<String> status)
+    private static Result installProfileLoader(String kind, String mc, String requested, Path root, Consumer<String> status)
             throws IOException, InterruptedException {
         String host = kind.equals("Fabric") ? "meta.fabricmc.net" : "meta.quiltmc.org";
         String listUrl = kind.equals("Fabric")
@@ -101,11 +110,14 @@ public final class LoaderInstaller {
             JsonObject loader = object(entry, "loader");
             if (loader == null) continue;
             if (kind.equals("Fabric") && entry.has("stable") && !entry.get("stable").getAsBoolean()) continue;
+            if (!requested.isBlank() && !requested.equals(string(loader, "version"))) continue;
             selected = loader;
             break;
         }
         if (selected == null || string(selected, "version").isBlank())
-            throw new IOException("No compatible " + kind + " loader version was found for Minecraft " + mc + ".");
+            throw new IOException(requested.isBlank()
+                ? "No compatible " + kind + " loader version was found for Minecraft " + mc + "."
+                : "The modpack's " + kind + " loader version " + requested + " is not available for Minecraft " + mc + ".");
         String loaderVersion = string(selected, "version");
         String profileUrl = kind.equals("Fabric")
                 ? "https://meta.fabricmc.net/v2/versions/loader/" + mc + "/" + loaderVersion + "/profile/json"
