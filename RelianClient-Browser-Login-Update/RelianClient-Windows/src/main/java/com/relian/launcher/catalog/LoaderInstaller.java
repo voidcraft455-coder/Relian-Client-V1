@@ -109,7 +109,7 @@ public final class LoaderInstaller {
             JsonObject entry = element.getAsJsonObject();
             JsonObject loader = object(entry, "loader");
             if (loader == null) continue;
-            if (kind.equals("Fabric") && entry.has("stable") && !entry.get("stable").getAsBoolean()) continue;
+            if (requested.isBlank() && kind.equals("Fabric") && entry.has("stable") && !entry.get("stable").getAsBoolean()) continue;
             if (!requested.isBlank() && !requested.equals(string(loader, "version"))) continue;
             selected = loader;
             break;
@@ -189,6 +189,7 @@ public final class LoaderInstaller {
                     String libraries = objectArrayText(profile, "libraries").toLowerCase(Locale.ROOT);
                     if (kind.equals("Forge") ? !libraries.contains("net.minecraftforge:forge")
                             : !libraries.contains("net.neoforged:neoforge")) continue;
+                    if (!libraries.contains(loaderVersion.toLowerCase(Locale.ROOT))) continue;
                     MinecraftDependencyInstaller.install(profile, root, ignored -> {});
                     copyBaseNatives(root, mc, dir);
                     return new Result(kind, mc, loaderVersion, id, json);
