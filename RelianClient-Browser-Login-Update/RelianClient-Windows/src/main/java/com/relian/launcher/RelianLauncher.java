@@ -887,14 +887,19 @@ public class RelianLauncher extends Application {
         TextField clientIdField=new TextField(preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId()));
         clientIdField.setPromptText("Microsoft public desktop application client ID (GUID)");
         Button saveClientId=small("Save Microsoft application ID");
-        Label accountHelp=muted("Relian requires a Microsoft Entra app registration configured as a public desktop application with XboxLive.signin permission and localhost redirect support. Enter only the public Application (client) ID; never enter a client secret or password.");
+        Label accountHelp=muted("Required setup: register Relian as a public/native desktop app for personal Microsoft accounts, enable authorization-code flow with PKCE, add the http://localhost mobile/desktop redirect, and configure the XboxLive.signin scope. Relian opens the system browser and never asks for your Microsoft password.");
+        Button openRegistration=small("Open Microsoft app registrations");
+        openRegistration.setOnAction(event->{
+            try{java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"));}
+            catch(Exception ex){accountHelp.setText("Open https://entra.microsoft.com and choose App registrations.");}
+        });
         saveClientId.setOnAction(event->{
             String value=clientIdField.getText()==null?"":clientIdField.getText().trim();
-            if(!value.matches("(?i)[a-f0-9-]{36}")){accountHelp.setText("Enter a valid 36-character Application (client) ID GUID.");return;}
+            if(!value.matches("(?i)[a-f0-9-]{8}-[a-f0-9-]{4}-[a-f0-9-]{4}-[a-f0-9-]{4}-[a-f0-9-]{12}")){accountHelp.setText("Enter the Application (client) ID in GUID format. No Microsoft credentials were sent.");return;}
             preferences.put("microsoft.clientId",value);
-            accountHelp.setText("Microsoft application ID saved. Return to Home and select Sign in with Microsoft.");
+            accountHelp.setText("Public application ID saved locally. Return to Home and select Sign in with Microsoft. The app registration must also have the XboxLive.signin permission and localhost redirect.");
         });
-        account.getChildren().addAll(accountTitle,clientIdField,saveClientId,accountHelp);
+        account.getChildren().addAll(accountTitle,clientIdField,saveClientId,openRegistration,accountHelp);
         b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime,account);
         return b;
     }
