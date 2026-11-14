@@ -26,6 +26,7 @@ public class RelianLauncher extends Application {
     private Runnable refreshInstancesAction = () -> {};
     private String activeInstanceVersion = preferences.get("active.instance.version", "");
     private String activeInstanceLoader = preferences.get("active.instance.loader", "");
+    private String activeInstanceProfileId = preferences.get("active.instance.profileId", "");
     private final BorderPane shell = new BorderPane();
     private final StackPane host = new StackPane();
     private ComboBox<String> versions;
@@ -195,11 +196,25 @@ public class RelianLauncher extends Application {
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
         play.setOnAction(e->{
             if(minecraftSession==null){info("Sign in with Microsoft first. Relian verifies Xbox access and Minecraft Java ownership before launching.");return;}
-            if(!"Vanilla".equals(loader.getValue())){
-                playStatus.setText(loader.getValue()+" instances need a matching loader runtime. The current build can only launch Vanilla instances; it will not silently start a modded profile as Vanilla.");
-                return;
-            }
             String selectedVersion=versions.getValue();
+            String selectedLoader=loader.getValue();
+            String launchVersion=selectedVersion;
+            if(activeInstanceDirectory!=null){
+                if(!activeInstanceVersion.isBlank()&&!activeInstanceVersion.equals(selectedVersion)){
+                    playStatus.setText("The selected instance uses Minecraft "+activeInstanceVersion+". Select that version before launching.");return;
+                }
+                if(!activeInstanceLoader.isBlank()&&!activeInstanceLoader.equals(selectedLoader)){
+                    playStatus.setText("This instance is configured for "+activeInstanceLoader+". Select the matching loader or choose another instance.");return;
+                }
+                if(!"Vanilla".equals(selectedLoader)){
+                    if(activeInstanceProfileId.isBlank()){
+                        playStatus.setText("The "+selectedLoader+" loader has not been installed for this instance yet. Recreate or repair the instance to install its loader.");return;
+                    }
+                    launchVersion=activeInstanceProfileId;
+                }
+            }else if(!"Vanilla".equals(selectedLoader)){
+                playStatus.setText("Create or select a "+selectedLoader+" instance first. Loaders are installed separately for each instance.");return;
+            }
             String javaPath=preferences.get("minecraft.java.path","");
             if(javaPath.isBlank()){playStatus.setText("Choose or install the compatible Java runtime in Settings first.");return;}
             java.nio.file.Path root=activeInstanceDirectory != null
@@ -210,7 +225,7 @@ public class RelianLauncher extends Application {
             play.setDisable(true); playStatus.setText("Starting Minecraft "+selectedVersion+"…");
             CompletableFuture.runAsync(()->{
                 try{
-                    launchService.launch(root,selectedVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
+                    launchService.launch(root,launchVersion,java.nio.file.Path.of(javaPath),minecraftSession,memoryLimitMb,
                         line->System.out.println(line));
                 }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((ignored,error)->javafx.application.Platform.runLater(()->{
@@ -416,6 +431,8 @@ public class RelianLauncher extends Application {
                         activeInstanceDirectory=item.directory();
                         activeInstanceVersion=item.manifest().minecraftVersion();
                         activeInstanceLoader=item.manifest().loader()==null?"Vanilla":item.manifest().loader();
+                        activeInstanceProfileId=readLoaderProfileId(activeInstanceDirectory);
+                        preferences.put("active.instance.profileId",activeInstanceProfileId);
                         preferences.put("active.instance.path",activeInstanceDirectory.toString());
                         preferences.put("active.instance.version",activeInstanceVersion);
                         preferences.put("active.instance.loader",activeInstanceLoader);
@@ -604,6 +621,16 @@ public class RelianLauncher extends Application {
         return box;
     }
 
+
+    private String readLoaderProfileId(java.nio.file.Path instanceDirectory) {
+        java.nio.file.Path marker=instanceDirectory.resolve("relian-loader.json");
+        if(!java.nio.file.Files.isRegularFile(marker)||java.nio.file.Files.isSymbolicLink(marker))return "";
+        try{
+            var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(marker)).getAsJsonObject();
+            String profile=json.has("profileId")?json.get("profileId").getAsString():"";
+            return profile.matches("[A-Za-z0-9._-]{1,96}")?profile:"";
+        }catch(Exception ignored){return "";}
+    }
 
     private void installInstanceBaseFiles(java.nio.file.Path instanceDirectory,String version,Label status,String summary){
         CompletableFuture.supplyAsync(()->{
