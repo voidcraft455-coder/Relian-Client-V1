@@ -883,7 +883,7 @@ public class RelianLauncher extends Application {
                         if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
                         try{com.relian.launcher.cosmetics.SkinLibraryManager.delete(
                             com.relian.launcher.cosmetics.SkinLibraryManager.defaultLibraryRoot(),skin);
-                            status.setText("Removed "+skin.getFileName()+" from the local library."); load.run();}
+                            status.setText("Removed "+skin.getFileName()+" from the local library."); rows.getChildren().remove(row);}
                         catch(Exception ex){status.setText("Could not remove skin: "+ex.getMessage());}
                     });
                     row.getChildren().addAll(preview,details,push,remove); rows.getChildren().add(row);
