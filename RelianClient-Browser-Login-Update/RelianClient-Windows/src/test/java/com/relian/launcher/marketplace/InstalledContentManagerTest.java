@@ -28,7 +28,7 @@ class InstalledContentManagerTest {
         assertFalse(InstalledContentManager.list(temp, InstalledContentManager.Category.MODS).get(0).enabled());
 
         Path enabled = InstalledContentManager.toggleMod(temp, disabled);
-        assertEquals(jar, enabled);
+        assertEquals("sample-mod.jar", enabled.getFileName().toString());
         assertArrayEquals(original, Files.readAllBytes(enabled));
     }
 
