@@ -31,7 +31,6 @@ public final class MicrosoftBrowserLogin {
     private static final String AUTHORITY = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
     private static final String TOKEN_ENDPOINT = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
     private static final SecureRandom RANDOM = new SecureRandom();
-    private static volatile String sessionAccessToken;
 
     private MicrosoftBrowserLogin() {}
 
@@ -138,7 +137,6 @@ public final class MicrosoftBrowserLogin {
         }
         String token = jsonString(response.body(), "access_token");
         if (token == null || token.isBlank()) throw new IOException("Microsoft did not return an access token.");
-        sessionAccessToken = token;
         return token;
     }
 
