@@ -33,7 +33,7 @@ final class MinecraftDependencyInstaller {
     private static final long MAX_ASSET_BYTES = 128L * 1024 * 1024;
     private static final Set<String> HOSTS = Set.of(
             "libraries.minecraft.net", "repo.maven.apache.org", "repo1.maven.org",
-            "maven.fabricmc.net", "maven.minecraftforge.net", "resources.download.minecraft.net",
+            "maven.fabricmc.net", "maven.minecraftforge.net", "maven.neoforged.net", "maven.quiltmc.org", "resources.download.minecraft.net",
             "piston-meta.mojang.com", "launchermeta.mojang.com", "launcher.mojang.com",
             "piston-data.mojang.com");
     private static final HttpClient HTTP = HttpClient.newBuilder()
@@ -74,6 +74,14 @@ final class MinecraftDependencyInstaller {
                 if (isWindows() && isWindowsNativeArtifact(artifactPath, windowsNativeArchitecture())) {
                     extractNativeJar(target, nativesRoot);
                     nativeJars++;
+                }
+            }
+            if (artifact == null && library.has("name") && library.has("url")) {
+                MavenArtifact maven = resolveMavenArtifact(string(library, "name"), string(library, "url"));
+                if (maven != null) {
+                    Path target = safeResolve(librariesRoot, maven.path());
+                    downloadArtifact(maven.url(), maven.sha1(), target, MAX_LIBRARY_BYTES);
+                    libraries++;
                 }
             }
             JsonObject classifiers = object(downloads, "classifiers");
@@ -130,6 +138,29 @@ final class MinecraftDependencyInstaller {
             }
         }
         return new Result(libraries, nativeJars, assets);
+    }
+
+    private record MavenArtifact(String path, String url, String sha1) {}
+
+    private static MavenArtifact resolveMavenArtifact(String coordinate, String repository)
+            throws IOException, InterruptedException {
+        String[] parts = coordinate.split(":");
+        if (parts.length < 3 || parts.length > 4) return null;
+        for (String part : parts) if (part.isBlank() || part.contains("..") || part.contains("/") || part.contains("\\\\")) return null;
+        String groupPath = parts[0].replace('.', '/');
+        String artifact = parts[1], version = parts[2];
+        String classifier = parts.length == 4 ? "-" + parts[3] : "";
+        String relative = groupPath + "/" + artifact + "/" + version + "/" + artifact + "-" + version + classifier + ".jar";
+        URI base = trustedUri(repository.endsWith("/") ? repository : repository + "/");
+        URI jarUri = trustedUri(base.resolve(relative).toString());
+        URI hashUri = trustedUri(jarUri.toString() + ".sha1");
+        HttpRequest request = HttpRequest.newBuilder(hashUri).timeout(Duration.ofSeconds(30)).GET().build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) throw new IOException("Could not retrieve the Maven checksum for " + coordinate + ".");
+        validate(response.uri());
+        String sha1 = response.body().trim().split("\\s+")[0];
+        if (!sha1.matches("(?i)[a-f0-9]{40}")) throw new IOException("The Maven repository returned an invalid checksum for " + coordinate + ".");
+        return new MavenArtifact(relative, jarUri.toString(), sha1);
     }
 
     private static boolean isWindowsNativeArtifact(String artifactPath, String architecture) {
