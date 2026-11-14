@@ -551,7 +551,7 @@ public class RelianLauncher extends Application {
     private VBox instancesPage() {
         VBox box=new VBox(14);
         box.getChildren().add(existingInstancesPanel());
-        box.getChildren().add(muted("Create an isolated Minecraft installation. Vanilla stays completely unmodified; the other three choices include Relian's client-module set."));
+        box.getChildren().add(muted("Create an isolated Minecraft installation. Vanilla stays unmodified. Relian Fabric 1.21.1 instances can also receive the built-in utility HUD runtime."));
         VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
         Label nameLabel=new Label("Instance name"); nameLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
         TextField name=new TextField(); name.setPromptText("My Minecraft instance");
@@ -693,7 +693,7 @@ public class RelianLauncher extends Application {
         box.getChildren().addAll(panel,
             muted("Import copies supported game content such as mods, configs, resource packs, shaders, saves, and video options. It does not copy account tokens, launcher credentials, server lists, or unrelated launcher files."),
             muted("The .mrpack importer reads modrinth.index.json, installs required client files and safe overrides into a new isolated instance, verifies HTTPS downloads against SHA-1/SHA-512 hashes when supplied, and rejects traversal, symlinks, oversized entries, and unsafe destinations. Optional and server-only files are skipped."),
-            muted("Minecraft and loader metadata are taken from the archive. Loader runtime installation and full modpack launch are not implemented yet; Relian performance modules are recorded but not injected into packs automatically to avoid conflicts."));
+            muted("Minecraft and loader metadata are taken from the archive. Relian installs the matching official Minecraft and supported loader profile after import. Third-party pack dependencies are preserved as supplied; the Relian HUD is added only to compatible Fabric 1.21.1 instances."));
         return box;
     }
 
