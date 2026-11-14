@@ -509,9 +509,9 @@ public class RelianLauncher extends Application {
                             try{return com.relian.launcher.profiles.FabricHudRuntimeInstaller.installBundled(
                                 item.directory(),item.manifest().minecraftVersion(),loader);}
                             catch(Exception ex){throw new RuntimeException(ex);}
-                        }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
+                        }).whenComplete((installed,installError)->javafx.application.Platform.runLater(()->{
                             installHud.setDisable(false);
-                            if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();
+                            if(installError!=null){Throwable cause=installError.getCause()==null?installError:installError.getCause();
                                 info("Could not install Relian HUD: "+cause.getMessage());}
                             else info("Relian HUD installed at "+installed+". Launch this instance with Fabric 1.21.1 and press Right Shift in-game.");
                         }));
