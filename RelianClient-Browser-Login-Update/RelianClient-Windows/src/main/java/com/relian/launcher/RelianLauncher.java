@@ -862,13 +862,13 @@ public class RelianLauncher extends Application {
         VBox content=new VBox(10); content.setPadding(new Insets(12));
         Label sizeHint=muted("Accepted PNG sizes: "+category.acceptedSizes()+" • Maximum 2 MB");
         VBox rows=new VBox(8);
-        Button importButton=small("Import "+category.label()+" PNG");
+        Button importButton=small("Import "+category.label+" PNG");
         Button refreshButton=small("Refresh");
         Runnable load=()->{
             rows.getChildren().clear();
             try{
                 var assets=com.relian.launcher.cosmetics.CosmeticAssetLibrary.list(category);
-                if(assets.isEmpty())rows.getChildren().add(muted("No "+category.label().toLowerCase(java.util.Locale.ROOT)+" assets yet."));
+                if(assets.isEmpty())rows.getChildren().add(muted("No "+category.label.toLowerCase(java.util.Locale.ROOT)+" assets yet."));
                 for(var asset:assets){
                     HBox row=new HBox(12); row.setAlignment(Pos.CENTER_LEFT); row.setPadding(new Insets(8));
                     row.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:5;");
@@ -896,12 +896,12 @@ public class RelianLauncher extends Application {
                     });
                     row.getChildren().addAll(preview,details,push,remove); rows.getChildren().add(row);
                 }
-                status.setText(assets.size()+" "+category.label().toLowerCase(java.util.Locale.ROOT)+" asset(s) stored locally.");
-            }catch(Exception ex){status.setText("Could not read "+category.label().toLowerCase(java.util.Locale.ROOT)+" library: "+ex.getMessage());}
+                status.setText(assets.size()+" "+category.label.toLowerCase(java.util.Locale.ROOT)+" asset(s) stored locally.");
+            }catch(Exception ex){status.setText("Could not read "+category.label.toLowerCase(java.util.Locale.ROOT)+" library: "+ex.getMessage());}
         };
         importButton.setOnAction(event->{
             javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
-            chooser.setTitle("Import "+category.label()+" PNG");
+            chooser.setTitle("Import "+category.label+" PNG");
             chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PNG files","*.png"));
             File selected=chooser.showOpenDialog(shell.getScene().getWindow());
             if(selected==null)return;
@@ -915,7 +915,7 @@ public class RelianLauncher extends Application {
                     Throwable cause=error.getCause()==null?error:error.getCause();
                     status.setText("Import failed: "+cause.getMessage());
                 }else{
-                    status.setText("Imported "+installed.getFileName()+" as a local "+category.label().toLowerCase(java.util.Locale.ROOT)+" asset. It is not equipped in-game.");
+                    status.setText("Imported "+installed.getFileName()+" as a local "+category.label.toLowerCase(java.util.Locale.ROOT)+" asset. It is not equipped in-game.");
                     load.run();
                 }
             }));
@@ -926,7 +926,7 @@ public class RelianLauncher extends Application {
         scroll.setStyle("-fx-background:transparent;-fx-background-color:transparent;-fx-border-color:transparent;");
         content.getChildren().addAll(sizeHint,actions,scroll);
         load.run();
-        return new Tab(category.label(),content);
+        return new Tab(category.label,content);
     }
 
     private long FilesSize(java.nio.file.Path path){
