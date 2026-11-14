@@ -1,39 +1,58 @@
 # Relian Client Windows launcher
 
-Relian is an early-access Windows-first Minecraft Java launcher built with Java 21 and JavaFX.
+Relian is an early-access Windows-first Minecraft Java Edition launcher built with Java 21 and JavaFX.
 
 ## Download and install
 
-Use the `RelianClient-Windows-Installer` artifact from the latest successful [GitHub Actions build](https://github.com/voidcraft455-coder/Relian-Client-V1/actions/runs/43373102276). Download the artifact ZIP, extract it, run the included `.exe` installer, and follow the prompts. The installer creates Start-menu and desktop shortcuts.
+1. Open [GitHub Actions](https://github.com/voidcraft455-coder/Relian-Client-V1/actions).
+2. Select the newest successful **Build Relian Client for Windows** run.
+3. Download the **RelianClient-Windows-Installer** artifact and extract its ZIP.
+4. Run the included `.exe` installer. It creates Start-menu and desktop shortcuts.
 
-## First-run guide
+Only run an installer from this repository's successful workflow. Early-access builds may trigger Windows SmartScreen because they are not code-signed.
 
-1. Open **Settings**.
-2. Under **Minecraft Java runtime**, click **Download & install compatible Java**. Relian downloads and checksum-verifies Eclipse Temurin for the currently selected Minecraft version.
-3. Open **Versions** and click **Download client files** beside the version you want. Wait for the official client JAR, libraries, Windows native archives, and asset objects to finish installing and verifying.
-4. Return to **Home**, select that same version, and choose **Vanilla** in the loader menu.
-5. Microsoft browser sign-in is wired to the launcher, but it requires the project maintainer to register a public desktop application and configure its application ID in `auth.properties`. The current installer does not include a configured application ID. Until the maintainer supplies that configuration, Minecraft sign-in and the Play action cannot complete. Never provide your Microsoft password to an unofficial prompt.
-6. After the application ID is configured, sign in with the Microsoft account that owns Minecraft Java Edition. Relian checks Xbox access and Minecraft entitlement before enabling a launch session.
-7. Click **PLAY** to test the Vanilla launch path. If the game fails to start, record the exact status message and attach the launcher console output when reporting the issue.
+## First run
 
-## Implemented foundations
+1. Open **Settings** and select **Detect installed Java** or **Download & install compatible Java**. Relian chooses a Java major version based on the selected Minecraft version.
+2. Choose the game directory where Relian should store its managed instances and runtimes, or use the default under your user profile.
+3. Open **Instances** and create a Vanilla, Relian, Import, or Modpack instance. The launcher downloads Mojang's client metadata, client JAR, libraries, native libraries, and assets, then installs the selected supported loader where applicable.
+4. To use Microsoft sign-in, configure a Microsoft public desktop application client ID in Settings. Relian opens the system browser and uses OAuth authorization code with PKCE; it never asks for your Microsoft password inside the launcher.
+5. Sign in with a Microsoft account that owns Minecraft Java Edition. The launcher continues through Xbox Live, XSTS, Minecraft Services, Java ownership, and profile checks before creating a launch session.
+6. Return to Home, select the active instance's exact Minecraft version and loader, then click **PLAY**.
+7. For a Fabric 1.21.1 instance, the bundled Relian HUD is installed automatically. Press **Right Shift** in Minecraft to open HUD Studio.
 
-- Windows installer packaging through Gradle `jpackage`.
-- Mojang official release catalog, client JAR installation, library/native installation, and asset downloads with checksum verification.
-- Java runtime detection and checksum-verified Eclipse Temurin installation.
-- Vanilla launch command construction and Minecraft process management.
-- Microsoft browser OAuth with PKCE and Xbox/XSTS/Minecraft Services authentication flow; a registered public application ID is still required.
-- Instance management and isolated profile foundations.
-- Modrinth marketplace search and download foundations, plus CurseForge search when an API key is configured.
-- Resource-pack, shader, mod, and modpack browsing foundations.
-- Installed-content listing and safe file-removal foundations.
-- Minecraft-local performance presets and launcher preferences.
+The Offline / Local Test Profile is only a launcher UI preview. It is not an authenticated Minecraft account and cannot launch the game.
 
-## Current limitations
+## Implemented features
 
-- The Windows build and installer artifact are verified by CI, but a real end-to-end sign-in and Minecraft launch has not yet been verified on a user's PC.
-- Microsoft public application ID configuration is required before sign-in works.
-- Only Vanilla launching is wired. Fabric, Forge, NeoForge, and Quilt launching are not ready.
-- The separate Fabric 1.21.1 HUD runtime is not automatically installed by this launcher.
-- Marketplace and modpack features are not a complete dependency-resolving mod manager. Full loader integration and actual `.mrpack` installation remain in progress.
-- Do not treat a successful installer build as proof that every feature is complete.
+- Mojang version catalog, official client installation, library/native extraction, asset installation, and checksum validation.
+- Java runtime discovery and checksum-verified Eclipse Temurin installation.
+- Vanilla and supported Fabric, Quilt, Forge, and NeoForge profile installation, with metadata inheritance handling in the launch path.
+- Microsoft browser OAuth with PKCE and Xbox/XSTS/Minecraft Services authentication and Java ownership checks. A valid public application registration is required.
+- Isolated instances, instance import, Modrinth modpack import from `.mrpack`, and per-instance manifests.
+- Modrinth search and individual mod/resource-pack/shader installation with compatibility filtering and SHA-512 validation.
+- CurseForge search and supported individual file installs when RELIAN_CURSEFORGE_API_KEY is configured.
+- Installed-content listing, reversible mod enable/disable, and confirmed removal.
+- Minecraft-only performance presets, launcher background color, memory settings, and Java runtime settings.
+- Local cosmetic asset libraries for skins, capes, wings, and hats. These are validated and previewed locally; they are not yet drawn on player models or synchronized to other players.
+- Bundled Fabric 1.21.1 utility HUD runtime with 18 modules and an in-game HUD editor.
+
+## Known limitations and verification
+
+- CI verifies compilation, automated tests, and Windows installer packaging. A CI pass does not prove a successful live Minecraft session on every PC.
+- The Microsoft application ID must be supplied/configured by the launcher operator. Real account sign-in has not been verified on every environment.
+- The bundled Fabric HUD currently targets Minecraft 1.21.1 only. Other Minecraft versions may launch through supported loaders, but do not receive this HUD.
+- Custom capes, wings, and hats are currently local asset-library entries, not equipped in-game cosmetics.
+- Marketplace dependency resolution, CurseForge modpack import, one-click modpack updates, and robust conflict resolution remain incomplete.
+- Every loader/version/modpack combination still requires real-world testing. Third-party projects can have dependencies, incompatibilities, or provider download restrictions.
+- Code signing, automatic self-update, and a public stable release channel are not yet configured.
+
+## Build from source
+
+From `RelianClient-Browser-Login-Update/RelianClient-Windows`, use Java 21 and run:
+
+```powershell
+gradle test jpackage
+```
+
+The Windows CI workflow builds the Fabric HUD artifact first, bundles it into the launcher resources, runs tests, packages the Windows installer, and uploads the installer artifact.
