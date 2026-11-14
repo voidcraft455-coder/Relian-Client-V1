@@ -359,7 +359,7 @@ public class RelianLauncher extends Application {
     }
     private VBox installedContentPage(){
         VBox page=new VBox(14);
-        Label intro=muted("Review content installed by Relian in your selected Minecraft game directory. Only individual files in the standard mods, resourcepacks, and shaderpacks folders are shown.");
+        Label intro=muted("Manage mods, resource packs, and shaders in the selected Minecraft game directory. Mods can be temporarily disabled without deleting them.");
         Label location=muted(gameDirectory.isBlank()?"No game directory selected. Choose one in Settings first.":gameDirectory);
         ComboBox<String> category=new ComboBox<>();
         category.getItems().addAll("All content","Mods","Resource packs","Shaders");
@@ -377,60 +377,60 @@ public class RelianLauncher extends Application {
             state.setText("Scanning installed content…");
             String selectedCategory=category.getValue();
             java.nio.file.Path root=java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+            var filter=switch(selectedCategory){
+                case "Mods" -> com.relian.launcher.marketplace.InstalledContentManager.Category.MODS;
+                case "Resource packs" -> com.relian.launcher.marketplace.InstalledContentManager.Category.RESOURCE_PACKS;
+                case "Shaders" -> com.relian.launcher.marketplace.InstalledContentManager.Category.SHADERS;
+                default -> com.relian.launcher.marketplace.InstalledContentManager.Category.ALL;
+            };
             CompletableFuture.supplyAsync(()->{
-                java.util.List<java.nio.file.Path> found=new java.util.ArrayList<>();
-                java.util.Map<String,String> folders=new java.util.LinkedHashMap<>();
-                if("All content".equals(selectedCategory)||"Mods".equals(selectedCategory)) folders.put("mods",".jar");
-                if("All content".equals(selectedCategory)||"Resource packs".equals(selectedCategory)) folders.put("resourcepacks",".zip");
-                if("All content".equals(selectedCategory)||"Shaders".equals(selectedCategory)) folders.put("shaderpacks",".zip");
-                for(var folder:folders.entrySet()){
-                    java.nio.file.Path dir=root.resolve(folder.getKey()).normalize();
-                    if(!dir.startsWith(root)||!java.nio.file.Files.isDirectory(dir,java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue;
-                    try(var stream=java.nio.file.Files.newDirectoryStream(dir)){
-                        for(java.nio.file.Path file:stream){
-                            if(java.nio.file.Files.isRegularFile(file,java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                                    && !java.nio.file.Files.isSymbolicLink(file)
-                                    && file.getFileName().toString().toLowerCase(java.util.Locale.ROOT).endsWith(folder.getValue())){
-                                found.add(file.toAbsolutePath().normalize());
-                            }
-                        }
-                    }catch(java.io.IOException ignored){}
-                }
-                found.sort(java.util.Comparator.comparing(p->p.getFileName().toString().toLowerCase(java.util.Locale.ROOT)));
-                return found;
+                try{return com.relian.launcher.marketplace.InstalledContentManager.list(root,filter);}
+                catch(java.io.IOException ex){throw new RuntimeException(ex);}
             }).whenComplete((found,error)->javafx.application.Platform.runLater(()->{
                 entries.getChildren().clear();
-                if(error!=null){state.setText("Could not scan the selected folder: "+error.getMessage());return;}
+                if(error!=null){
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    state.setText("Could not scan the selected folder: "+cause.getMessage());return;
+                }
                 if(found.isEmpty()){state.setText("No installed files found in this category.");return;}
-                state.setText(found.size()+" installed file(s) found. Removing a file only deletes it from this selected folder.");
-                for(java.nio.file.Path file:found){
+                long enabledCount=found.stream().filter(com.relian.launcher.marketplace.InstalledContentManager.Item::enabled).count();
+                state.setText(found.size()+" file(s) found • "+enabledCount+" active • disabled mods are preserved on disk.");
+                for(var item:found){
+                    java.nio.file.Path file=item.path();
                     HBox row=new HBox(10);row.setAlignment(Pos.CENTER_LEFT);row.setPadding(new Insets(12));row.setStyle(cardStyle());
                     VBox details=new VBox(3);
                     Label name=new Label(file.getFileName().toString());name.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
-                    String size;
-                    try{long bytes=java.nio.file.Files.size(file);size=bytes<1024*1024?(bytes/1024)+" KB":String.format(java.util.Locale.ROOT,"%.1f MB",bytes/(1024.0*1024.0));}
-                    catch(java.io.IOException ex){size="Size unavailable";}
-                    details.getChildren().addAll(name,muted(file.getParent().getFileName()+" • "+size));
+                    String size=item.sizeBytes()<1024*1024?(item.sizeBytes()/1024)+" KB":String.format(java.util.Locale.ROOT,"%.1f MB",item.sizeBytes()/(1024.0*1024.0));
+                    String typeLabel=switch(item.kind()){case MOD->"Mod";case RESOURCE_PACK->"Resource pack";case SHADER->"Shader pack";};
+                    details.getChildren().addAll(name,muted(typeLabel+" • "+(item.enabled()?"Enabled":"Disabled")+" • "+size));
                     Region push=new Region();HBox.setHgrow(push,Priority.ALWAYS);
+                    if(item.kind()==com.relian.launcher.marketplace.InstalledContentManager.Kind.MOD){
+                        Button toggle=small(item.enabled()?"Disable":"Enable");
+                        toggle.setOnAction(event->{
+                            toggle.setDisable(true);
+                            try{
+                                var updated=com.relian.launcher.marketplace.InstalledContentManager.toggleMod(root,file);
+                                state.setText((item.enabled()?"Disabled ":"Enabled ")+updated.getFileName()+". The file contents were preserved.");
+                                refresh.fire();
+                            }catch(java.io.IOException ex){
+                                toggle.setDisable(false);info("Could not change mod state: "+ex.getMessage());
+                            }
+                        });
+                        row.getChildren().addAll(details,push,toggle);
+                    }else row.getChildren().addAll(details,push);
                     Button remove=small("Remove");
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                         confirm.setTitle("Remove installed content");confirm.setHeaderText("Remove "+file.getFileName()+"?");
-                        confirm.setContentText("This deletes this one file from "+file.getParent()+". It does not uninstall dependencies or modify other files.");
+                        confirm.setContentText("This permanently deletes this one file from "+file.getParent()+". Disabling a mod is reversible and does not require deletion.");
                         confirm.initOwner(shell.getScene().getWindow());
                         if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
                         try{
-                            java.nio.file.Path parent=file.getParent().toRealPath();
-                            java.nio.file.Path expected=root.resolve(parent.getFileName()).toAbsolutePath().normalize();
-                            if(!parent.equals(expected)||!java.nio.file.Files.isRegularFile(file,java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                                    ||java.nio.file.Files.isSymbolicLink(file)) throw new java.io.IOException("The file is no longer a safe removable file in the selected content folder.");
-                            String n=file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
-                            if(!(n.endsWith(".jar")||n.endsWith(".zip"))) throw new java.io.IOException("Unsupported file type.");
-                            java.nio.file.Files.delete(file);
+                            com.relian.launcher.marketplace.InstalledContentManager.delete(root,file);
                             refresh.fire();
                         }catch(java.io.IOException ex){info("Could not remove this file: "+ex.getMessage());}
                     });
-                    row.getChildren().addAll(details,push,remove);entries.getChildren().add(row);
+                    row.getChildren().add(remove);entries.getChildren().add(row);
                 }
             }));
         };
