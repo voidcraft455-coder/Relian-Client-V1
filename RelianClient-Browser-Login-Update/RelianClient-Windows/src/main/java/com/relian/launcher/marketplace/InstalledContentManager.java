@@ -24,9 +24,9 @@ public final class InstalledContentManager {
         if (category == Category.ALL || category == Category.MODS)
             scan(root, "mods", Kind.MOD, ".jar", true, items);
         if (category == Category.ALL || category == Category.RESOURCE_PACKS)
-            scan(root, "resourcepacks", Kind.RESOURCE_PACK, ".zip", false, items);
+            scan(root, "resourcepacks", Kind.RESOURCE_PACK, ".zip", true, items);
         if (category == Category.ALL || category == Category.SHADERS)
-            scan(root, "shaderpacks", Kind.SHADER, ".zip", false, items);
+            scan(root, "shaderpacks", Kind.SHADER, ".zip", true, items);
         items.sort(Comparator.comparing(item -> item.path().getFileName().toString().toLowerCase(Locale.ROOT)));
         return List.copyOf(items);
     }
@@ -47,30 +47,50 @@ public final class InstalledContentManager {
         }
     }
 
-    /** Rename a mod JAR to .jar.disabled, or restore it. No file contents are changed. */
+    /** Backward-compatible mod-only toggle. */
     public static Path toggleMod(Path gameRoot, Path modFile) throws IOException {
+        Path updated = toggleContent(gameRoot, modFile);
+        if (!updated.getParent().getFileName().toString().equals("mods")) {
+            throw new IOException("Only files in the mods folder can be toggled as mods.");
+        }
+        return updated;
+    }
+
+    /** Reversibly enables or disables a managed mod, resource pack, or shader pack. */
+    public static Path toggleContent(Path gameRoot, Path contentFile) throws IOException {
         Path root = checkedRoot(gameRoot);
-        Path modsDirectory = root.resolve("mods");
-        if (Files.isSymbolicLink(modsDirectory)
-                || !Files.isDirectory(modsDirectory, LinkOption.NOFOLLOW_LINKS)) {
-            throw new IOException("The mods folder is missing or is not a safe directory.");
+        Path normalized = contentFile.toAbsolutePath().normalize();
+        Path parent = normalized.getParent();
+        if (parent == null) throw new IOException("Invalid content path.");
+        String folder = parent.getFileName().toString();
+        String extension = switch (folder) {
+            case "mods" -> ".jar";
+            case "resourcepacks", "shaderpacks" -> ".zip";
+            default -> throw new IOException("The file is outside a supported content folder.");
+        };
+        Path directory = root.resolve(folder);
+        if (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("The content folder is missing or is not a safe directory.");
         }
-        Path mods = modsDirectory.toRealPath();
-        if (!mods.getParent().equals(root)) {
-            throw new IOException("The mods folder resolves outside the selected game directory.");
+        Path expectedParent = directory.toRealPath();
+        if (!expectedParent.getParent().equals(root)) {
+            throw new IOException("The content folder resolves outside the selected game directory.");
         }
-        Path source = checkedChild(mods, modFile);
+        Path source = checkedChild(expectedParent, normalized);
         String name = source.getFileName().toString();
         String lower = name.toLowerCase(Locale.ROOT);
         String targetName;
-        if (lower.endsWith(".jar.disabled")) targetName = name.substring(0, name.length() - ".disabled".length());
-        else if (lower.endsWith(".jar")) targetName = name + ".disabled";
-        else throw new IOException("Only .jar mod files can be enabled or disabled.");
-        Path target = mods.resolve(targetName).normalize();
-        if (!target.getParent().equals(mods) || Files.exists(target, LinkOption.NOFOLLOW_LINKS))
-            throw new IOException("The destination already exists or is not a safe mod path.");
-        // A same-directory rename preserves file bytes and avoids Windows ATOMIC_MOVE
-        // failures caused by transient file scanners.
+        if (lower.endsWith(extension + ".disabled")) {
+            targetName = name.substring(0, name.length() - ".disabled".length());
+        } else if (lower.endsWith(extension)) {
+            targetName = name + ".disabled";
+        } else {
+            throw new IOException("The selected file has an unsupported extension for its content folder.");
+        }
+        Path target = expectedParent.resolve(targetName).normalize();
+        if (!target.getParent().equals(expectedParent) || Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("The destination already exists or is not a safe content path.");
+        }
         return Files.move(source, target);
     }
 
@@ -85,7 +105,7 @@ public final class InstalledContentManager {
         Path expectedParent = root.resolve(folder).toRealPath();
         Path source = checkedChild(expectedParent, normalized);
         String lower = source.getFileName().toString().toLowerCase(Locale.ROOT);
-        if (!(lower.endsWith(".jar") || lower.endsWith(".jar.disabled") || lower.endsWith(".zip")))
+        if (!(lower.endsWith(".jar") || lower.endsWith(".jar.disabled") || lower.endsWith(".zip") || lower.endsWith(".zip.disabled")))
             throw new IOException("Unsupported content file type.");
         Files.delete(source);
     }
