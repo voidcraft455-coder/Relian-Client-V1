@@ -72,6 +72,7 @@ public final class MicrosoftBrowserLogin {
             String url = AUTHORITY + "?client_id=" + enc(clientId)
                     + "&response_type=code&redirect_uri=" + enc(redirectUri)
                     + "&response_mode=query&scope=" + enc("XboxLive.signin offline_access openid profile")
+                    + "&prompt=select_account&client_info=1"
                     + "&state=" + enc(state)
                     + "&code_challenge=" + enc(challenge)
                     + "&code_challenge_method=S256";
@@ -127,7 +128,13 @@ public final class MicrosoftBrowserLogin {
                 .POST(HttpRequest.BodyPublishers.ofString(form)).build();
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
-            throw new IOException("Microsoft token exchange failed (HTTP " + response.statusCode() + "). Check the app registration and localhost redirect settings.");
+            String detail = "Check the app registration, public-client setting, XboxLive.signin permission, and localhost redirect.";
+            try {
+                var error = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject();
+                if (error.has("error_description")) detail = error.get("error_description").getAsString();
+                else if (error.has("error")) detail = error.get("error").getAsString() + ": " + detail;
+            } catch (RuntimeException ignored) { }
+            throw new IOException("Microsoft token exchange failed (HTTP " + response.statusCode() + "): " + detail);
         }
         String token = jsonString(response.body(), "access_token");
         if (token == null || token.isBlank()) throw new IOException("Microsoft did not return an access token.");
