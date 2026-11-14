@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.jar.JarFile;
 
 /** Installs the Relian-owned Fabric 1.21.1 HUD runtime bundled with the Windows launcher. */
 public final class FabricHudRuntimeInstaller {
@@ -62,11 +63,21 @@ public final class FabricHudRuntimeInstaller {
                 }
             }
             if (total < 4) throw new IOException("The bundled HUD runtime is empty or incomplete.");
-            byte[] header = new byte[4];
-            try (var input = Files.newInputStream(temporary)) {
-                if (input.read(header) != 4 || header[0] != 'P' || header[1] != 'K' || header[2] != 3 || header[3] != 4) {
-                    throw new IOException("The bundled HUD runtime is not a valid JAR/ZIP archive.");
+            try (JarFile jar = new JarFile(temporary.toFile())) {
+                var metadata = jar.getJarEntry("fabric.mod.json");
+                if (metadata == null) throw new IOException("The archive is missing Fabric mod metadata.");
+                String json;
+                try (var input = jar.getInputStream(metadata)) {
+                    byte[] bytes = input.readNBytes(65_537);
+                    if (bytes.length > 65_536) throw new IOException("Fabric mod metadata is unexpectedly large.");
+                    json = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
                 }
+                if (!json.matches("(?s).*\\\"id\\\"\\s*:\\s*\\\"relian_client\\\".*")
+                        || !json.matches("(?s).*\\\"minecraft\\\"\\s*:\\s*\\\"1\\.21\\.1\\\".*")) {
+                    throw new IOException("The selected archive is not Relian's Minecraft 1.21.1 Fabric HUD runtime.");
+                }
+            } catch (java.util.zip.ZipException ex) {
+                throw new IOException("The bundled HUD runtime is not a valid JAR archive.", ex);
             }
             try {
                 Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
