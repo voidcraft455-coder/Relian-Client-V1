@@ -69,7 +69,7 @@ public final class HudEditorScreen extends Screen {
             0, 0, previewSettings.enabled ? previewSettings.color : 0xFF8995A7);
         context.getMatrices().pop();
         rounded(context, px + 10, py + 244, px + 245, py + 271, 0xFF24344A, 8);
-        context.drawTextWithShadow(textRenderer, Text.literal("Drag in preview to move selected module"),
+        context.drawTextWithShadow(textRenderer, Text.literal("Drag preview or use arrow keys to move"),
             px + 18, py + 253, 0xFFB9C7D8);
 
         HudConfig.ModuleSettings chosen = HudConfig.get().modules.get(MODULES.get(selected));
@@ -257,6 +257,17 @@ public final class HudEditorScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
             closeEditor();
+            return true;
+        }
+        int step = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0 ? 10 : 2;
+        HudConfig.ModuleSettings settings = HudConfig.get().modules.get(MODULES.get(selected));
+        if (keyCode == GLFW.GLFW_KEY_LEFT || keyCode == GLFW.GLFW_KEY_RIGHT
+                || keyCode == GLFW.GLFW_KEY_UP || keyCode == GLFW.GLFW_KEY_DOWN) {
+            if (keyCode == GLFW.GLFW_KEY_LEFT) settings.x = Math.max(0, settings.x - step);
+            if (keyCode == GLFW.GLFW_KEY_RIGHT) settings.x = Math.min(Math.max(0, width - 1), settings.x + step);
+            if (keyCode == GLFW.GLFW_KEY_UP) settings.y = Math.max(0, settings.y - step);
+            if (keyCode == GLFW.GLFW_KEY_DOWN) settings.y = Math.min(Math.max(0, height - 1), settings.y + step);
+            HudConfig.save();
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
