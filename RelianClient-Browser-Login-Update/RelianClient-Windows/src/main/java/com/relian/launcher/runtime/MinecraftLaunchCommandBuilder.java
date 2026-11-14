@@ -34,7 +34,10 @@ public final class MinecraftLaunchCommandBuilder {
     public static List<String> build(JsonObject metadata, LaunchSpec spec) throws IOException {
         if (metadata == null || spec == null) throw new IllegalArgumentException("Minecraft metadata and launch settings are required.");
         requireFile(spec.javaExecutable(), "Java executable");
-        requireFile(spec.versionDirectory().resolve(spec.versionId() + ".jar"), "Minecraft client JAR");
+        Path clientJar = metadata.has("relianClientJar") && metadata.get("relianClientJar").isJsonPrimitive()
+                ? Path.of(metadata.get("relianClientJar").getAsString())
+                : spec.versionDirectory().resolve(spec.versionId() + ".jar");
+        requireFile(clientJar, "Minecraft client JAR");
         if (!Files.isDirectory(spec.librariesDirectory())) throw new IOException("Minecraft libraries are not installed.");
         if (!Files.isDirectory(spec.assetsDirectory())) throw new IOException("Minecraft assets are not installed.");
         if (!Files.isDirectory(spec.nativesDirectory())) throw new IOException("Minecraft native libraries are not installed.");
@@ -52,8 +55,7 @@ public final class MinecraftLaunchCommandBuilder {
             if (!allowedByRules(library)) continue;
             JsonObject downloads = object(library, "downloads");
             JsonObject artifact = object(downloads, "artifact");
-            if (artifact == null) continue;
-            String relative = string(artifact, "path");
+            String relative = artifact == null ? mavenArtifactPath(string(library, "name")) : string(artifact, "path");
             if (relative.isBlank()) continue;
             Path jar = spec.librariesDirectory().resolve(relative.replace('\\', '/')).normalize();
             if (!jar.startsWith(spec.librariesDirectory().normalize()))
@@ -61,8 +63,7 @@ public final class MinecraftLaunchCommandBuilder {
             if (!Files.isRegularFile(jar)) throw new IOException("A required Minecraft library is missing: " + relative);
             classpath.add(jar.toString());
         }
-        Path clientJar = spec.versionDirectory().resolve(spec.versionId() + ".jar").normalize();
-        classpath.add(clientJar.toString());
+        classpath.add(clientJar.toAbsolutePath().normalize().toString());
         String classpathValue = String.join(System.getProperty("path.separator"), classpath);
 
         String loggingArgument = "";
@@ -107,6 +108,20 @@ public final class MinecraftLaunchCommandBuilder {
             if (!expanded.isBlank()) command.add(expanded);
         }
         return List.copyOf(command);
+    }
+
+    private static String mavenArtifactPath(String coordinate) throws IOException {
+        if (coordinate == null || coordinate.isBlank()) return "";
+        String[] parts = coordinate.split(":");
+        if (parts.length < 3 || parts.length > 4) return "";
+        for (String part : parts) {
+            if (part.isBlank() || part.contains("..") || part.contains("/") || part.contains("\\\\"))
+                throw new IOException("Minecraft metadata contains an unsafe Maven library coordinate.");
+        }
+        String group = parts[0].replace('.', '/');
+        String artifact = parts[1], version = parts[2];
+        String classifier = parts.length == 4 ? "-" + parts[3] : "";
+        return group + "/" + artifact + "/" + version + "/" + artifact + "-" + version + classifier + ".jar";
     }
 
     private static List<String> argumentValues(JsonObject metadata, String key) throws IOException {
