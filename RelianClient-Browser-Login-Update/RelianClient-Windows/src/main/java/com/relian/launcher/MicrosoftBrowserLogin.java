@@ -51,6 +51,10 @@ public final class MicrosoftBrowserLogin {
     }
 
     public static LoginResult signIn(String clientId) throws Exception {
+        if (clientId == null || !clientId.trim().matches("(?i)[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")) {
+            throw new IOException("A valid Microsoft public Application (client) ID is required.");
+        }
+        clientId = clientId.trim();
         if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
             throw new IOException("This computer cannot open the default web browser.");
         }
@@ -61,11 +65,11 @@ public final class MicrosoftBrowserLogin {
 
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         int port = server.getAddress().getPort();
-        String redirectUri = "http://localhost:" + port + "/callback";
+        String redirectUri = "http://localhost:" + port;
         CountDownLatch callback = new CountDownLatch(1);
         AtomicReference<String> authCode = new AtomicReference<>();
         AtomicReference<String> callbackError = new AtomicReference<>();
-        server.createContext("/callback", exchange -> handleCallback(exchange, state, authCode, callbackError, callback));
+        server.createContext("/", exchange -> handleCallback(exchange, state, authCode, callbackError, callback));
         server.start();
         try {
             String url = AUTHORITY + "?client_id=" + enc(clientId)
@@ -101,7 +105,8 @@ public final class MicrosoftBrowserLogin {
             if (!MessageDigest.isEqual(expectedState.getBytes(StandardCharsets.UTF_8), returnedState.getBytes(StandardCharsets.UTF_8))) {
                 error.set("The sign-in response could not be verified (state mismatch).");
             } else if (params.containsKey("error")) {
-                error.set("Microsoft sign-in error: " + params.get("error_description"));
+                String detail = params.getOrDefault("error_description", params.getOrDefault("error", "unknown error"));
+                error.set("Microsoft sign-in error: " + detail);
             } else {
                 code.set(params.get("code"));
             }
