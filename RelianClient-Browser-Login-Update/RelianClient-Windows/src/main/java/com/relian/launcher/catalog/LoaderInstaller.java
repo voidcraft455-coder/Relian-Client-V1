@@ -122,6 +122,7 @@ public final class LoaderInstaller {
         Path metadata = profileDir.resolve(id + ".json");
         writeAtomically(metadata, profile.toString().getBytes(StandardCharsets.UTF_8));
         MinecraftDependencyInstaller.install(profile, root, status);
+        copyBaseNatives(root, mc, profileDir);
         return new Result(kind, mc, loaderVersion, id, metadata);
     }
 
@@ -162,7 +163,7 @@ public final class LoaderInstaller {
     }
     private static int parseNumber(String value) { try{return Integer.parseInt(value);}catch(NumberFormatException ex){return -1;} }
 
-    private static Result findInstalledProfile(String kind, String mc, Path root, String loaderVersion) throws IOException {
+    private static Result findInstalledProfile(String kind, String mc, Path root, String loaderVersion) throws IOException, InterruptedException {
         Path versions = root.resolve("versions");
         if (!Files.isDirectory(versions)) throw new IOException(kind + " installer did not create a versions directory.");
         try (var children = Files.list(versions)) {
@@ -176,11 +177,31 @@ public final class LoaderInstaller {
                     String libraries = objectArrayText(profile, "libraries").toLowerCase(Locale.ROOT);
                     if (kind.equals("Forge") ? !libraries.contains("net.minecraftforge:forge")
                             : !libraries.contains("net.neoforged:neoforge")) continue;
+                    MinecraftDependencyInstaller.install(profile, root, ignored -> {});
+                    copyBaseNatives(root, mc, dir);
                     return new Result(kind, mc, loaderVersion, id, json);
                 } catch (RuntimeException ignored) { }
             }
         }
         throw new IOException(kind + " installer completed but Relian could not locate its Minecraft " + mc + " launch profile.");
+    }
+
+    private static void copyBaseNatives(Path root, String mc, Path profileDirectory) throws IOException {
+        Path source = root.resolve("versions").resolve(mc).resolve("natives");
+        Path target = profileDirectory.resolve("natives");
+        if (!Files.isDirectory(source) || Files.isSymbolicLink(source)) return;
+        Files.createDirectories(target);
+        try (var paths = Files.walk(source)) {
+            for (Path file : paths.toList()) {
+                if (Files.isSymbolicLink(file)) throw new IOException("A native library directory contains a symbolic link.");
+                if (Files.isRegularFile(file)) {
+                    Path destination = target.resolve(source.relativize(file)).normalize();
+                    if (!destination.startsWith(target)) throw new IOException("Unsafe native library path.");
+                    Files.createDirectories(destination.getParent());
+                    Files.copy(file, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        }
     }
 
     private static String objectArrayText(JsonObject parent, String key) {
