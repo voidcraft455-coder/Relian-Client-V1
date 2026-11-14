@@ -1,7 +1,6 @@
 package com.relian.launcher.cosmetics;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -11,6 +10,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.util.Iterator;
 
 /** Safe local library for Minecraft skin PNGs; importing does not upload or equip a skin. */
 public final class SkinLibraryManager {
@@ -29,9 +31,7 @@ public final class SkinLibraryManager {
         }
         long size = Files.size(source);
         if (size <= 0 || size > MAX_SKIN_BYTES) throw new IOException("Skin PNG must be between 1 byte and 2 MB.");
-        BufferedImage image = ImageIO.read(source.toFile());
-        if (image == null || !((image.getWidth() == 64 && image.getHeight() == 64)
-                || (image.getWidth() == 64 && image.getHeight() == 32))) {
+        if (!isMinecraftSkinPng(source)) {
             throw new IOException("Minecraft skins must be PNG images sized 64×64 or legacy 64×32 pixels.");
         }
         String original = source.getFileName() == null ? "skin" : source.getFileName().toString();
@@ -63,9 +63,7 @@ public final class SkinLibraryManager {
             for (Path file : files) {
                 if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(file)) continue;
                 try {
-                    BufferedImage image = ImageIO.read(file.toFile());
-                    if (image != null && image.getWidth() == 64
-                            && (image.getHeight() == 64 || image.getHeight() == 32)) skins.add(file);
+                    if (isMinecraftSkinPng(file)) skins.add(file);
                 } catch (IOException ignored) {}
             }
         }
@@ -83,6 +81,24 @@ public final class SkinLibraryManager {
             throw new IOException("Only PNG files inside the Relian skin library can be removed.");
         }
         Files.delete(candidate);
+    }
+
+    private static boolean isMinecraftSkinPng(Path file) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(file.toFile())) {
+            if (input == null) return false;
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) return false;
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                if (!"png".equalsIgnoreCase(reader.getFormatName())) return false;
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                return width == 64 && (height == 64 || height == 32);
+            } finally {
+                reader.dispose();
+            }
+        }
     }
 
     private static Path prepareRoot(Path libraryRoot) throws IOException {
