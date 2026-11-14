@@ -61,11 +61,15 @@ public final class LoaderInstaller {
             throw new IOException("Install a compatible Java runtime before installing " + kind + ".");
         String loaderVersion = !requested.isBlank() ? requested : (kind.equals("Forge")
                 ? latestForge(minecraftVersion, status) : latestNeoForge(minecraftVersion, status));
+        boolean neoLegacy = kind.equals("NeoForge") && minecraftVersion.equals("1.20.1");
         String installerUrl = kind.equals("Forge")
                 ? "https://maven.minecraftforge.net/net/minecraftforge/forge/" + minecraftVersion + "-" + loaderVersion
                     + "/forge-" + minecraftVersion + "-" + loaderVersion + "-installer.jar"
-                : "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + loaderVersion
-                    + "/neoforge-" + loaderVersion + "-installer.jar";
+                : neoLegacy
+                    ? "https://maven.neoforged.net/releases/net/neoforged/forge/" + loaderVersion
+                        + "/forge-" + loaderVersion + "-installer.jar"
+                    : "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + loaderVersion
+                        + "/neoforge-" + loaderVersion + "-installer.jar";
         String fileName = kind.toLowerCase(Locale.ROOT) + "-" + minecraftVersion + "-" + loaderVersion + "-installer.jar";
         Path installer = root.resolve("relian-downloads").resolve(fileName).normalize();
         if (!installer.startsWith(root)) throw new IOException("Unsafe loader installer path.");
@@ -179,16 +183,18 @@ public final class LoaderInstaller {
         Path versions = root.resolve("versions");
         if (!Files.isDirectory(versions)) throw new IOException(kind + " installer did not create a versions directory.");
         try (var children = Files.list(versions)) {
-            for (Path dir : children.filter(Files::isDirectory).toList()) {
+            for (Path dir : children.filter(path -> Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path)).toList()) {
                 try (var files = Files.list(dir)) {
-                    Path json = files.filter(path -> path.getFileName().toString().endsWith(".json")).findFirst().orElse(null);
+                    Path json = files.filter(path -> path.getFileName().toString().endsWith(".json") && Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path)).findFirst().orElse(null);
                     if (json == null) continue;
                     JsonObject profile = JsonParser.parseString(Files.readString(json)).getAsJsonObject();
                     String id = string(profile, "id");
                     if (!mc.equals(string(profile, "inheritsFrom")) || !id.equals(dir.getFileName().toString())) continue;
                     String libraries = objectArrayText(profile, "libraries").toLowerCase(Locale.ROOT);
-                    if (kind.equals("Forge") ? !libraries.contains("net.minecraftforge:forge")
-                            : !libraries.contains("net.neoforged:neoforge")) continue;
+                    boolean correctFamily = kind.equals("Forge") ? libraries.contains("net.minecraftforge:forge")
+                            : (mc.equals("1.20.1") ? libraries.contains("net.neoforged:forge")
+                            : libraries.contains("net.neoforged:neoforge"));
+                    if (!correctFamily) continue;
                     if (!libraries.contains(loaderVersion.toLowerCase(Locale.ROOT))) continue;
                     MinecraftDependencyInstaller.install(profile, root, ignored -> {});
                     copyBaseNatives(root, mc, dir);
