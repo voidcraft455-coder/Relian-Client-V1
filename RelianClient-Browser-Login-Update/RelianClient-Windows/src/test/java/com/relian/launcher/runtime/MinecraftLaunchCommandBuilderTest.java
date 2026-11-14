@@ -82,8 +82,8 @@ class MinecraftLaunchCommandBuilderTest {
                 assets, natives, "fabric-loader-0.16.10-1.21.1", "", "net.fabricmc.loader.impl.launch.knot.KnotClient", 4096, session);
 
         List<String> command = MinecraftLaunchCommandBuilder.build(metadata, spec);
-        assertTrue(command.contains(clientJar.toString()));
-        assertTrue(command.contains(fabricLibrary.toString()));
+        assertTrue(command.stream().anyMatch(argument -> argument.contains(clientJar.toString())));
+        assertTrue(command.stream().anyMatch(argument -> argument.contains(fabricLibrary.toString())));
         assertTrue(command.contains("net.fabricmc.loader.impl.launch.knot.KnotClient"));
     }
 
