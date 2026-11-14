@@ -632,18 +632,68 @@ public class RelianLauncher extends Application {
         }catch(Exception ignored){return "";}
     }
 
-    private void installInstanceBaseFiles(java.nio.file.Path instanceDirectory,String version,Label status,String summary){
+    private record InstanceInstallOutcome(com.relian.launcher.catalog.MinecraftVersionInstaller.InstallResult base,
+                                          com.relian.launcher.catalog.LoaderInstaller.Result loader) {}
+
+    private java.nio.file.Path compatibleJavaFor(String minecraftVersion) throws Exception {
+        int required=com.relian.launcher.runtime.JavaRuntimeManager.requiredMajor(minecraftVersion);
+        String saved=preferences.get("minecraft.java.path","");
+        if(!saved.isBlank()){
+            java.nio.file.Path candidate=java.nio.file.Path.of(saved);
+            for(var runtime:com.relian.launcher.runtime.JavaRuntimeManager.detectInstalled())
+                if(runtime.executable().equals(candidate.toAbsolutePath().normalize())&&runtime.majorVersion()==required)return candidate;
+        }
+        var detected=com.relian.launcher.runtime.JavaRuntimeManager.findCompatible(
+            com.relian.launcher.runtime.JavaRuntimeManager.detectInstalled(),minecraftVersion);
+        if(detected!=null){preferences.put("minecraft.java.path",detected.executable().toString());return detected.executable();}
+        java.nio.file.Path runtimeRoot=gameDirectory.isBlank()
+            ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","runtimes")
+            :java.nio.file.Path.of(gameDirectory).resolve("runtimes");
+        java.nio.file.Path installed=com.relian.launcher.runtime.TemurinRuntimeInstaller.installWindows(required,runtimeRoot);
+        preferences.put("minecraft.java.path",installed.toString());
+        return installed;
+    }
+
+    private void installInstanceBaseFiles(java.nio.file.Path instanceDirectory,String version,Label status,
+                                          String summary,String loader,boolean addRelianPerformanceMods){
         CompletableFuture.supplyAsync(()->{
             try{
                 var catalog=new com.relian.launcher.catalog.MinecraftVersionCatalog();
                 var release=catalog.fetchAllReleases().stream().filter(item->item.id().equals(version)).findFirst()
                     .orElseThrow(()->new java.io.IOException("Minecraft "+version+" is not available in Mojang's release manifest."));
-                return com.relian.launcher.catalog.MinecraftVersionInstaller.install(release,instanceDirectory,
+                var base=com.relian.launcher.catalog.MinecraftVersionInstaller.install(release,instanceDirectory,
                     message->javafx.application.Platform.runLater(()->status.setText(message)));
+                com.relian.launcher.catalog.LoaderInstaller.Result loaderResult=null;
+                if(loader!=null&&!loader.equals("Vanilla")){
+                    java.nio.file.Path javaExecutable=compatibleJavaFor(version);
+                    loaderResult=com.relian.launcher.catalog.LoaderInstaller.install(loader,version,instanceDirectory,javaExecutable,
+                        message->javafx.application.Platform.runLater(()->status.setText(message)));
+                    var marker=new java.util.LinkedHashMap<String,String>();
+                    marker.put("loader",loader);marker.put("minecraftVersion",version);
+                    marker.put("loaderVersion",loaderResult.loaderVersion());marker.put("profileId",loaderResult.profileId());
+                    java.nio.file.Files.writeString(instanceDirectory.resolve("relian-loader.json"),
+                        new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(marker));
+                }
+                return new InstanceInstallOutcome(base,loaderResult);
             }catch(Exception ex){throw new RuntimeException(ex);}
         }).whenComplete((installed,error)->javafx.application.Platform.runLater(()->{
-            if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText(summary+" Minecraft files could not be installed: "+cause.getMessage());return;}
-            status.setText(summary+" Installed Minecraft "+installed.versionId()+" with "+installed.libraries()+" libraries, "+installed.nativeJars()+" Windows native archives, and "+installed.assets()+" assets. The instance is selected. Vanilla launch is supported; Fabric/Forge loader launch is still being connected.");
+            if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText(summary+" Installation failed: "+cause.getMessage());return;}
+            if(installed.loader()!=null){
+                activeInstanceProfileId=installed.loader().profileId();
+                activeInstanceLoader=installed.loader().loader();
+                preferences.put("active.instance.profileId",activeInstanceProfileId);
+                preferences.put("active.instance.loader",activeInstanceLoader);
+                status.setText(summary+" Installed Minecraft "+installed.base().versionId()+" and "+installed.loader().loader()
+                    +" "+installed.loader().loaderVersion()+". Ready to launch profile "+installed.loader().profileId()+".");
+                if(addRelianPerformanceMods&&"Fabric".equals(installed.loader().loader()))
+                    installRelianPerformanceMods(instanceDirectory,version,status,summary+" Fabric loader installed.");
+            }else{
+                activeInstanceProfileId="";
+                preferences.remove("active.instance.profileId");
+                status.setText(summary+" Installed Minecraft "+installed.base().versionId()+" with "+installed.base().libraries()
+                    +" libraries, "+installed.base().nativeJars()+" Windows native archives, and "+installed.base().assets()
+                    +" assets. Vanilla instance is ready to launch.");
+            }
         }));
     }
 
@@ -677,7 +727,7 @@ public class RelianLauncher extends Application {
             catch(Exception ignored){}
             javafx.application.Platform.runLater(()->status.setText(summary+" Installed or already present: "+(installed.isEmpty()?"none":String.join(", ",installed))+
                 ". Not available for this version: "+(skipped.isEmpty()?"none":String.join(", ",skipped))+
-                ". A Fabric loader installer and full game launch pipeline are still required before these mods can run."));
+                ". These mods are installed into the selected Fabric instance."));
         });
     }
 
