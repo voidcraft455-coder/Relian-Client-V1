@@ -20,7 +20,7 @@ class FabricHudRuntimeInstallerTest {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (JarOutputStream jar = new JarOutputStream(bytes)) {
             jar.putNextEntry(new JarEntry("fabric.mod.json"));
-            jar.write("{\\"id\\":\\"relian_client\\",\\"depends\\":{\\"minecraft\\":\\"1.21.1\\"}}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            jar.write("{\"id\":\"relian_client\",\"depends\":{\"minecraft\":\"1.21.1\"}}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
             jar.closeEntry();
         }
         return bytes.toByteArray();
