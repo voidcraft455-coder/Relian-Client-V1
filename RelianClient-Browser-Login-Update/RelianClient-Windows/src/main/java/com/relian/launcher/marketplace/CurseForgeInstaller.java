@@ -118,7 +118,15 @@ public final class CurseForgeInstaller {
             for (CurseForgeDependencyGraph.Dependency dependency :
                     CurseForgeDependencyGraph.requiredDependencies(declared)) {
                 if (visited.contains(dependency.modId())) continue;
-                if (MarketplaceInstallRegistry.isProjectInstalled(gameDirectory, dependency.modId())) continue;
+                MarketplaceInstallRegistry.InstallRecord existing =
+                        MarketplaceInstallRegistry.findProject(gameDirectory, dependency.modId());
+                if (existing != null) {
+                    if (dependency.fileId() != null && !Long.toString(dependency.fileId()).equals(existing.versionId())) {
+                        throw new IOException("Required CurseForge dependency " + dependency.modId()
+                                + " is already installed at a different pinned file version. Update or remove it first.");
+                    }
+                    continue;
+                }
                 MarketplaceProject dependencyProject = fetchModProject(dependency.modId(), apiKey);
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, apiKey,
                         visited, dependency.fileId(), published);
