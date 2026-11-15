@@ -191,7 +191,7 @@ public final class ModrinthInstaller {
     }
 
     private static JsonObject fetchVersion(String versionId) throws IOException, InterruptedException {
-        URI uri = API.resolve("/version/" + encodePath(versionId));
+        URI uri = URI.create(API + "/version/" + encodePath(versionId));
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
                 .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
@@ -202,7 +202,7 @@ public final class ModrinthInstaller {
     }
 
     private static MarketplaceProject fetchModProject(String projectId) throws IOException, InterruptedException {
-        URI uri = API.resolve("/project/" + encodePath(projectId));
+        URI uri = URI.create(API + "/project/" + encodePath(projectId));
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
                 .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
