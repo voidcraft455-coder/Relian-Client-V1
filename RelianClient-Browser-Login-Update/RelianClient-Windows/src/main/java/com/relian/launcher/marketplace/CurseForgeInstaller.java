@@ -99,18 +99,15 @@ public final class CurseForgeInstaller {
 
         // CurseForge relationType 3 denotes a required dependency. Optional and
         // incompatible relationships are intentionally not installed automatically.
-        if (project.type() == ProjectType.MOD && selected.has("dependencies") && selected.get("dependencies").isJsonArray()) {
-            for (JsonElement element : selected.getAsJsonArray("dependencies")) {
-                if (!element.isJsonObject()) continue;
-                JsonObject dependency = element.getAsJsonObject();
-                if (!dependency.has("relationType") || dependency.get("relationType").getAsInt() != 3) continue;
-                String dependencyId = string(dependency, "modId");
-                if (dependencyId.isBlank() || visited.contains(dependencyId)) continue;
-                MarketplaceProject dependencyProject = fetchModProject(dependencyId, apiKey);
-                Long dependencyFileId = dependency.has("fileId") && !dependency.get("fileId").isJsonNull()
-                        ? dependency.get("fileId").getAsLong() : null;
+        if (project.type() == ProjectType.MOD) {
+            JsonArray declared = selected.has("dependencies") && selected.get("dependencies").isJsonArray()
+                    ? selected.getAsJsonArray("dependencies") : new JsonArray();
+            for (CurseForgeDependencyGraph.Dependency dependency :
+                    CurseForgeDependencyGraph.requiredDependencies(declared)) {
+                if (visited.contains(dependency.modId())) continue;
+                MarketplaceProject dependencyProject = fetchModProject(dependency.modId(), apiKey);
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, apiKey,
-                        visited, dependencyFileId, published);
+                        visited, dependency.fileId(), published);
             }
         }
         String fileName = safeFileName(string(selected, "fileName"));
