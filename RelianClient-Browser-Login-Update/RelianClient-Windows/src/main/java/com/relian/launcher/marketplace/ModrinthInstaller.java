@@ -110,7 +110,16 @@ public final class ModrinthInstaller {
                     dependencyProjectId = string(fetchVersion(dependency.pinnedVersionId()), "project_id");
                 }
                 if (dependencyProjectId.isBlank() || visited.contains(dependencyProjectId)) continue;
-                if (MarketplaceInstallRegistry.isProjectInstalled(root, dependencyProjectId)) continue;
+                MarketplaceInstallRegistry.InstallRecord existing =
+                        MarketplaceInstallRegistry.findProject(root, dependencyProjectId);
+                if (existing != null) {
+                    if (!dependency.pinnedVersionId().isBlank()
+                            && !dependency.pinnedVersionId().equals(existing.versionId())) {
+                        throw new IOException("Required dependency " + dependencyProjectId
+                                + " is already installed at a different pinned version. Update or remove the existing dependency first.");
+                    }
+                    continue;
+                }
                 MarketplaceProject dependencyProject = fetchModProject(dependencyProjectId);
                 // Install transitive required dependencies before the parent mod, respecting pinned versions.
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited,
