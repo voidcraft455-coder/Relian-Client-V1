@@ -23,6 +23,10 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Installs CurseForge mod/resource-pack/shader files with API metadata and checksum validation. */
 public final class CurseForgeInstaller {
@@ -39,6 +43,26 @@ public final class CurseForgeInstaller {
         if (apiKey == null || apiKey.isBlank()) throw new IOException("CurseForge API key is not configured.");
         if (project.type() == ProjectType.MODPACK) throw new IOException("Modpack profile import is not available yet.");
         if (minecraftVersion == null || minecraftVersion.isBlank()) throw new IOException("Choose a Minecraft version first.");
+        List<Path> published = new ArrayList<>();
+        try {
+            return installInternal(project, minecraftVersion, loader, gameDirectory, apiKey.trim(),
+                    new HashSet<>(), null, published);
+        } catch (IOException | InterruptedException failure) {
+            for (int i = published.size() - 1; i >= 0; i--) {
+                Path file = published.get(i);
+                try { MarketplaceInstallRegistry.forget(gameDirectory, file); }
+                catch (IOException cleanup) { failure.addSuppressed(cleanup); }
+                try { Files.deleteIfExists(file); }
+                catch (IOException cleanup) { failure.addSuppressed(cleanup); }
+            }
+            throw failure;
+        }
+    }
+
+    private static Path installInternal(MarketplaceProject project, String minecraftVersion, String loader,
+            Path gameDirectory, String apiKey, Set<String> visited, Long pinnedFileId, List<Path> published)
+            throws IOException, InterruptedException {
+        if (!visited.add(project.id())) return null;
 
         String url = API + "/mods/" + encode(project.id()) + "/files?gameVersion=" + enc(minecraftVersion.trim()) + "&pageSize=20&index=0";
         if (project.type() == ProjectType.MOD) {
@@ -59,14 +83,36 @@ public final class CurseForgeInstaller {
         if (files == null || files.isEmpty()) throw new IOException("No compatible CurseForge files were found for Minecraft " + minecraftVersion + ".");
 
         JsonObject selected = null;
-        for (JsonElement element : files) {
-            if (!element.isJsonObject()) continue;
-            JsonObject file = element.getAsJsonObject();
-            if (file.has("isAvailable") && !file.get("isAvailable").getAsBoolean()) continue;
-            selected = file;
-            break;
+        if (pinnedFileId != null) {
+            selected = fetchPinnedFile(project.id(), pinnedFileId, apiKey);
+            if (selected == null) throw new IOException("The pinned required CurseForge dependency file is unavailable.");
+        } else {
+            for (JsonElement element : files) {
+                if (!element.isJsonObject()) continue;
+                JsonObject file = element.getAsJsonObject();
+                if (file.has("isAvailable") && !file.get("isAvailable").getAsBoolean()) continue;
+                selected = file;
+                break;
+            }
         }
         if (selected == null) throw new IOException("No available CurseForge file was found.");
+
+        // CurseForge relationType 3 denotes a required dependency. Optional and
+        // incompatible relationships are intentionally not installed automatically.
+        if (project.type() == ProjectType.MOD && selected.has("dependencies") && selected.get("dependencies").isJsonArray()) {
+            for (JsonElement element : selected.getAsJsonArray("dependencies")) {
+                if (!element.isJsonObject()) continue;
+                JsonObject dependency = element.getAsJsonObject();
+                if (!dependency.has("relationType") || dependency.get("relationType").getAsInt() != 3) continue;
+                String dependencyId = string(dependency, "modId");
+                if (dependencyId.isBlank() || visited.contains(dependencyId)) continue;
+                MarketplaceProject dependencyProject = fetchModProject(dependencyId, apiKey);
+                Long dependencyFileId = dependency.has("fileId") && !dependency.get("fileId").isJsonNull()
+                        ? dependency.get("fileId").getAsLong() : null;
+                installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, apiKey,
+                        visited, dependencyFileId, published);
+            }
+        }
         String fileName = safeFileName(string(selected, "fileName"));
         String downloadUrl = string(selected, "downloadUrl");
         JsonArray hashArray = selected.has("hashes") && selected.get("hashes").isJsonArray() ? selected.getAsJsonArray("hashes") : null;
@@ -135,18 +181,56 @@ public final class CurseForgeInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
-            try {
-                MarketplaceInstallRegistry.record(root, destination, "CurseForge", project.id(),
-                        string(selected, "id"), "sha1", expectedHash, project.type(),
-                        minecraftVersion.trim(), loader == null ? "" : loader.trim().toLowerCase(Locale.ROOT));
-            } catch (IOException registryFailure) {
-                Files.deleteIfExists(destination);
-                moved = false;
-                throw registryFailure;
-            }
+            published.add(destination);
+            MarketplaceInstallRegistry.record(root, destination, "CurseForge", project.id(),
+                    string(selected, "id"), "sha1", expectedHash, project.type(),
+                    minecraftVersion.trim(), loader == null ? "" : loader.trim().toLowerCase(Locale.ROOT));
             return destination;
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
+        }
+    }
+
+    private static JsonObject fetchPinnedFile(String modId, long fileId, String apiKey)
+            throws IOException, InterruptedException {
+        URI uri = URI.create(API + "/mods/" + encode(modId) + "/files/" + fileId);
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                .header("x-api-key", apiKey).header("Accept", "application/json").GET().build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200)
+            throw new IOException("Could not retrieve pinned CurseForge dependency file (HTTP " + response.statusCode() + ").");
+        try {
+            JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
+            return body.has("data") && body.get("data").isJsonObject() ? body.getAsJsonObject("data") : null;
+        } catch (RuntimeException ex) {
+            throw new IOException("CurseForge returned invalid pinned dependency metadata.", ex);
+        }
+    }
+
+    private static MarketplaceProject fetchModProject(String modId, String apiKey)
+            throws IOException, InterruptedException {
+        URI uri = URI.create(API + "/mods/" + encode(modId));
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                .header("x-api-key", apiKey).header("Accept", "application/json").GET().build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200)
+            throw new IOException("Could not resolve required CurseForge mod " + modId
+                    + " (HTTP " + response.statusCode() + ").");
+        try {
+            JsonObject body = JsonParser.parseString(response.body()).getAsJsonObject();
+            JsonObject data = body.getAsJsonObject("data");
+            if (data == null) throw new IOException("CurseForge returned incomplete required dependency metadata.");
+            String id = string(data, "id");
+            String title = string(data, "name");
+            String website = data.has("links") && data.get("links").isJsonObject()
+                    ? string(data.getAsJsonObject("links"), "websiteUrl") : "";
+            URI projectUrl = website.startsWith("https://") ? URI.create(website)
+                    : URI.create("https://www.curseforge.com/minecraft/mc-mods/" + encode(id));
+            if (id.isBlank() || title.isBlank()) throw new IOException("CurseForge returned incomplete required dependency metadata.");
+            return new MarketplaceProject(id, title, "Unknown", string(data, "summary"),
+                    ProjectType.MOD, projectUrl, java.util.List.of(), "CurseForge");
+        } catch (RuntimeException ex) {
+            throw new IOException("Could not parse required CurseForge dependency metadata.", ex);
         }
     }
 
