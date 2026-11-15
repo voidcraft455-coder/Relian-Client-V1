@@ -405,7 +405,7 @@ public class RelianLauncher extends Application {
                 if(updates.isEmpty()){state.setText("All tracked marketplace installs are up to date. Manually added files are not included in update checks.");return;}
                 StringBuilder summary=new StringBuilder();
                 for(var update:updates){
-                    summary.append(update.installed().fileName()).append("  →  ").append(update.latestFileName().isBlank()?update.latestVersionId():update.latestFileName()).append("\\n");
+                    summary.append(update.installed().fileName()).append("  →  ").append(update.latestFileName().isBlank()?update.latestVersionId():update.latestFileName()).append("\n");
                 }
                 Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Marketplace updates");
