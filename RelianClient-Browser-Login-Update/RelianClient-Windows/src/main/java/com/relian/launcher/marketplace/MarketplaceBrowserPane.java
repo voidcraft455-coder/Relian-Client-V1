@@ -141,7 +141,8 @@ public final class MarketplaceBrowserPane extends VBox {
 
         Label title = label(project.title());
         title.setStyle("-fx-text-fill:" + FG + ";-fx-font-size:14px;-fx-font-weight:bold;");
-        Label metadata = label(project.source() + "  •  by " + project.author() + "  •  " + project.type());
+        String categories = project.categories().isEmpty() ? "" : "  •  " + String.join(", ", project.categories());
+        Label metadata = label(project.source() + "  •  by " + project.author() + "  •  " + project.type() + categories);
         metadata.setStyle("-fx-text-fill:#8fa0b8;-fx-font-size:10px;");
         Label description = label(project.description());
         description.setStyle("-fx-text-fill:" + MUTED + ";-fx-font-size:12px;");
