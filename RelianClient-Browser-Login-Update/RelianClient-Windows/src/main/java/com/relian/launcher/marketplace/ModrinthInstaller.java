@@ -25,6 +25,8 @@ import java.util.HexFormat;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Installs a selected Modrinth mod/resource pack/shader after checking game compatibility
@@ -40,11 +42,20 @@ public final class ModrinthInstaller {
 
     public static Path install(MarketplaceProject project, String minecraftVersion, String loader, Path gameDirectory)
             throws IOException, InterruptedException {
-        return installInternal(project, minecraftVersion, loader, gameDirectory, new HashSet<>(), "");
+        List<Path> published = new ArrayList<>();
+        try {
+            return installInternal(project, minecraftVersion, loader, gameDirectory, new HashSet<>(), "", published);
+        } catch (IOException | InterruptedException failure) {
+            for (int i = published.size() - 1; i >= 0; i--) {
+                try { Files.deleteIfExists(published.get(i)); }
+                catch (IOException rollbackFailure) { failure.addSuppressed(rollbackFailure); }
+            }
+            throw failure;
+        }
     }
 
     private static Path installInternal(MarketplaceProject project, String minecraftVersion, String loader,
-                                        Path gameDirectory, Set<String> visited, String pinnedVersionId)
+                                        Path gameDirectory, Set<String> visited, String pinnedVersionId, List<Path> published)
             throws IOException, InterruptedException {
         if (project == null || gameDirectory == null) throw new IllegalArgumentException("Project and game directory are required.");
         if (!visited.add(project.id())) return null;
@@ -100,7 +111,7 @@ public final class ModrinthInstaller {
                 MarketplaceProject dependencyProject = fetchModProject(dependencyProjectId);
                 // Install transitive required dependencies before the parent mod, respecting pinned versions.
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited,
-                        dependency.pinnedVersionId());
+                        dependency.pinnedVersionId(), published);
             }
         }
         String versionId = string(selectedVersion, "id");
@@ -184,6 +195,7 @@ public final class ModrinthInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
+            published.add(destination);
             return destination;
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
