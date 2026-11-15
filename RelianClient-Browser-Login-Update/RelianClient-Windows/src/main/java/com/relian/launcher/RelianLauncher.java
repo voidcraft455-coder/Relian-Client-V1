@@ -36,6 +36,11 @@ public class RelianLauncher extends Application {
     private OfflineTestProfile offlineTestProfile;
     private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
+    private static String usageKey(java.nio.file.Path directory,String field){String id=directory.getFileName()==null?"default":directory.getFileName().toString().replaceAll("[^A-Za-z0-9._-]","_");if(id.length()>48)id=id.substring(0,48);return "instance.usage."+id+"."+field;}
+    private long playSeconds(java.nio.file.Path directory){return preferences.getLong(usageKey(directory,"seconds"),0L);}
+    private boolean isPinned(java.nio.file.Path directory){return preferences.getBoolean(usageKey(directory,"pinned"),false);}
+    private void recordPlaytime(java.nio.file.Path directory,long seconds){if(directory==null||seconds<=0)return;String key=usageKey(directory,"seconds");preferences.putLong(key,Math.max(0,preferences.getLong(key,0L))+seconds);preferences.putLong(usageKey(directory,"lastPlayed"),System.currentTimeMillis());}
+    private String formatPlaytime(long seconds){long hours=seconds/3600,minutes=(seconds%3600)/60;return hours>0?hours+"h "+minutes+"m":minutes+"m";}
 
     @Override public void stop() { launchService.close(); }
 
@@ -246,6 +251,7 @@ public class RelianLauncher extends Application {
                     ?java.nio.file.Path.of(System.getProperty("user.home"),".relian","game")
                     :java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize());
             play.setDisable(true); playStatus.setText("Checking the compatible Java runtime and starting Minecraft "+selectedVersion+"…");
+            final long[] sessionStarted={0L};
             CompletableFuture.supplyAsync(()->{
                 try{
                     java.nio.file.Path javaExecutable=compatibleJavaFor(selectedVersion);
@@ -258,8 +264,10 @@ public class RelianLauncher extends Application {
                     Throwable cause=error.getCause()==null?error:error.getCause();
                     playStatus.setText("Launch failed: "+cause.getMessage());
                 }else{
+                    sessionStarted[0]=System.currentTimeMillis();
                     playStatus.setText("Minecraft is running. Close the game to return to Relian.");
                     launchService.exitCode().whenComplete((code,exitError)->javafx.application.Platform.runLater(()->{
+                        recordPlaytime(root,Math.max(0,(System.currentTimeMillis()-sessionStarted[0])/1000));
                         play.setDisable(false);
                         if(exitError!=null)playStatus.setText("Minecraft stopped. Exit status could not be read: "+exitError.getMessage());
                         else playStatus.setText("Minecraft closed with exit code "+code+". Check the launcher output if it did not reach the title screen.");
@@ -310,6 +318,7 @@ public class RelianLauncher extends Application {
             card("RESOURCE PACKS","Manage textures and visual styles.","Open Packs",()->page("Resource Packs")),
             card("SHADERS","Manage supported shader packs.","Open Shaders",()->page("Shaders")));
         Label quickTitle=new Label("QUICK ACCESS"); quickTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;-fx-letter-spacing:1.4px;");
+        if(activeInstanceDirectory!=null){VBox featured=new VBox(7);featured.setPadding(new Insets(16));featured.setStyle(cardStyle());Label featuredTitle=new Label("SELECTED INSTALLATION");featuredTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;");Label featuredName=new Label(activeInstanceDirectory.getFileName()+"  •  "+activeInstanceVersion+"  •  "+activeInstanceLoader);featuredName.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");featured.getChildren().addAll(featuredTitle,featuredName,muted("Total playtime recorded by Relian: "+formatPlaytime(playSeconds(activeInstanceDirectory))));wrap.getChildren().add(featured);}
         wrap.getChildren().addAll(hero,quickTitle,cards); return wrap;
     }
     private VBox card(String t,String d,String action,Runnable r){
@@ -481,8 +490,12 @@ public class RelianLauncher extends Application {
                 rows.getChildren().clear();
                 if(error!=null){state.setText("Could not read instances: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
                 if(items.isEmpty()){state.setText("No Relian-managed instances yet. Create one below.");return;}
-                state.setText(items.size()+" managed instance(s) • stored in "+instancesRoot());
-                for(var item:items){
+                var rankedItems=new java.util.ArrayList<>(items);
+                rankedItems.sort(java.util.Comparator.comparing((var item)->isPinned(item.directory())).reversed()
+                    .thenComparing((var item)->playSeconds(item.directory()),java.util.Comparator.reverseOrder())
+                    .thenComparing(item->item.manifest().name(),String.CASE_INSENSITIVE_ORDER));
+                state.setText(items.size()+" managed instance(s) • sorted by pinned status and playtime • stored in "+instancesRoot());
+                for(var item:rankedItems){
                     HBox row=new HBox(10);
                     row.setAlignment(Pos.CENTER_LEFT);
                     row.setPadding(new Insets(12));
@@ -491,8 +504,10 @@ public class RelianLauncher extends Application {
                     Label name=new Label(item.manifest().name());
                     name.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
                     String loader=item.manifest().loader()==null?"Unknown":item.manifest().loader();
-                    details.getChildren().addAll(name,muted("Minecraft "+item.manifest().minecraftVersion()+" • "+loader+" • "+item.manifest().kind()));
+                    details.getChildren().addAll(name,muted("Minecraft "+item.manifest().minecraftVersion()+" • "+loader+" • "+item.manifest().kind()),muted("Played "+formatPlaytime(playSeconds(item.directory()))+(isPinned(item.directory())?" • Pinned":"")));
                     Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
+                    Button pin=small(isPinned(item.directory())?"Unpin":"Pin");
+                    pin.setOnAction(event->{preferences.putBoolean(usageKey(item.directory(),"pinned"),!isPinned(item.directory()));load[0].run();});
                     Button select=small("Use this instance");
                     select.setOnAction(event->{
                         activeInstanceDirectory=item.directory();
@@ -546,7 +561,7 @@ public class RelianLauncher extends Application {
                             refresh.fire();
                         }catch(Exception ex){info("Could not remove this instance: "+ex.getMessage());}
                     });
-                    row.getChildren().addAll(details,spacer,select,installHud,open,remove);
+                    row.getChildren().addAll(details,spacer,pin,select,installHud,open,remove);
                     rows.getChildren().add(row);
                 }
             }));
