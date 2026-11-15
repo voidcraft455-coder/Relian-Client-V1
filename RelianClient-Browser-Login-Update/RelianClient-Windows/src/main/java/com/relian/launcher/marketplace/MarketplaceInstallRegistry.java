@@ -69,12 +69,14 @@ public final class MarketplaceInstallRegistry {
         Path root = checkedRoot(gameRoot);
         if (record == null || !safeRelative(record.relativePath())) throw new IOException("Marketplace install path is invalid.");
         Path file = root.resolve(record.relativePath()).normalize();
-        if (Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(file)) return file;
+        if (Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(file))
+            return checkedManagedFile(root, file);
         String name = file.getFileName().toString();
         Path alternate = name.endsWith(".disabled")
                 ? file.resolveSibling(name.substring(0, name.length() - ".disabled".length()))
                 : file.resolveSibling(name + ".disabled");
-        if (Files.isRegularFile(alternate, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(alternate)) return alternate;
+        if (Files.isRegularFile(alternate, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(alternate))
+            return checkedManagedFile(root, alternate);
         throw new IOException("The tracked marketplace file is missing: " + record.fileName());
     }
 
