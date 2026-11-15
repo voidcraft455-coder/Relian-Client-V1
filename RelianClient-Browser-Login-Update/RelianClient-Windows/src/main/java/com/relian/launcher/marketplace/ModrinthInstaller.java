@@ -57,37 +57,50 @@ public final class ModrinthInstaller {
         Path root = gameDirectory.toAbsolutePath().normalize();
         if (!Files.isDirectory(root)) throw new IOException("Choose an existing Minecraft game directory.");
         String loaderValue = project.type() == ProjectType.MOD ? normalizeLoader(loader) : "";
-        String versionQuery = "[\"" + jsonEscape(minecraftVersion.trim()) + "\"]";
-        String url = API + "/project/" + encodePath(project.id()) + "/version?game_versions="
-                + enc(versionQuery);
-        if (project.type() == ProjectType.MOD) {
-            url += "&loaders=" + enc("[\"" + jsonEscape(loaderValue) + "\"]");
+        JsonObject selectedVersion;
+        if (pinnedVersionId != null && !pinnedVersionId.isBlank()) {
+            selectedVersion = fetchVersion(pinnedVersionId);
+            if (!project.id().equals(string(selectedVersion, "project_id")))
+                throw new IOException("Modrinth dependency version does not belong to the expected project.");
+            JsonArray supportedGames = selectedVersion.has("game_versions") && selectedVersion.get("game_versions").isJsonArray()
+                    ? selectedVersion.getAsJsonArray("game_versions") : new JsonArray();
+            boolean gameMatches = false;
+            for (JsonElement item : supportedGames) if (minecraftVersion.trim().equals(item.getAsString())) gameMatches = true;
+            if (!gameMatches) throw new IOException("A pinned required dependency does not support Minecraft " + minecraftVersion + ".");
+            if (project.type() == ProjectType.MOD) {
+                JsonArray supportedLoaders = selectedVersion.has("loaders") && selectedVersion.get("loaders").isJsonArray()
+                        ? selectedVersion.getAsJsonArray("loaders") : new JsonArray();
+                boolean loaderMatches = false;
+                for (JsonElement item : supportedLoaders) if (loaderValue.equalsIgnoreCase(item.getAsString())) loaderMatches = true;
+                if (!loaderMatches) throw new IOException("A pinned required dependency does not support " + loaderValue + ".");
+            }
+        } else {
+            String versionQuery = "[\"" + jsonEscape(minecraftVersion.trim()) + "\"]";
+            String url = API + "/project/" + encodePath(project.id()) + "/version?game_versions=" + enc(versionQuery);
+            if (project.type() == ProjectType.MOD) url += "&loaders=" + enc("[\"" + jsonEscape(loaderValue) + "\"]");
+            HttpRequest versionsRequest = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
+                    .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
+            HttpResponse<String> versionsResponse = HTTP.send(versionsRequest, HttpResponse.BodyHandlers.ofString());
+            if (versionsResponse.statusCode() != 200)
+                throw new IOException("Modrinth version lookup failed with HTTP " + versionsResponse.statusCode() + ".");
+            JsonArray versions;
+            try { versions = JsonParser.parseString(versionsResponse.body()).getAsJsonArray(); }
+            catch (RuntimeException ex) { throw new IOException("Modrinth returned an invalid version list.", ex); }
+            if (versions.isEmpty()) throw new IOException("No compatible files were found for Minecraft " + minecraftVersion + ".");
+            selectedVersion = versions.get(0).getAsJsonObject();
         }
-
-        HttpRequest versionsRequest = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
-                .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
-        HttpResponse<String> versionsResponse = HTTP.send(versionsRequest, HttpResponse.BodyHandlers.ofString());
-        if (versionsResponse.statusCode() != 200) {
-            throw new IOException("Modrinth version lookup failed with HTTP " + versionsResponse.statusCode() + ".");
-        }
-
-        JsonArray versions;
-        try {
-            versions = JsonParser.parseString(versionsResponse.body()).getAsJsonArray();
-        } catch (RuntimeException ex) {
-            throw new IOException("Modrinth returned an invalid version list.", ex);
-        }
-        if (versions.isEmpty()) throw new IOException("No compatible files were found for Minecraft " + minecraftVersion + ".");
-
-        JsonObject selectedVersion = versions.get(0).getAsJsonObject();
         if (project.type() == ProjectType.MOD) {
             for (ModrinthDependencyGraph.Dependency dependency :
                     ModrinthDependencyGraph.requiredDependencies(selectedVersion)) {
                 String dependencyProjectId = dependency.projectId();
+                if (dependencyProjectId.isBlank() && !dependency.pinnedVersionId().isBlank()) {
+                    dependencyProjectId = string(fetchVersion(dependency.pinnedVersionId()), "project_id");
+                }
                 if (dependencyProjectId.isBlank() || visited.contains(dependencyProjectId)) continue;
                 MarketplaceProject dependencyProject = fetchModProject(dependencyProjectId);
-                // Install transitive required dependencies before the parent mod.
-                installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited, "");
+                // Install transitive required dependencies before the parent mod, respecting pinned versions.
+                installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited,
+                        dependency.pinnedVersionId());
             }
         }
         String versionId = string(selectedVersion, "id");
@@ -175,6 +188,17 @@ public final class ModrinthInstaller {
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
         }
+    }
+
+    private static JsonObject fetchVersion(String versionId) throws IOException, InterruptedException {
+        URI uri = API.resolve("/version/" + encodePath(versionId));
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200)
+            throw new IOException("Could not retrieve pinned Modrinth dependency version (HTTP " + response.statusCode() + ").");
+        try { return JsonParser.parseString(response.body()).getAsJsonObject(); }
+        catch (RuntimeException ex) { throw new IOException("Modrinth returned invalid pinned dependency metadata.", ex); }
     }
 
     private static MarketplaceProject fetchModProject(String projectId) throws IOException, InterruptedException {
