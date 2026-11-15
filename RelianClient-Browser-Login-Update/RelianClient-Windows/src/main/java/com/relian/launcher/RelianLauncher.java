@@ -144,7 +144,11 @@ public class RelianLauncher extends Application {
     private com.relian.launcher.marketplace.MarketplaceBrowserPane marketplace(com.relian.launcher.marketplace.ProjectType type) {
         java.nio.file.Path preferred = activeInstanceDirectory != null ? activeInstanceDirectory
             : (gameDirectory.isBlank() ? null : java.nio.file.Path.of(gameDirectory));
-        return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred, activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion);
+        java.nio.file.Path instancesRoot = gameDirectory.isBlank()
+            ? java.nio.file.Path.of(System.getProperty("user.home"), ".relian", "instances")
+            : java.nio.file.Path.of(gameDirectory).resolve("RelianInstances");
+        return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred, instancesRoot,
+            activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion);
     }
 
     private Label navSection(String name){Label label=new Label(name);label.setPadding(new Insets(10,10,3,10));label.setStyle("-fx-text-fill:#66758b;-fx-font-size:9px;-fx-font-weight:bold;-fx-letter-spacing:1.2px;");return label;}
