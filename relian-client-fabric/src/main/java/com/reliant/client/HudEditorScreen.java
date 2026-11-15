@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of(
-        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time"
+        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time", "light_level", "chunk_coords", "velocity", "offhand", "date", "armor_summary"
     );
     private int selected = 0;
     private boolean draggingPreview = false;
@@ -36,18 +36,18 @@ public final class HudEditorScreen extends Screen {
         for (int i = 0; i < MODULES.size(); i++) {
             String id = MODULES.get(i);
             HudConfig.ModuleSettings settings = HudConfig.get().modules.get(id);
-            int y = panelTop + 88 + i * 20;
+            int y = panelTop + 88 + i * 15;
             boolean active = i == selected;
-            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 18,
+            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 14,
                 active ? 0xFF26364D : 0xFF1C2635, 9);
-            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 5,
+            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 3,
                 active ? 0xFFFFFFFF : 0xFFD8E0EB);
             context.drawTextWithShadow(textRenderer,
-                Text.literal(settings.enabled ? "ON" : "OFF"), panelLeft + 190, y + 5,
+                Text.literal(settings.enabled ? "ON" : "OFF"), panelLeft + 190, y + 3,
                 settings.enabled ? 0xFF7EE0B0 : 0xFF8995A7);
-            drawButton(context, panelLeft + 265, y + 2, 62, 20, settings.enabled ? "ON" : "OFF",
+            drawButton(context, panelLeft + 265, y + 1, 62, 12, settings.enabled ? "ON" : "OFF",
                 settings.enabled ? 0xFF245A4C : 0xFF465164, mouseX, mouseY);
-            drawButton(context, panelLeft + 333, y + 2, 57, 20, "EDIT", 0xFF34445B, mouseX, mouseY);
+            drawButton(context, panelLeft + 333, y + 1, 57, 12, "SELECT", 0xFF34445B, mouseX, mouseY);
         }
 
         int px = panelLeft + 425;
@@ -108,6 +108,12 @@ public final class HudEditorScreen extends Screen {
             case "world_time" -> "WORLD TIME: 12:00  DAY 1";
             case "server_info" -> "SERVER: Singleplayer";
             case "session_time" -> "SESSION: 00:12:34";
+            case "light_level" -> "BLOCK LIGHT: 12 / 15";
+            case "chunk_coords" -> "CHUNK: 7, -3  LOCAL: 4, 11";
+            case "velocity" -> "VELOCITY: X 0.02 Y 0.00 Z -0.14";
+            case "offhand" -> "OFFHAND: Totem of Undying";
+            case "date" -> "DATE: 2026-11-14";
+            case "armor_summary" -> "ARMOR CONDITION: 92% average";
             default -> label(id);
         };
     }
@@ -164,6 +170,12 @@ public final class HudEditorScreen extends Screen {
             case "world_time" -> "WORLD CLOCK / DAY";
             case "server_info" -> "SERVER / PLAYER COUNT";
             case "session_time" -> "SESSION TIMER";
+            case "light_level" -> "BLOCK LIGHT LEVEL";
+            case "chunk_coords" -> "CHUNK / LOCAL COORDINATES";
+            case "velocity" -> "VELOCITY XYZ";
+            case "offhand" -> "OFFHAND ITEM";
+            case "date" -> "LOCAL DATE";
+            case "armor_summary" -> "ARMOR CONDITION";
             default -> id.toUpperCase();
         };
     }
@@ -175,9 +187,9 @@ public final class HudEditorScreen extends Screen {
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
             int y = panelTop + 88 + i * 20;
-            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 18)) {
+            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 14)) {
                 selected = i;
-                if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 16)) {
+                if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 12)) {
                     HudConfig.get().modules.get(MODULES.get(i)).enabled =
                         !HudConfig.get().modules.get(MODULES.get(i)).enabled;
                     HudConfig.save();
