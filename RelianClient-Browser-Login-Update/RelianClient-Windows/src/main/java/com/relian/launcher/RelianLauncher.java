@@ -542,7 +542,7 @@ public class RelianLauncher extends Application {
             }));
         };
         refresh.setOnAction(event->load[0].run());
-        refreshInstancesAction=load;
+        refreshInstancesAction=load[0];
         panel.getChildren().addAll(heading,state,rows);
         load[0].run();
         return panel;
