@@ -188,6 +188,9 @@ public final class ModrinthInstaller {
             }
             String actualHash = HexFormat.of().formatHex(digest.digest());
             if (!actualHash.equalsIgnoreCase(expectedHash)) throw new IOException("SHA-512 verification failed. The file was not installed.");
+            if (project.type() == ProjectType.MOD) {
+                ContentConflictDetector.ensureNoDuplicateModIds(targetDirectory, temporary);
+            }
 
             try {
                 Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
