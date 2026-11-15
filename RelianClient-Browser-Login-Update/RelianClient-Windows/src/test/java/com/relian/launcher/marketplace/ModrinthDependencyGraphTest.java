@@ -32,7 +32,7 @@ class ModrinthDependencyGraphTest {
                 new ModrinthDependencyGraph.ProjectDependencies("common", List.of("root"))
         );
         List<String> order = ModrinthDependencyGraph.dependencyInstallOrder("root", graph);
-        assertEquals(List.of("root", "library", "common", "helper"), order);
+        assertEquals(List.of("common", "library", "helper", "root"), order);
         assertEquals(4, order.stream().distinct().count());
     }
 
