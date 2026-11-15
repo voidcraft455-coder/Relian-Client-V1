@@ -36,7 +36,7 @@ The Installed Content page scans supported mods, resource packs, and shaders in 
 - A marketplace-owned install manifest that maps provider project/version IDs and verified file hashes to installed paths.
 - Update checking and safe update flows for installed mods, resource packs, and shaders.
 - Conflict detection for duplicate mod IDs and incompatible loader/game requirements, with actionable warnings.
-- A single staged multi-file transaction for dependency trees; individual Modrinth files are checksum-verified and atomically published, but a later dependency failure can currently leave earlier successfully installed dependencies in place.
+- Modrinth dependency trees are installed dependency-first and tracked during the operation; if a later required dependency or parent download fails, newly published files from that install operation are removed. Existing files are never overwritten.
 - Richer metadata display for licenses, supported environments, dependency details, and changelogs.
 - End-to-end tests against representative live Modrinth and CurseForge projects, including API-key-enabled CurseForge flows.
 
