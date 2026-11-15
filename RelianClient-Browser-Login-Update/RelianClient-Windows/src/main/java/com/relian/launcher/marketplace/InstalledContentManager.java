@@ -112,6 +112,14 @@ public final class InstalledContentManager {
         String lower = source.getFileName().toString().toLowerCase(Locale.ROOT);
         if (!(lower.endsWith(".jar") || lower.endsWith(".jar.disabled") || lower.endsWith(".zip") || lower.endsWith(".zip.disabled")))
             throw new IOException("Unsupported content file type.");
+        for (MarketplaceInstallRegistry.InstallRecord record : MarketplaceInstallRegistry.list(root)) {
+            try {
+                if (MarketplaceInstallRegistry.resolveFile(root, record).equals(source))
+                    MarketplaceInstallRegistry.forgetRecord(root, record);
+            } catch (IOException missing) {
+                // A stale registry record does not prevent removing the selected local file.
+            }
+        }
         Files.delete(source);
     }
 
