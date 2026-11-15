@@ -80,12 +80,25 @@ public final class CurseForgeInstaller {
         } catch (RuntimeException ex) {
             throw new IOException("CurseForge returned invalid file metadata.", ex);
         }
-        if (files == null || files.isEmpty()) throw new IOException("No compatible CurseForge files were found for Minecraft " + minecraftVersion + ".");
+        if (files == null || (pinnedFileId == null && files.isEmpty()))
+            throw new IOException("No compatible CurseForge files were found for Minecraft " + minecraftVersion + ".");
 
         JsonObject selected = null;
         if (pinnedFileId != null) {
             selected = fetchPinnedFile(project.id(), pinnedFileId, apiKey);
-            if (selected == null) throw new IOException("The pinned required CurseForge dependency file is unavailable.");
+            if (selected == null || !Long.toString(pinnedFileId).equals(string(selected, "id")))
+                throw new IOException("The pinned required CurseForge dependency file is unavailable or mismatched.");
+            if (selected.has("gameVersions") && selected.get("gameVersions").isJsonArray()) {
+                boolean gameMatches = false;
+                for (JsonElement game : selected.getAsJsonArray("gameVersions"))
+                    if (minecraftVersion.trim().equalsIgnoreCase(game.getAsString())) gameMatches = true;
+                if (!gameMatches) throw new IOException("A pinned CurseForge dependency does not support Minecraft " + minecraftVersion + ".");
+            }
+            if (project.type() == ProjectType.MOD && selected.has("modLoader") && !selected.get("modLoader").isJsonNull()) {
+                int actualLoader = selected.get("modLoader").getAsInt();
+                if (actualLoader != 0 && actualLoader != loaderType(loader))
+                    throw new IOException("A pinned CurseForge dependency does not support the selected mod loader.");
+            }
         } else {
             for (JsonElement element : files) {
                 if (!element.isJsonObject()) continue;
