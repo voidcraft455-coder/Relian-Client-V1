@@ -10,6 +10,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /** Applies provider updates by installing the verified replacement before retiring the old file. */
 public final class MarketplaceUpdateService {
@@ -66,12 +68,13 @@ public final class MarketplaceUpdateService {
             if (Files.exists(backupsRoot, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(backupsRoot))
                 throw new IOException("Marketplace backup directory cannot be a symbolic link.");
             Files.createDirectories(backupsRoot);
-            Path backupDirectory = backupsRoot.resolve("marketplace-updates");
-            if (Files.exists(backupDirectory, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(backupDirectory))
-                throw new IOException("Marketplace update backup directory cannot be a symbolic link.");
-            Files.createDirectories(backupDirectory);
-            Path backup = backupDirectory.resolve(Instant.now().toEpochMilli() + "-" + safeName(oldFile.getFileName().toString()));
-            Files.copy(inactiveOld, backup, StandardCopyOption.COPY_ATTRIBUTES);
+            Path backup = backupsRoot.resolve("marketplace-update-" + Instant.now().toEpochMilli() + ".zip");
+            String backupEntry = root.relativize(inactiveOld).toString().replace('\\', '/');
+            try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(backup))) {
+                zip.putNextEntry(new ZipEntry(backupEntry));
+                Files.copy(inactiveOld, zip);
+                zip.closeEntry();
+            }
             Files.delete(inactiveOld);
             return new UpdateResult(old.fileName(), replacement, backup);
         } catch (IOException | InterruptedException failure) {
