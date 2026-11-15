@@ -236,10 +236,10 @@ public final class HudEditorScreen extends Screen {
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (draggingPreview && button == 0) {
             HudConfig.ModuleSettings settings = HudConfig.get().modules.get(MODULES.get(selected));
-            double previewX = mouseX - (panelLeft + 435);
-            double previewY = mouseY - (panelTop + 124);
-            settings.x = Math.max(0, Math.min(width - 20, (int) Math.round(previewX * width / 235.0)));
-            settings.y = Math.max(0, Math.min(height - 20, (int) Math.round(previewY * height / 199.0)));
+            double previewX = mouseX - (panelLeft + 439);
+            double previewY = mouseY - (panelTop + 150);
+            settings.x = Math.max(0, Math.min(width - 20, (int) Math.round(previewX * width / 207.0)));
+            settings.y = Math.max(0, Math.min(height - 20, (int) Math.round(previewY * height / 158.0)));
             HudConfig.save();
             return true;
         }
