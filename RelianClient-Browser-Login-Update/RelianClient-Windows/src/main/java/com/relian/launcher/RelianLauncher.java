@@ -567,7 +567,7 @@ public class RelianLauncher extends Application {
         TextField name=new TextField(); name.setPromptText("My Minecraft instance");
         Label typeLabel=new Label("Choose how to create it"); typeLabel.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
         ComboBox<String> type=new ComboBox<>();
-        type.getItems().addAll("Vanilla — clean Minecraft","Import — Prism / MultiMC / Lunar / Laby / Dawn / OneClient","Relian — Relian client + performance modules","Modpack — browse Modrinth modpacks");
+        type.getItems().addAll("Vanilla — clean Minecraft","Import — Prism / MultiMC / Lunar / Laby / Dawn / OneClient","Relian — Relian client + performance modules","Modpack — browse Modrinth / CurseForge modpacks");
         type.setValue("Vanilla — clean Minecraft"); type.setMaxWidth(Double.MAX_VALUE); styleCombo(type);
         ComboBox<String> version=new ComboBox<>(); version.getItems().setAll(versionList); version.setValue(versionList.contains("1.21.11")?"1.21.11":versionList.get(0)); styleCombo(version);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue("Fabric"); styleCombo(loader);
@@ -581,7 +581,8 @@ public class RelianLauncher extends Application {
             File selected=chooser.showDialog(shell.getScene().getWindow());
             if(selected!=null){importPath[0]=selected.toPath();importLabel.setText("Import source: "+selected.getAbsolutePath());}
         });
-        TextField modpackSearch=new TextField(); modpackSearch.setPromptText("Search Modrinth modpacks…");
+        ComboBox<String> packProvider=new ComboBox<>(); packProvider.getItems().addAll("Modrinth","CurseForge"); packProvider.setValue("Modrinth"); styleCombo(packProvider);
+        TextField modpackSearch=new TextField(); modpackSearch.setPromptText("Search modpacks…");
         Button searchPacks=small("Search modpacks");
         javafx.scene.control.ListView<com.relian.launcher.marketplace.MarketplaceProject> packs=new javafx.scene.control.ListView<>();
         packs.setPrefHeight(170);
@@ -591,13 +592,14 @@ public class RelianLauncher extends Application {
                 setText(empty||item==null?null:item.title()+"  •  "+item.author()+"  •  "+item.source());
             }
         });
-        Label packStatus=muted("Choose a local Modrinth .mrpack file to import. Minecraft and loader versions are read from its manifest.");
+        Label packStatus=muted("Choose a Modrinth .mrpack or CurseForge .zip archive. CurseForge requires RELIAN_CURSEFORGE_API_KEY.");
         java.nio.file.Path[] mrpackPath={null};
         Button chooseMrpack=small("Choose local .mrpack file");
         chooseMrpack.setOnAction(e->{
             javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
-            chooser.setTitle("Choose a Modrinth modpack archive");
-            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Modrinth modpacks (*.mrpack)","*.mrpack"));
+            chooser.setTitle("Choose a modpack archive");
+            if("CurseForge".equals(packProvider.getValue())) chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("CurseForge modpacks (*.zip)","*.zip"));
+            else chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Modrinth modpacks (*.mrpack)","*.mrpack"));
             File selected=chooser.showOpenDialog(shell.getScene().getWindow());
             if(selected!=null){
                 mrpackPath[0]=selected.toPath();
@@ -605,15 +607,22 @@ public class RelianLauncher extends Application {
             }
         });
         searchPacks.setOnAction(e->{
-            packStatus.setText("Searching Modrinth project pages…"); packs.getItems().clear();
+            String selectedProvider=packProvider.getValue();
+            packStatus.setText("Searching "+selectedProvider+" modpacks…"); packs.getItems().clear();
             String query=modpackSearch.getText(), packVersion=version.getValue();
             CompletableFuture.supplyAsync(()->{
-                try{return new com.relian.launcher.marketplace.ModrinthProvider().search(query,
-                    com.relian.launcher.marketplace.ProjectType.MODPACK,packVersion,"",50);}
-                catch(Exception ex){throw new RuntimeException(ex);}
+                try{
+                    com.relian.launcher.marketplace.MarketplaceProvider provider;
+                    if("CurseForge".equals(selectedProvider)){
+                        var curseForge=new com.relian.launcher.marketplace.CurseForgeProvider(System.getenv("RELIAN_CURSEFORGE_API_KEY"));
+                        if(!curseForge.isConfigured()) throw new java.io.IOException("Set RELIAN_CURSEFORGE_API_KEY before searching CurseForge.");
+                        provider=curseForge;
+                    }else provider=new com.relian.launcher.marketplace.ModrinthProvider();
+                    return provider.search(query,com.relian.launcher.marketplace.ProjectType.MODPACK,packVersion,"",50);
+                }catch(Exception ex){throw new RuntimeException(ex);}
             }).whenComplete((results,error)->javafx.application.Platform.runLater(()->{
-                if(error!=null){packStatus.setText("Modpack search failed: "+error.getMessage());return;}
-                packs.getItems().setAll(results); packStatus.setText(results.size()+" Modrinth modpack project(s) found. Open a project page to obtain its .mrpack archive, then select the file above.");
+                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();packStatus.setText("Modpack search failed: "+cause.getMessage());return;}
+                packs.getItems().setAll(results); packStatus.setText(results.size()+" "+selectedProvider+" modpack project(s) found. Open the project page to obtain its archive, then select it above.");
             }));
         });
         Button openPack=small("Open selected modpack page");
@@ -624,7 +633,7 @@ public class RelianLauncher extends Application {
             catch(Exception ex){info("Could not open the modpack page: "+ex.getMessage());}
         });
         VBox importBox=new VBox(8,chooseImport,importLabel);
-        VBox packBox=new VBox(8,chooseMrpack,packStatus,modpackSearch,searchPacks,packs,openPack);
+        VBox packBox=new VBox(8,packProvider,chooseMrpack,packStatus,modpackSearch,searchPacks,packs,openPack);
         type.setOnAction(e->{
             boolean vanilla=type.getValue().startsWith("Vanilla");
             boolean modpack=type.getValue().startsWith("Modpack");
@@ -661,6 +670,9 @@ public class RelianLauncher extends Application {
                         importingModpack?com.relian.launcher.profiles.InstanceManager.Kind.MODPACK:
                         com.relian.launcher.profiles.InstanceManager.Kind.RELIAN;
                     if(importingModpack){
+                        String archiveName=selectedMrpack.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+                        if(archiveName.endsWith(".zip")) return com.relian.launcher.marketplace.CurseForgeModpackImporter.importPack(
+                            selectedMrpack,root,selectedName,System.getenv("RELIAN_CURSEFORGE_API_KEY"));
                         return com.relian.launcher.marketplace.ModrinthModpackImporter.importPack(selectedMrpack,root,selectedName);
                     }
                     return com.relian.launcher.profiles.InstanceManager.create(root,selectedName,selectedVersion,selectedLoader,
@@ -710,6 +722,7 @@ public class RelianLauncher extends Application {
 
     private String readModpackLoaderVersion(java.nio.file.Path instanceDirectory) {
         java.nio.file.Path marker=instanceDirectory.resolve("relian-modpack.json");
+        if(!java.nio.file.Files.isRegularFile(marker)) marker=instanceDirectory.resolve("relian-curseforge-modpack.json");
         if(!java.nio.file.Files.isRegularFile(marker)||java.nio.file.Files.isSymbolicLink(marker))return "";
         try{
             var json=com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(marker)).getAsJsonObject();
