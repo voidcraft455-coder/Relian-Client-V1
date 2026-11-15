@@ -47,8 +47,10 @@ public final class ModrinthInstaller {
             return installInternal(project, minecraftVersion, loader, gameDirectory, new HashSet<>(), "", published);
         } catch (IOException | InterruptedException failure) {
             for (int i = published.size() - 1; i >= 0; i--) {
-                try { Files.deleteIfExists(published.get(i)); }
-                catch (IOException rollbackFailure) { failure.addSuppressed(rollbackFailure); }
+                try {
+                    MarketplaceInstallRegistry.forget(gameDirectory, published.get(i));
+                    Files.deleteIfExists(published.get(i));
+                } catch (IOException rollbackFailure) { failure.addSuppressed(rollbackFailure); }
             }
             throw failure;
         }
@@ -198,6 +200,8 @@ public final class ModrinthInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
+            MarketplaceInstallRegistry.record(root, destination, "Modrinth", project.id(), versionId,
+                    "sha512", expectedHash, project.type(), minecraftVersion.trim(), loaderValue);
             published.add(destination);
             return destination;
         } finally {
