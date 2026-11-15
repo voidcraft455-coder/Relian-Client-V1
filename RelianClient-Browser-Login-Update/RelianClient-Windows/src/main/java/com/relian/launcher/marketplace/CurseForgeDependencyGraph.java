@@ -20,8 +20,11 @@ public final class CurseForgeDependencyGraph {
         for (JsonElement element : dependencies) {
             if (!element.isJsonObject()) continue;
             JsonObject item = element.getAsJsonObject();
-            if (!item.has("relationType") || item.get("relationType").isJsonNull()
-                    || item.get("relationType").getAsInt() != 3) continue;
+            if (!item.has("relationType") || item.get("relationType").isJsonNull()) continue;
+            int relationType;
+            try { relationType = item.get("relationType").getAsInt(); }
+            catch (RuntimeException malformed) { continue; }
+            if (relationType != 3) continue;
             String modId = string(item, "modId");
             if (modId.isBlank() || !seen.add(modId)) continue;
             Long fileId = item.has("fileId") && !item.get("fileId").isJsonNull()
