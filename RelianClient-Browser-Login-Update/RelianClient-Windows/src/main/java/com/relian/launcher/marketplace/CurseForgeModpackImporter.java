@@ -80,7 +80,7 @@ public final class CurseForgeModpackImporter {
         try (ZipFile zip = new ZipFile(source.toFile(), StandardCharsets.UTF_8)) {
             JsonObject manifest = readManifest(zip);
             PackInfo info = parseManifest(manifest);
-            JsonArray files = manifest.getAsJsonArray("files");
+            JsonArray files = array(manifest, "files");
             Path stagedInstance = stagingRoot.resolve(cleanName);
             InstanceManager.CreatedInstance created = InstanceManager.create(stagingRoot, cleanName,
                     info.minecraftVersion(), info.loader(), InstanceManager.Kind.MODPACK, null, info.name());
