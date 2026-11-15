@@ -24,7 +24,7 @@ The importer preserves third-party pack files; it does not claim to resolve ever
 
 ## CurseForge
 
-CurseForge search and supported individual file installs use the official API and require the `RELIAN_CURSEFORGE_API_KEY` environment variable. Keys must not be committed to source control. Direct downloads are subject to CurseForge API permissions and provider restrictions. CurseForge modpack import is not implemented.
+CurseForge search, supported individual file installs, and modpack imports use the official API and require the `RELIAN_CURSEFORGE_API_KEY` environment variable. Keys must not be committed to source control. The importer accepts a local CurseForge manifest ZIP, resolves required project/file IDs through the official API, verifies SHA-1 checksums, restricts downloads to trusted HTTPS CDN hosts, enforces per-file and aggregate size limits, extracts only approved override folders, and publishes the new isolated instance only after the import succeeds. Optional manifest files are skipped. Direct downloads remain subject to CurseForge API permissions and provider restrictions.
 
 ## Installed content
 
@@ -35,9 +35,9 @@ The Installed Content page scans supported mods, resource packs, and shaders in 
 - Full dependency graph resolution and installation ordering for individual mods.
 - Clearer conflict detection and backup/rollback before replacing installed files.
 - Update checking and safe update flows for installed mods, resource packs, and shaders.
-- CurseForge modpack import, subject to API policy and download permissions.
+- Required dependency graph resolution for Modrinth individual mod installs (CurseForge modpack manifest files are resolved individually, but transitive project dependencies are not recursively discovered).
 - Richer metadata display for licenses, supported environments, dependency details, and changelogs.
-- End-to-end tests against representative live Modrinth and CurseForge projects.
+- End-to-end tests against representative live Modrinth and CurseForge projects, including API-key-enabled CurseForge flows.
 
 ## Safety
 
