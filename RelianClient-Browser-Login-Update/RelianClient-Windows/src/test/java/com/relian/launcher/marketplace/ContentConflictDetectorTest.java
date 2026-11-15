@@ -24,6 +24,14 @@ class ContentConflictDetectorTest {
         assertTrue(error.getMessage().contains("example_mod"));
     }
 
+    @Test void detectsQuiltMetadataDuplicates() throws Exception {
+        Path mods = Files.createDirectory(temp.resolve("mods"));
+        writeJar(mods.resolve("existing.jar"), "quilt.mod.json", "{\"id\":\"quilt_example\"}");
+        Path candidate = temp.resolve("candidate.jar");
+        writeJar(candidate, "quilt.mod.json", "{\"id\":\"quilt_example\"}");
+        assertThrows(IOException.class, () -> ContentConflictDetector.ensureNoDuplicateModIds(mods, candidate));
+    }
+
     @Test void permitsDifferentModIds() throws Exception {
         Path mods = Files.createDirectory(temp.resolve("mods"));
         writeJar(mods.resolve("first.jar"), "fabric.mod.json", "{\"id\":\"first_mod\"}");
