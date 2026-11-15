@@ -31,9 +31,7 @@ public final class MarketplaceUpdateService {
     private static UpdateResult applyOne(Path root, MarketplaceUpdateChecker.UpdateCandidate candidate,
                                          String curseForgeApiKey) throws IOException, InterruptedException {
         MarketplaceInstallRegistry.InstallRecord old = candidate.installed();
-        Path oldFile = root.resolve(old.relativePath()).normalize();
-        if (!oldFile.startsWith(root) || !Files.isRegularFile(oldFile, LinkOption.NOFOLLOW_LINKS)
-                || Files.isSymbolicLink(oldFile)) throw new IOException("An installed marketplace file changed before update: " + old.fileName());
+        Path oldFile = MarketplaceInstallRegistry.resolveFile(root, old);
 
         ProjectType type;
         try { type = ProjectType.valueOf(old.projectType()); }
@@ -44,7 +42,7 @@ public final class MarketplaceUpdateService {
         MarketplaceProject project = new MarketplaceProject(old.projectId(), old.fileName(), "Marketplace",
                 "Managed marketplace update", type, projectUrl, List.of(), old.source());
 
-        MarketplaceInstallRegistry.forget(root, oldFile);
+        MarketplaceInstallRegistry.forgetRecord(root, old);
         Path inactiveOld = oldFile;
         boolean toggled = false;
         if (isEnabled(oldFile, type)) {
