@@ -31,6 +31,17 @@ class MarketplaceInstallRegistryTest {
         assertEquals("v2",MarketplaceInstallRegistry.list(temp).get(0).versionId());
     }
 
+    @Test void resolvesTrackedFileAfterEnableDisableRenameAndCanForgetOriginalRecord() throws Exception {
+        Path mods=Files.createDirectory(temp.resolve("mods"));
+        Path jar=Files.writeString(mods.resolve("toggle.jar"),"bytes");
+        MarketplaceInstallRegistry.record(temp,jar,"Modrinth","toggle-project","v1","sha512","hash",ProjectType.MOD,"1.21.1","fabric");
+        Path disabled=Files.move(jar,mods.resolve("toggle.jar.disabled"));
+        var record=MarketplaceInstallRegistry.list(temp).get(0);
+        assertEquals(disabled,MarketplaceInstallRegistry.resolveFile(temp,record));
+        MarketplaceInstallRegistry.forgetRecord(temp,record);
+        assertTrue(MarketplaceInstallRegistry.list(temp).isEmpty());
+    }
+
     @Test void rejectsFilesOutsideManagedFolders() throws Exception {
         Path outside=Files.writeString(temp.resolve("unmanaged.jar"),"bytes");
         assertThrows(java.io.IOException.class,()->MarketplaceInstallRegistry.record(temp,outside,"Modrinth","p","v","sha512","h",ProjectType.MOD,"1.21.1","fabric"));
