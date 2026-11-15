@@ -24,6 +24,7 @@ javafx {
 }
 
 application {
+    mainModule = 'com.relian.launcher'
     mainClass = 'com.relian.launcher.RelianLauncher'
 }
 
