@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
@@ -68,13 +69,22 @@ public final class MarketplaceUpdateService {
             if (Files.exists(backupsRoot, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(backupsRoot))
                 throw new IOException("Marketplace backup directory cannot be a symbolic link.");
             Files.createDirectories(backupsRoot);
-            Path backup = backupsRoot.resolve("marketplace-update-" + Instant.now().toEpochMilli() + ".zip");
-            String backupEntry = root.relativize(inactiveOld).toString().replace('\\', '/');
-            try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(backup))) {
-                zip.putNextEntry(new ZipEntry(backupEntry));
-                Files.copy(inactiveOld, zip);
-                zip.closeEntry();
-            }
+            String backupStem = "marketplace-update-" + Instant.now().toEpochMilli() + "-" + safeName(oldFile.getFileName().toString());
+            Path backup = backupsRoot.resolve(backupStem + ".zip");
+            int backupSuffix = 2;
+            while (Files.exists(backup, LinkOption.NOFOLLOW_LINKS))
+                backup = backupsRoot.resolve(backupStem + "-" + backupSuffix++ + ".zip");
+            Path temporaryBackup = Files.createTempFile(backupsRoot, ".relian-update-", ".part");
+            try {
+                String backupEntry = root.relativize(inactiveOld).toString().replace('\\', '/');
+                try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(temporaryBackup))) {
+                    zip.putNextEntry(new ZipEntry(backupEntry));
+                    Files.copy(inactiveOld, zip);
+                    zip.closeEntry();
+                }
+                try { Files.move(temporaryBackup, backup, StandardCopyOption.ATOMIC_MOVE); }
+                catch (AtomicMoveNotSupportedException ex) { Files.move(temporaryBackup, backup); }
+            } finally { Files.deleteIfExists(temporaryBackup); }
             Files.delete(inactiveOld);
             return new UpdateResult(old.fileName(), replacement, backup);
         } catch (IOException | InterruptedException failure) {
