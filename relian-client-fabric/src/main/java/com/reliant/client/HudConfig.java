@@ -95,6 +95,12 @@ public final class HudConfig {
         config.modules.put("world_time", new ModuleSettings(false, 8, 414, 1.0f, 0xFF83B7FF));
         config.modules.put("server_info", new ModuleSettings(false, 8, 436, 1.0f, 0xFF8FE3B0));
         config.modules.put("session_time", new ModuleSettings(false, 8, 458, 1.0f, 0xFFFFFFFF));
+        config.modules.put("light_level", new ModuleSettings(false, 8, 480, 1.0f, 0xFFFFD479));
+        config.modules.put("chunk_coords", new ModuleSettings(false, 8, 502, 1.0f, 0xFF83B7FF));
+        config.modules.put("velocity", new ModuleSettings(false, 8, 524, 1.0f, 0xFF8FE3B0));
+        config.modules.put("offhand", new ModuleSettings(false, 8, 546, 1.0f, 0xFFFFFFFF));
+        config.modules.put("date", new ModuleSettings(false, 8, 568, 1.0f, 0xFFB69CFF));
+        config.modules.put("armor_summary", new ModuleSettings(false, 8, 590, 1.0f, 0xFFFF8E9E));
         return config;
     }
 
