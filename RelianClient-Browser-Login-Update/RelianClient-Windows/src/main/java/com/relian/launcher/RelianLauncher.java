@@ -856,20 +856,22 @@ public class RelianLauncher extends Application {
         Label heading=new Label("Relian Cosmetic Wardrobe");
         heading.setStyle("-fx-text-fill:"+FG+";-fx-font-size:16px;-fx-font-weight:bold;");
         Label description=muted("Organize custom PNG texture assets in separate Skin, Cape, Wings, and Hat libraries. Files stay on this computer.");
-        Label status=muted("Local library only: imported cosmetics are not uploaded, equipped, or rendered on your Minecraft character yet.");
+        Label status=muted("Skins can be applied to your signed-in Minecraft Java profile. Capes, wings, and hats remain local preview assets and are not rendered in-game yet.");
+        ComboBox<String> skinModel=new ComboBox<>(); skinModel.getItems().addAll("Classic (wide arms)","Slim (narrow arms)"); skinModel.setValue("Classic (wide arms)"); styleCombo(skinModel);
+        HBox skinModelRow=new HBox(10,muted("Account skin model"),skinModel); skinModelRow.setAlignment(Pos.CENTER_LEFT);
         TabPane categories=new TabPane();
         categories.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         for(var category:com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.values()){
-            categories.getTabs().add(cosmeticCategoryTab(category,status));
+            categories.getTabs().add(cosmeticCategoryTab(category,status,skinModel));
         }
-        panel.getChildren().addAll(heading,description,categories,status);
+        panel.getChildren().addAll(heading,description,skinModelRow,categories,status);
         box.getChildren().addAll(panel,
             muted("Texture size rules: skins 64×64 or 64×32; capes 64×32 or 128×64; wings 64×32 or 128×64; hats 64×64 or 128×128. PNG files are limited to 2 MB."),
-            muted("The current Fabric 1.21.1 runtime does not yet draw custom capes, wings, or hats on the player model. The wardrobe validates and organizes assets without pretending they are equipped. Account skin changes are managed on Minecraft.net."));
+            muted("Applying a skin changes your official Minecraft account profile. Custom capes, wings, and hats are not part of Mojang skin uploads; Relian stores those assets locally until its in-game cosmetic renderer is implemented."));
         return box;
     }
 
-    private Tab cosmeticCategoryTab(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category category, Label status){
+    private Tab cosmeticCategoryTab(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category category, Label status, ComboBox<String> skinModel){
         VBox content=new VBox(10); content.setPadding(new Insets(12));
         Label sizeHint=muted("Accepted PNG sizes: "+category.acceptedSizes()+" • Maximum 2 MB");
         VBox rows=new VBox(8);
@@ -906,7 +908,26 @@ public class RelianLauncher extends Application {
                             load[0].run();
                         }catch(Exception ex){status.setText("Could not remove asset: "+ex.getMessage());}
                     });
-                    row.getChildren().addAll(preview,details,push,remove); rows.getChildren().add(row);
+                    if(category==com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.SKIN){
+                        Button applySkin=small("Apply to account");
+                        applySkin.setOnAction(event->{
+                            if(minecraftSession==null){info("Sign in with a Microsoft account that owns Minecraft Java Edition before applying an account skin.");return;}
+                            applySkin.setDisable(true); status.setText("Uploading the selected skin to your Minecraft profile…");
+                            var model=skinModel.getValue()!=null&&skinModel.getValue().startsWith("Slim")
+                                ?com.relian.launcher.cosmetics.MinecraftSkinService.Model.SLIM
+                                :com.relian.launcher.cosmetics.MinecraftSkinService.Model.CLASSIC;
+                            CompletableFuture.runAsync(()->{
+                                try{com.relian.launcher.cosmetics.MinecraftSkinService.apply(minecraftSession,asset,model);}
+                                catch(Exception ex){throw new RuntimeException(ex);}
+                            }).whenComplete((ignored,error)->javafx.application.Platform.runLater(()->{
+                                applySkin.setDisable(false);
+                                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();status.setText("Skin upload failed: "+cause.getMessage());}
+                                else status.setText("Minecraft account skin updated. It may take a short time for the change to appear in-game.");
+                            }));
+                        });
+                        row.getChildren().addAll(preview,details,push,applySkin,remove);
+                    }else row.getChildren().addAll(preview,details,push,remove);
+                    rows.getChildren().add(row);
                 }
                 status.setText(assets.size()+" "+category.label.toLowerCase(java.util.Locale.ROOT)+" asset(s) stored locally.");
             }catch(Exception ex){status.setText("Could not read "+category.label.toLowerCase(java.util.Locale.ROOT)+" library: "+ex.getMessage());}
