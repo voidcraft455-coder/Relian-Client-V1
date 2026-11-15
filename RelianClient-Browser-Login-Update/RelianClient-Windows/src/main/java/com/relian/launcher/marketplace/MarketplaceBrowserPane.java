@@ -259,7 +259,7 @@ public final class MarketplaceBrowserPane extends VBox {
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Relian Client");
             alert.setHeaderText("Installation complete");
-            alert.setContentText("Installed " + project.title() + " and its required Modrinth dependencies to:\\n" + installedPath);
+            alert.setContentText("Installed " + project.title() + " and its required provider dependencies to:\\n" + installedPath);
             alert.showAndWait();
         }));
     }
