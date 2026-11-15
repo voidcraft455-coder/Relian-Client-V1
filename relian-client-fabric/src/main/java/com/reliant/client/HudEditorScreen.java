@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of(
-        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time", "light_level", "chunk_coords", "velocity", "offhand", "date", "armor_summary"
+        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time", "light_level", "chunk_coords", "velocity", "offhand", "date", "armor_summary", "experience", "weather", "view_angles"
     );
     private int selected = 0;
     private boolean draggingPreview = false;
@@ -36,18 +36,18 @@ public final class HudEditorScreen extends Screen {
         for (int i = 0; i < MODULES.size(); i++) {
             String id = MODULES.get(i);
             HudConfig.ModuleSettings settings = HudConfig.get().modules.get(id);
-            int y = panelTop + 88 + i * 15;
+            int y = panelTop + 88 + i * 13;
             boolean active = i == selected;
-            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 14,
+            rounded(context, panelLeft + 18, y, panelLeft + 402, y + 12,
                 active ? 0xFF26364D : 0xFF1C2635, 9);
-            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 3,
+            context.drawTextWithShadow(textRenderer, Text.literal(label(id)), panelLeft + 30, y + 2,
                 active ? 0xFFFFFFFF : 0xFFD8E0EB);
             context.drawTextWithShadow(textRenderer,
                 Text.literal(settings.enabled ? "ON" : "OFF"), panelLeft + 190, y + 3,
                 settings.enabled ? 0xFF7EE0B0 : 0xFF8995A7);
-            drawButton(context, panelLeft + 265, y + 1, 62, 12, settings.enabled ? "ON" : "OFF",
+            drawButton(context, panelLeft + 265, y + 1, 62, 11, settings.enabled ? "ON" : "OFF",
                 settings.enabled ? 0xFF245A4C : 0xFF465164, mouseX, mouseY);
-            drawButton(context, panelLeft + 333, y + 1, 57, 12, "SELECT", 0xFF34445B, mouseX, mouseY);
+            drawButton(context, panelLeft + 333, y + 1, 57, 11, "SELECT", 0xFF34445B, mouseX, mouseY);
         }
 
         int px = panelLeft + 425;
@@ -114,6 +114,9 @@ public final class HudEditorScreen extends Screen {
             case "offhand" -> "OFFHAND: Totem of Undying";
             case "date" -> "DATE: 2026-11-14";
             case "armor_summary" -> "ARMOR CONDITION: 92% average";
+            case "experience" -> "XP: LEVEL 24  68%";
+            case "weather" -> "WEATHER: CLEAR";
+            case "view_angles" -> "LOOK: YAW 90.0  PITCH -12.5";
             default -> label(id);
         };
     }
@@ -176,6 +179,9 @@ public final class HudEditorScreen extends Screen {
             case "offhand" -> "OFFHAND ITEM";
             case "date" -> "LOCAL DATE";
             case "armor_summary" -> "ARMOR CONDITION";
+            case "experience" -> "EXPERIENCE LEVEL";
+            case "weather" -> "WORLD WEATHER";
+            case "view_angles" -> "VIEW ANGLES";
             default -> id.toUpperCase();
         };
     }
@@ -186,10 +192,10 @@ public final class HudEditorScreen extends Screen {
         int px = panelLeft + 425;
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
-            int y = panelTop + 88 + i * 15;
-            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 14)) {
+            int y = panelTop + 88 + i * 13;
+            if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 12)) {
                 selected = i;
-                if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 12)) {
+                if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 11)) {
                     HudConfig.get().modules.get(MODULES.get(i)).enabled =
                         !HudConfig.get().modules.get(MODULES.get(i)).enabled;
                     HudConfig.save();
