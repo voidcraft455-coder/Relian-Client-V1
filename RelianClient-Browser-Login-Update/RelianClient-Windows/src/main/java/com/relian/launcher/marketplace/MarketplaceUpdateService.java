@@ -42,13 +42,13 @@ public final class MarketplaceUpdateService {
         MarketplaceProject project = new MarketplaceProject(old.projectId(), old.fileName(), "Marketplace",
                 "Managed marketplace update", type, projectUrl, List.of(), old.source());
 
-        MarketplaceInstallRegistry.forgetRecord(root, old);
         Path inactiveOld = oldFile;
         boolean toggled = false;
         if (isEnabled(oldFile, type)) {
             inactiveOld = InstalledContentManager.toggleContent(root, oldFile);
             toggled = true;
         }
+        MarketplaceInstallRegistry.forgetRecord(root, old);
         Path replacement = null;
         try {
             replacement = "Modrinth".equalsIgnoreCase(old.source())
