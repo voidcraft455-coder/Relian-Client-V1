@@ -175,9 +175,13 @@ public final class MarketplaceBrowserPane extends VBox {
         String version = minecraftVersion.getText() == null ? "" : minecraftVersion.getText().trim();
         String loader = loaderChoice.getValue();
         if ("All loaders".equals(loader)) loader = "";
+        if (project.type() == ProjectType.MOD && loader.isBlank()) {
+            setStatus("Choose a specific mod loader before installing a mod: Fabric, Forge, NeoForge, or Quilt.");
+            return;
+        }
         final String selectedLoader = loader;
         installButton.setDisable(true);
-        setStatus("Checking compatibility and installing " + project.title() + "...");
+        setStatus("Checking compatibility, resolving required dependencies, and installing " + project.title() + "...");
         CompletableFuture.supplyAsync(() -> {
             try {
                 if ("Modrinth".equalsIgnoreCase(project.source())) {
@@ -196,11 +200,11 @@ public final class MarketplaceBrowserPane extends VBox {
                 setStatus("Install failed: " + safeMessage(cause));
                 return;
             }
-            setStatus("Installed and checksum-verified: " + installedPath.getFileName());
+            setStatus("Installed and checksum-verified (including required dependencies): " + installedPath.getFileName());
             Alert alert = new Alert(AlertType.INFORMATION);
             alert.setTitle("Relian Client");
             alert.setHeaderText("Installation complete");
-            alert.setContentText("Installed " + project.title() + " to:\\n" + installedPath);
+            alert.setContentText("Installed " + project.title() + " and its required Modrinth dependencies to:\\n" + installedPath);
             alert.showAndWait();
         }));
     }
