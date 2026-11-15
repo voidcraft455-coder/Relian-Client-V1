@@ -110,6 +110,7 @@ public final class ModrinthInstaller {
                     dependencyProjectId = string(fetchVersion(dependency.pinnedVersionId()), "project_id");
                 }
                 if (dependencyProjectId.isBlank() || visited.contains(dependencyProjectId)) continue;
+                if (MarketplaceInstallRegistry.isProjectInstalled(root, dependencyProjectId)) continue;
                 MarketplaceProject dependencyProject = fetchModProject(dependencyProjectId);
                 // Install transitive required dependencies before the parent mod, respecting pinned versions.
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited,
