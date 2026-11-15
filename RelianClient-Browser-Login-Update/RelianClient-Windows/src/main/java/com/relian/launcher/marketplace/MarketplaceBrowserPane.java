@@ -31,6 +31,7 @@ public final class MarketplaceBrowserPane extends VBox {
 
     private final ProjectType fixedType;
     private final Path preferredGameDirectory;
+    private final Path preferredInstancesRoot;
     private final TextField search = new TextField();
     private final TextField minecraftVersion;
     private final ComboBox<String> providerChoice = new ComboBox<>();
@@ -48,8 +49,14 @@ public final class MarketplaceBrowserPane extends VBox {
     }
 
     public MarketplaceBrowserPane(ProjectType fixedType, Path preferredGameDirectory, String defaultMinecraftVersion) {
+        this(fixedType, preferredGameDirectory, null, defaultMinecraftVersion);
+    }
+
+    public MarketplaceBrowserPane(ProjectType fixedType, Path preferredGameDirectory, Path preferredInstancesRoot,
+                                  String defaultMinecraftVersion) {
         this.fixedType = fixedType;
         this.preferredGameDirectory = preferredGameDirectory;
+        this.preferredInstancesRoot = preferredInstancesRoot;
         this.minecraftVersion = new TextField(defaultMinecraftVersion == null || defaultMinecraftVersion.isBlank() ? "1.21.11" : defaultMinecraftVersion);
         setSpacing(14);
         setPadding(new Insets(4, 0, 0, 0));
@@ -151,16 +158,63 @@ public final class MarketplaceBrowserPane extends VBox {
         open.setStyle("-fx-background-color:#303b4d;-fx-background-radius:4;-fx-text-fill:#e8edf5;-fx-padding:7 12;-fx-cursor:hand;");
         open.setOnAction(event -> openProject(project.projectUrl()));
         HBox actions = new HBox(8, open);
-        if (project.type() != ProjectType.MODPACK) {
-            Button install = new Button("Install");
-            install.setStyle("-fx-background-color:#315b45;-fx-background-radius:4;-fx-text-fill:#e8fff0;-fx-padding:7 12;-fx-cursor:hand;");
-            install.setOnAction(event -> chooseInstallDirectory(project, install));
-            actions.getChildren().add(install);
-        }
+        Button install = new Button(project.type() == ProjectType.MODPACK ? "Install pack" : "Install");
+        install.setStyle("-fx-background-color:#315b45;-fx-background-radius:4;-fx-text-fill:#e8fff0;-fx-padding:7 12;-fx-cursor:hand;");
+        install.setOnAction(event -> {
+            if (project.type() == ProjectType.MODPACK) chooseInstallModpack(project, install);
+            else chooseInstallDirectory(project, install);
+        });
+        actions.getChildren().add(install);
         card.getChildren().addAll(title, metadata, description, actions);
         return card;
     }
 
+
+    private void chooseInstallModpack(MarketplaceProject project, Button installButton) {
+        Path instancesRoot = preferredInstancesRoot;
+        if (instancesRoot == null) {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Choose Relian instances folder");
+            File selected = chooser.showDialog(getScene().getWindow());
+            if (selected == null) return;
+            instancesRoot = selected.toPath();
+        }
+        javafx.scene.control.TextInputDialog nameDialog = new javafx.scene.control.TextInputDialog(project.title());
+        nameDialog.setTitle("Install modpack");
+        nameDialog.setHeaderText("Create a new isolated Relian instance");
+        nameDialog.setContentText("Instance name:");
+        var nameAnswer = nameDialog.showAndWait();
+        if (nameAnswer.isEmpty() || nameAnswer.get().isBlank()) return;
+        String instanceName = nameAnswer.get().trim();
+        String version = minecraftVersion.getText() == null ? "" : minecraftVersion.getText().trim();
+        if (version.isBlank()) { setStatus("Choose a Minecraft version before installing a modpack."); return; }
+        String apiKey = System.getenv("RELIAN_CURSEFORGE_API_KEY");
+        Path targetRoot = instancesRoot;
+        installButton.setDisable(true);
+        setStatus("Downloading and safely importing " + project.title() + " as a new instance…");
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return MarketplaceModpackInstaller.install(project, version, targetRoot, instanceName, apiKey);
+            } catch (IOException | InterruptedException ex) {
+                if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
+                throw new RuntimeException(ex);
+            }
+        }).whenComplete((created, error) -> Platform.runLater(() -> {
+            installButton.setDisable(false);
+            if (error != null) {
+                Throwable cause = error.getCause() == null ? error : error.getCause();
+                setStatus("Modpack installation failed: " + safeMessage(cause));
+                return;
+            }
+            setStatus("Imported " + created.manifest().name() + " into " + created.directory() + ".");
+            Alert alert = new Alert(AlertType.INFORMATION);
+            alert.setTitle("Relian Client");
+            alert.setHeaderText("Modpack instance created");
+            alert.setContentText("Imported " + created.manifest().name() + " for Minecraft "
+                    + created.manifest().minecraftVersion() + ". The new instance is available in the Instances page.");
+            alert.showAndWait();
+        }));
+    }
 
     private void chooseInstallDirectory(MarketplaceProject project, Button installButton) {
         File selectedDirectory;
