@@ -74,7 +74,7 @@ public final class MarketplaceUpdateChecker {
     private static JsonArray curseForgeFiles(MarketplaceInstallRegistry.InstallRecord item, String apiKey)
             throws IOException, InterruptedException {
         String url = CURSEFORGE + "/mods/" + encPath(item.projectId()) + "/files?gameVersion="
-                + enc(item.gameVersion()) + "&pageSize=20&index=0";
+                + enc(item.gameVersion()) + "&pageSize=20&index=0&sortField=2&sortOrder=desc";
         if ("MOD".equals(item.projectType())) url += "&modLoaderType=" + curseLoaderType(item.loader());
         HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
                 .header("x-api-key", apiKey).header("Accept", "application/json").GET().build();
