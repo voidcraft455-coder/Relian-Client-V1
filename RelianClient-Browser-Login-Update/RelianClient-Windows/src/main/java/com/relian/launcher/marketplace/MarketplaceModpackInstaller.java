@@ -139,7 +139,7 @@ public final class MarketplaceModpackInstaller {
                 response.body().close();
                 throw new IOException("Modpack archive download failed with HTTP " + response.statusCode() + ".");
             }
-            if (!allowed(response.uri().getHost(), allowedHost)) {
+            if (!"https".equalsIgnoreCase(response.uri().getScheme()) || !allowed(response.uri().getHost(), allowedHost)) {
                 response.body().close();
                 throw new IOException("The final modpack download host is not approved.");
             }
