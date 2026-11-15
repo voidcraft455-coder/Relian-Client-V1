@@ -65,6 +65,18 @@ public final class MarketplaceInstallRegistry {
         return List.copyOf(records);
     }
 
+    public static synchronized boolean isProjectInstalled(Path gameRoot, String projectId) throws IOException {
+        if (blank(projectId)) return false;
+        Path root = checkedRoot(gameRoot);
+        for (InstallRecord record : list(root)) {
+            if (!projectId.equals(record.projectId())) continue;
+            Path file = root.resolve(record.relativePath()).normalize();
+            if (file.startsWith(root) && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+                    && !Files.isSymbolicLink(file)) return true;
+        }
+        return false;
+    }
+
     public static synchronized void forget(Path gameRoot, Path installedFile) throws IOException {
         Path root = checkedRoot(gameRoot);
         Path file = checkedManagedFile(root, installedFile);
