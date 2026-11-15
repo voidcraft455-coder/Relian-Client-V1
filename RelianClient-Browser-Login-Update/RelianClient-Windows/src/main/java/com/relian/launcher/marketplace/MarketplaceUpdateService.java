@@ -56,8 +56,9 @@ public final class MarketplaceUpdateService {
             replacement = "Modrinth".equalsIgnoreCase(old.source())
                     ? ModrinthInstaller.install(project, old.gameVersion(), old.loader(), root)
                     : CurseForgeInstaller.install(project, old.gameVersion(), old.loader(), root, curseForgeApiKey);
+            Path installedPath = replacement;
             MarketplaceInstallRegistry.InstallRecord installed = MarketplaceInstallRegistry.list(root).stream()
-                    .filter(record -> record.relativePath().equals(root.relativize(replacement).toString().replace('\\', '/')))
+                    .filter(record -> record.relativePath().equals(root.relativize(installedPath).toString().replace('\\', '/')))
                     .findFirst().orElseThrow(() -> new IOException("The replacement installed but its metadata could not be verified."));
             if (!candidate.latestVersionId().equals(installed.versionId())) {
                 throw new IOException("The provider returned a different version than the update check. The old file has been kept.");
