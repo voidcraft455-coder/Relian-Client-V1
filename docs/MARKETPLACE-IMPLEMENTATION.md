@@ -1,45 +1,38 @@
 # Relian Client marketplace and content installation
 
-## Implemented marketplace pages
+## Marketplace browsing
 
-The JavaFX launcher has separate pages for Mods, Modpacks, Resource Packs, and Shaders. The provider abstraction supports Modrinth search without a private API key and CurseForge search when the operator supplies `RELIAN_CURSEFORGE_API_KEY`. Search can filter by project type, Minecraft version, and loader where the provider supports those filters.
+The JavaFX launcher has separate pages for Mods, Modpacks, Resource Packs, and Shaders. Modrinth search works without a private API key. CurseForge search and direct file installation use the official API and require `RELIAN_CURSEFORGE_API_KEY` to be supplied by the launcher operator. Search filters by project type, Minecraft version, and loader where the provider supports those filters. Result cards show provider, author, type, description, and available categories.
 
-## Modrinth individual installs
+## Modrinth installs
 
-For mods, resource packs, and shaders, the Install action requests a compatible project version, downloads from approved HTTPS Modrinth CDN hosts, enforces a download-size ceiling, verifies the supplied SHA-512 digest, stages the file, and places it into the selected instance's standard `mods`, `resourcepacks`, or `shaderpacks` directory. Mod installs now traverse Modrinth's required project dependencies recursively, install dependencies before the selected mod, respect pinned dependency version IDs, check the pinned version against the selected Minecraft version and loader, and de-duplicate/cycle-guard project IDs. Optional and incompatible dependencies are not installed automatically. If a required dependency cannot be resolved or downloaded safely, the install reports failure rather than silently claiming success.
+For mods, resource packs, and shaders, installation selects a compatible project version, downloads only from approved HTTPS Modrinth CDN hosts, enforces a 300 MB download ceiling, verifies the publisher-provided SHA-512 digest, and stages the file before publishing it. Mod installs recursively resolve required dependencies, install dependencies before the selected mod, respect pinned version IDs, validate Minecraft and loader compatibility, skip already-installed dependencies, and guard against cycles. Optional and incompatible dependencies are not installed automatically. If a required dependency or parent install fails, files published by that install operation are rolled back.
 
-## Modrinth modpack import
+## CurseForge installs
 
-The Instances page imports a local `.mrpack` archive into a new isolated instance:
+CurseForge individual mod, resource-pack, and shader installs use the official API, verify SHA-1 hashes, enforce the download ceiling, and restrict downloads to trusted HTTPS Forge CDN hosts. Required mod dependencies (relation type 3) are resolved recursively; pinned file IDs are respected, dependencies install before the selected mod, and already-installed dependencies are not duplicated. Optional and incompatible dependencies are not installed automatically. A failure rolls back all files published by the operation. CurseForge API key access and direct-download permissions remain controlled by CurseForge.
 
-1. The importer reads `modrinth.index.json`, validates supported format metadata, and reads Minecraft plus the declared loader from the pack.
-2. Required client files are downloaded; optional, server-only, and unsupported environment entries are skipped.
-3. HTTPS URLs, redirect destinations, file sizes, archive sizes, and supplied SHA-1/SHA-512 digests are checked.
-4. Archive extraction rejects traversal, absolute paths, symlinks, special files, unsafe destinations, duplicate/case-colliding entries, and excessive sizes or compression ratios.
-5. Only supported game-content directories and selected safe configuration files are accepted. Account credentials and launcher profile data are not copied.
-6. The importer stages the new instance and publishes it only after the import succeeds. It does not overwrite an existing instance.
-7. After import, the launcher installs official Minecraft base files and the declared supported loader version where the loader installer supports that target.
+## Modpack import
 
-The importer preserves third-party pack files; it does not claim to resolve every external dependency or guarantee that every pack launches. The bundled Relian HUD is added only to compatible Fabric 1.21.1 instances.
+The Instances page supports local Modrinth `.mrpack` and CurseForge manifest ZIP imports into isolated instances. Importers validate archive paths and file metadata, verify supplied hashes, enforce file/aggregate size limits, and stage the instance before publishing it. CurseForge manifest project/file IDs are resolved through the official API. Unsupported optional or server-only files are skipped. Importers do not promise that every third-party pack launches; runtime compatibility is verified separately in Phase 5.
 
-## CurseForge
+## Installed content and backups
 
-CurseForge search, supported individual file installs, and modpack imports use the official API and require the `RELIAN_CURSEFORGE_API_KEY` environment variable. Keys must not be committed to source control. The importer accepts a local CurseForge manifest ZIP, resolves required project/file IDs through the official API, verifies SHA-1 checksums, restricts downloads to trusted HTTPS CDN hosts, enforces per-file and aggregate size limits, extracts only approved override folders, and publishes the new isolated instance only after the import succeeds. Optional manifest files are skipped. Direct downloads remain subject to CurseForge API permissions and provider restrictions.
+The Installed Content page scans mods, resource packs, and shaders in the selected game directory. It supports reversible enable/disable, removal, content backups, and restore without overwriting existing files. Backups are stored separately from live content and restore is staged and rolled back if publishing fails.
 
-## Installed content
+## Install ownership and updates
 
-The Installed Content page scans supported mods, resource packs, and shaders in the active instance. It can refresh the listing, show file size, toggle mods by reversible `.jar` / `.jar.disabled` renaming, and remove managed content after confirmation. It does not inspect or guarantee third-party mod compatibility.
+Successful Modrinth and CurseForge installs are recorded in `.relian/marketplace-installs.json` with provider project ID, selected version/file ID, verified checksum, content type, game version, loader, and relative installed path. Records survive enable/disable renames. The Installed Content page can check for compatible provider updates and, after confirmation, install replacements before retiring old files. The previous file is copied to `.relian-backups/marketplace-updates`; a failed replacement is removed and the previous file is restored. Manually added files are not included in provider update checks because they have no trusted project/version metadata.
 
-## Remaining marketplace work
+## Conflict and compatibility handling
 
-- Dependency resolution for direct CurseForge mod installs and recursive/transitive dependencies in CurseForge modpack manifests.
-- A marketplace-owned install manifest that maps provider project/version IDs and verified file hashes to installed paths.
-- Update checking and safe update flows for installed mods, resource packs, and shaders.
-- Conflict detection for duplicate mod IDs and incompatible loader/game requirements, with actionable warnings.
-- Modrinth dependency trees are installed dependency-first and tracked during the operation; if a later required dependency or parent download fails, newly published files from that install operation are removed. Existing files are never overwritten.
-- Richer metadata display for licenses, supported environments, dependency details, and changelogs.
-- End-to-end tests against representative live Modrinth and CurseForge projects, including API-key-enabled CurseForge flows.
+Marketplace mod installs inspect common Fabric, Forge, and NeoForge metadata and reject duplicate mod identifiers before publishing a JAR. Provider version queries filter by Minecraft version and selected loader; pinned dependencies are checked again before download. These checks reduce common conflicts but cannot prove that arbitrary third-party mods are mutually compatible. The launcher must still report Minecraft crash logs and actual loader/runtime tests are part of Phase 5.
 
-## Safety
+## Safety and remaining external constraints
 
-Use official provider APIs and comply with their terms. Never install server-only mods into client profiles. Keep provider API keys out of source control. Verify hashes when supplied, use staging files, and avoid overwriting user data without explicit confirmation.
+- Provider API keys must never be committed to source control or embedded in the launcher.
+- Respect provider download permissions and rate limits.
+- Files with missing or invalid checksums are rejected.
+- Existing content is not overwritten during normal installation.
+- Update application is user-confirmed and keeps a copy of the previous file.
+- Live integration tests still require valid provider access and representative projects; the CI build verifies compilation and automated tests, not external API availability or in-game behavior.
