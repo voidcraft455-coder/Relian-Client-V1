@@ -31,8 +31,9 @@ public final class MarketplaceUpdateChecker {
             throws IOException, InterruptedException {
         List<UpdateCandidate> updates = new ArrayList<>();
         for (MarketplaceInstallRegistry.InstallRecord installed : MarketplaceInstallRegistry.list(gameRoot)) {
-            Path file = gameRoot.toAbsolutePath().normalize().resolve(installed.relativePath()).normalize();
-            if (!file.startsWith(gameRoot.toAbsolutePath().normalize()) || !Files.isRegularFile(file)) continue;
+            Path file;
+            try { file = MarketplaceInstallRegistry.resolveFile(gameRoot, installed); }
+            catch (IOException missing) { continue; }
             String latestId;
             String latestName;
             if ("Modrinth".equalsIgnoreCase(installed.source())) {
