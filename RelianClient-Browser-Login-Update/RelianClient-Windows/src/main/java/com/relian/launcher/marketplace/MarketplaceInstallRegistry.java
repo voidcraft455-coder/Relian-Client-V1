@@ -91,15 +91,19 @@ public final class MarketplaceInstallRegistry {
         writeEntries(registryPath(root), next);
     }
 
-    public static synchronized boolean isProjectInstalled(Path gameRoot, String projectId) throws IOException {
-        if (blank(projectId)) return false;
+    public static synchronized InstallRecord findProject(Path gameRoot, String projectId) throws IOException {
+        if (blank(projectId)) return null;
         Path root = checkedRoot(gameRoot);
         for (InstallRecord record : list(root)) {
             if (!projectId.equals(record.projectId())) continue;
-            try { resolveFile(root, record); return true; }
+            try { resolveFile(root, record); return record; }
             catch (IOException missing) { /* Continue looking for another tracked file. */ }
         }
-        return false;
+        return null;
+    }
+
+    public static synchronized boolean isProjectInstalled(Path gameRoot, String projectId) throws IOException {
+        return findProject(gameRoot, projectId) != null;
     }
 
     public static synchronized void forget(Path gameRoot, Path installedFile) throws IOException {
