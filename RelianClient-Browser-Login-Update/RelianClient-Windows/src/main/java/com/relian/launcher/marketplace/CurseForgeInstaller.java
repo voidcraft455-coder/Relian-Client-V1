@@ -135,6 +135,9 @@ public final class CurseForgeInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
+            MarketplaceInstallRegistry.record(root, destination, "CurseForge", project.id(),
+                    string(selected, "id"), "sha1", expectedHash, project.type(),
+                    minecraftVersion.trim(), loader == null ? "" : loader.trim().toLowerCase(Locale.ROOT));
             return destination;
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
