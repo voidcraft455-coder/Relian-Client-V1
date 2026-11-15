@@ -44,13 +44,14 @@ public final class ContentConflictDetector {
     static Set<String> modIds(Path jar) throws IOException {
         Set<String> ids = new java.util.LinkedHashSet<>();
         try (ZipFile zip = new ZipFile(jar.toFile())) {
-            ZipEntry fabric = zip.getEntry("fabric.mod.json");
-            if (fabric != null) {
-                try (var in = zip.getInputStream(fabric)) {
+            for (String metadataName : new String[]{"fabric.mod.json", "quilt.mod.json"}) {
+                ZipEntry metadataEntry = zip.getEntry(metadataName);
+                if (metadataEntry == null) continue;
+                try (var in = zip.getInputStream(metadataEntry)) {
                     JsonObject metadata = JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
                     add(ids, metadata.has("id") ? metadata.get("id").getAsString() : "");
                 } catch (RuntimeException ex) {
-                    throw new IOException("A mod contains invalid fabric.mod.json metadata: " + jar.getFileName(), ex);
+                    throw new IOException("A mod contains invalid " + metadataName + " metadata: " + jar.getFileName(), ex);
                 }
             }
             for (String name : new String[]{"META-INF/mods.toml", "META-INF/neoforge.mods.toml"}) {
