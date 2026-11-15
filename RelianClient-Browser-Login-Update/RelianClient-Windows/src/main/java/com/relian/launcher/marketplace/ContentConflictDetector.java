@@ -18,7 +18,6 @@ import java.util.zip.ZipFile;
 
 /** Detects duplicate mod identifiers before a marketplace JAR is published. */
 public final class ContentConflictDetector {
-    private static final Set<String> FABRIC_METADATA = Set.of("fabric.mod.json");
     private static final Pattern TOML_MOD_ID = Pattern.compile("(?m)^\\s*modId\\s*=\\s*[\"']([A-Za-z0-9_.-]+)[\"']");
     private ContentConflictDetector() {}
 
