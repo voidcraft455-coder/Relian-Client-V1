@@ -20,6 +20,7 @@ public class RelianLauncher extends Application {
     private static final String BG="#0b1019", PANEL="#151d2a", ALT="#202b3c", FG="#f3f6fc", MUTED="#9aa8bc", BLUE="#668cff";
     private final Preferences preferences = Preferences.userNodeForPackage(RelianLauncher.class);
     private String backgroundColor = preferences.get("background.color", BG);
+    private String backgroundStyle = preferences.get("background.style", backgroundColor);
     private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
     private String gameDirectory = preferences.get("game.directory", "");
     private java.nio.file.Path activeInstanceDirectory = null;
@@ -55,7 +56,7 @@ public class RelianLauncher extends Application {
                 }
             } catch (RuntimeException ignored) { activeInstanceDirectory = null; }
         }
-        shell.setStyle("-fx-background-color:"+backgroundColor+";");
+        shell.setStyle("-fx-background-color:"+backgroundStyle+";");
         shell.setLeft(sidebar());
         shell.setCenter(host);
         page("Home");
@@ -134,8 +135,8 @@ public class RelianLauncher extends Application {
             default -> content.getChildren().add(settings());
         }
         ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true); scroll.setPannable(true);
-        content.setStyle("-fx-background-color:"+backgroundColor+";");
-        scroll.setStyle("-fx-background:"+backgroundColor+";-fx-background-color:"+backgroundColor+";-fx-border-color:transparent;-fx-padding:0;");
+        content.setStyle("-fx-background-color:"+backgroundStyle+";");
+        scroll.setStyle("-fx-background:"+backgroundStyle+";-fx-background-color:"+backgroundStyle+";-fx-border-color:transparent;-fx-padding:0;");
         host.getChildren().add(scroll);
         if(shell.getLeft() instanceof VBox side) for(var node:side.getChildren()) if(node instanceof Button b) b.setStyle(navStyle(b.getText().equals(name)));
     }
@@ -1002,13 +1003,27 @@ public class RelianLauncher extends Application {
         Label appearanceTitle=new Label("Launcher appearance");
         appearanceTitle.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");
         ColorPicker backgroundPicker=new ColorPicker(Color.web(backgroundColor));
-        Button applyBackground=small("Apply background color");
+        Button applyBackground=small("Apply solid color");
         applyBackground.setOnAction(e->{
             backgroundColor=toHex(backgroundPicker.getValue());
+            backgroundStyle=backgroundColor;
             preferences.put("background.color",backgroundColor);
+            preferences.put("background.style",backgroundStyle);
             page("Settings");
         });
-        appearance.getChildren().addAll(appearanceTitle,muted("Choose a solid launcher background. This uses a simple color fill rather than animated effects, keeping GPU use low."),backgroundPicker,applyBackground);
+        Button applyGradient=small("Use midnight gradient");
+        applyGradient.setOnAction(e->{
+            backgroundStyle="linear-gradient(to bottom right,#101b2c,#0b1019 58%,#17243a)";
+            preferences.put("background.style",backgroundStyle);
+            page("Settings");
+        });
+        Button resetBackground=small("Reset default");
+        resetBackground.setOnAction(e->{
+            backgroundColor=BG;backgroundStyle=BG;
+            preferences.put("background.color",BG);preferences.put("background.style",BG);
+            page("Settings");
+        });
+        appearance.getChildren().addAll(appearanceTitle,muted("Choose a solid color or a subtle dark gradient. Your selection is saved between launches."),backgroundPicker,new HBox(8,applyBackground,applyGradient,resetBackground));
 
         VBox performance=new VBox(10);
         performance.setPadding(new Insets(18)); performance.setStyle(cardStyle());
