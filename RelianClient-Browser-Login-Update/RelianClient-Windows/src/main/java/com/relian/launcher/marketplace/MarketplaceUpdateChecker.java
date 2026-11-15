@@ -64,7 +64,7 @@ public final class MarketplaceUpdateChecker {
         String url = MODRINTH + "/project/" + encPath(item.projectId()) + "/version?game_versions=" + enc(query);
         if ("MOD".equals(item.projectType()) && item.loader() != null && !item.loader().isBlank())
             url += "&loaders=" + enc("[\"" + escape(item.loader()) + "\"]");
-        HttpResponse<String> response = send(HttpRequest.newBuilder(URI.create(url))
+        HttpResponse<String> response = send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30))
                 .header("User-Agent", "RelianClient/0.1.0 (marketplace updates)").GET().build());
         if (response.statusCode() != 200) throw new IOException("Modrinth update check failed with HTTP " + response.statusCode() + ".");
         try { return JsonParser.parseString(response.body()).getAsJsonArray(); }
