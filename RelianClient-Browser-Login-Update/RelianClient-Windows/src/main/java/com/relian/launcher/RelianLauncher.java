@@ -865,7 +865,8 @@ public class RelianLauncher extends Application {
         VBox rows=new VBox(8);
         Button importButton=small("Import "+category.label+" PNG");
         Button refreshButton=small("Refresh");
-        Runnable load=()->{
+        final Runnable[] load=new Runnable[1];
+        load[0]=()->{
             rows.getChildren().clear();
             try{
                 var assets=com.relian.launcher.cosmetics.CosmeticAssetLibrary.list(category);
