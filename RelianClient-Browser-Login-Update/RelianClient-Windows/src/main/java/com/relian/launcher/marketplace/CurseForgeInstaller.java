@@ -105,6 +105,7 @@ public final class CurseForgeInstaller {
             for (CurseForgeDependencyGraph.Dependency dependency :
                     CurseForgeDependencyGraph.requiredDependencies(declared)) {
                 if (visited.contains(dependency.modId())) continue;
+                if (MarketplaceInstallRegistry.isProjectInstalled(gameDirectory, dependency.modId())) continue;
                 MarketplaceProject dependencyProject = fetchModProject(dependency.modId(), apiKey);
                 installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, apiKey,
                         visited, dependency.fileId(), published);
