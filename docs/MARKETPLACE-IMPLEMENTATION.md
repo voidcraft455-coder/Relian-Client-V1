@@ -14,7 +14,7 @@ CurseForge individual mod, resource-pack, and shader installs use the official A
 
 ## Modpack import
 
-The Instances page supports local Modrinth `.mrpack` and CurseForge manifest ZIP imports into isolated instances. Importers validate archive paths and file metadata, verify supplied hashes, enforce file/aggregate size limits, and stage the instance before publishing it. CurseForge manifest project/file IDs are resolved through the official API. Unsupported optional or server-only files are skipped. Importers do not promise that every third-party pack launches; runtime compatibility is verified separately in Phase 5.
+The marketplace Modpacks page can download a compatible Modrinth `.mrpack` or CurseForge modpack ZIP, verify its provider checksum, and import it directly into a new isolated Relian instance. The Instances page also supports importing local Modrinth `.mrpack` and CurseForge manifest ZIP archives. Importers validate archive paths and file metadata, verify supplied hashes, enforce file/aggregate size limits, and stage the instance before publishing it. CurseForge manifest project/file IDs are resolved through the official API. Unsupported optional or server-only files are skipped. Importers do not promise that every third-party pack launches; runtime compatibility is verified separately in Phase 5.
 
 ## Installed content and backups
 
