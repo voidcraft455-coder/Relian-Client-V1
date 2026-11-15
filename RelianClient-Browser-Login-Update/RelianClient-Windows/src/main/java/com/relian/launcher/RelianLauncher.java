@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 public class RelianLauncher extends Application {
-    private static final String BG="#17191e", PANEL="#20232a", ALT="#292e37", FG="#f2f4f7", MUTED="#a6acb7", BLUE="#4d83d8";
+    private static final String BG="#0b1019", PANEL="#151d2a", ALT="#202b3c", FG="#f3f6fc", MUTED="#9aa8bc", BLUE="#668cff";
     private final Preferences preferences = Preferences.userNodeForPackage(RelianLauncher.class);
     private String backgroundColor = preferences.get("background.color", BG);
     private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
@@ -84,8 +84,8 @@ public class RelianLauncher extends Application {
     }
 
     private VBox sidebar() {
-        VBox v=new VBox(8); v.setPadding(new Insets(24,14,20,14)); v.setPrefWidth(205);
-        v.setStyle("-fx-background-color:#13151a;-fx-border-color:#2b2e36;-fx-border-width:0 1 0 0;");
+        VBox v=new VBox(9); v.setPadding(new Insets(25,14,20,14)); v.setPrefWidth(218);
+        v.setStyle("-fx-background-color:#0c121d;-fx-border-color:#222d3d;-fx-border-width:0 1 0 0;");
         HBox brand=new HBox(10); brand.setAlignment(Pos.CENTER_LEFT);
         Label r=new Label("R"); r.setMinSize(38,38); r.setAlignment(Pos.CENTER);
         r.setStyle("-fx-background-color:#2d4264;-fx-background-radius:8;-fx-text-fill:white;-fx-font-size:22px;-fx-font-weight:bold;");
@@ -93,12 +93,15 @@ public class RelianLauncher extends Application {
         n.setStyle("-fx-text-fill:"+FG+";-fx-font-size:16px;-fx-font-weight:bold;");
         sub.setStyle("-fx-text-fill:"+MUTED+";-fx-font-size:9px;");
         bt.getChildren().addAll(n,sub); brand.getChildren().addAll(r,bt);
-        v.getChildren().add(brand); Region gap=new Region(); gap.setPrefHeight(20); v.getChildren().add(gap);
-        for(String s:List.of("Home","Instances","Versions","Mods","Modpacks","Resource Packs","Shaders","Installed Content","Cosmetics","Settings")) {
-            Button b=new Button(s); b.setMaxWidth(Double.MAX_VALUE); b.setAlignment(Pos.CENTER_LEFT);
-            b.setPadding(new Insets(11,12,11,12)); b.setOnAction(e->page(s)); b.setId("nav-"+s);
-            v.getChildren().add(b);
-        }
+        v.getChildren().add(brand); Region gap=new Region(); gap.setPrefHeight(18); v.getChildren().add(gap);
+        v.getChildren().add(navSection("PLAY"));
+        for(String s:List.of("Home","Instances","Versions")) v.getChildren().add(navButton(s));
+        v.getChildren().add(navSection("DISCOVER"));
+        for(String s:List.of("Mods","Modpacks","Resource Packs","Shaders")) v.getChildren().add(navButton(s));
+        v.getChildren().add(navSection("LIBRARY"));
+        for(String s:List.of("Installed Content","Cosmetics")) v.getChildren().add(navButton(s));
+        v.getChildren().add(navSection("PREFERENCES"));
+        v.getChildren().add(navButton("Settings"));
         Region push=new Region(); VBox.setVgrow(push,Priority.ALWAYS);
         Label foot=new Label("RELIAN • EARLY ACCESS"); foot.setStyle("-fx-text-fill:#69717f;-fx-font-size:9px;");
         v.getChildren().addAll(push,foot); return v;
@@ -108,7 +111,7 @@ public class RelianLauncher extends Application {
         active=name; host.getChildren().clear();
         VBox content=new VBox(18); content.setPadding(new Insets(30,38,30,38));
         HBox header=new HBox(); header.setAlignment(Pos.CENTER_LEFT);
-        Label title=new Label(name); title.setStyle("-fx-text-fill:"+FG+";-fx-font-size:25px;-fx-font-weight:bold;");
+        Label title=new Label(name); title.setStyle("-fx-text-fill:"+FG+";-fx-font-size:27px;-fx-font-weight:bold;");
         Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
         Button account=small(accountLabel);
         account.setOnAction(e -> signIn());
@@ -125,8 +128,9 @@ public class RelianLauncher extends Application {
             case "Cosmetics" -> content.getChildren().add(cosmeticsPage());
             default -> content.getChildren().add(settings());
         }
-        ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background:"+backgroundColor+";-fx-background-color:"+backgroundColor+";-fx-border-color:transparent;");
+        ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true); scroll.setPannable(true);
+        content.setStyle("-fx-background-color:"+backgroundColor+";");
+        scroll.setStyle("-fx-background:"+backgroundColor+";-fx-background-color:"+backgroundColor+";-fx-border-color:transparent;-fx-padding:0;");
         host.getChildren().add(scroll);
         if(shell.getLeft() instanceof VBox side) for(var node:side.getChildren()) if(node instanceof Button b) b.setStyle(navStyle(b.getText().equals(name)));
     }
@@ -137,12 +141,15 @@ public class RelianLauncher extends Application {
         return new com.relian.launcher.marketplace.MarketplaceBrowserPane(type, preferred, activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion);
     }
 
+    private Label navSection(String name){Label label=new Label(name);label.setPadding(new Insets(10,10,3,10));label.setStyle("-fx-text-fill:#66758b;-fx-font-size:9px;-fx-font-weight:bold;-fx-letter-spacing:1.2px;");return label;}
+    private Button navButton(String name){Button b=new Button(name);b.setMaxWidth(Double.MAX_VALUE);b.setAlignment(Pos.CENTER_LEFT);b.setPadding(new Insets(10,12,10,12));b.setOnAction(e->page(name));b.setId("nav-"+name);b.setStyle(navStyle(false));b.setOnMouseEntered(e->{if(!name.equals(active))b.setStyle(navHoverStyle());});b.setOnMouseExited(e->b.setStyle(navStyle(name.equals(active))));return b;}
+    private String navHoverStyle(){return "-fx-background-color:#182335;-fx-background-radius:8;-fx-text-fill:#e7edf8;-fx-font-size:13px;-fx-cursor:hand;";}
     private String navStyle(boolean selected) {
-        return "-fx-background-color:"+(selected?"#29384f":"transparent")+";-fx-background-radius:6;-fx-text-fill:"+(selected?"white":"#b7bdc8")+";-fx-font-size:13px;-fx-cursor:hand;";
+        return "-fx-background-color:"+(selected?"#263b5c":"transparent")+";-fx-background-radius:8;-fx-text-fill:"+(selected?"#ffffff":"#aebbd0")+";-fx-font-size:13px;-fx-font-weight:"+(selected?"bold":"normal")+";-fx-cursor:hand;";
     }
-    private String cardStyle(){return "-fx-background-color:"+PANEL+";-fx-background-radius:7;-fx-border-color:#30343d;-fx-border-radius:7;";}
+    private String cardStyle(){return "-fx-background-color:"+PANEL+";-fx-background-radius:12;-fx-border-color:#273449;-fx-border-radius:12;";}
     private Label muted(String s){Label l=new Label(s);l.setWrapText(true);l.setStyle("-fx-text-fill:"+MUTED+";-fx-font-size:12px;");return l;}
-    private Button small(String s){Button b=new Button(s);b.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:4;-fx-text-fill:#e6e9ef;-fx-padding:8 12;-fx-cursor:hand;");return b;}
+    private Button small(String s){Button b=new Button(s);b.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:8;-fx-text-fill:#e6edf8;-fx-padding:9 14;-fx-cursor:hand;-fx-font-size:12px;");return b;}
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
     private void signIn() {
@@ -195,15 +202,16 @@ public class RelianLauncher extends Application {
     }
 
     private VBox home() {
-        VBox wrap=new VBox(18), hero=new VBox(14); hero.setPadding(new Insets(28)); hero.setStyle(cardStyle());
-        Label eyebrow=muted("MINECRAFT JAVA EDITION"), welcome=new Label("Ready to play?");
-        welcome.setStyle("-fx-text-fill:"+FG+";-fx-font-size:28px;-fx-font-weight:bold;");
-        hero.getChildren().addAll(eyebrow,welcome,muted("Choose an installation and launch Relian Client."));
+        VBox wrap=new VBox(20), hero=new VBox(16); hero.setPadding(new Insets(30)); hero.setStyle("-fx-background-color:linear-gradient(to bottom right,#1b2a43,#151d2a 62%,#172438);-fx-background-radius:14;-fx-border-color:#30425e;-fx-border-radius:14;");
+        Label eyebrow=muted("RELIAN CLIENT  /  MINECRAFT JAVA EDITION");
+        Label welcome=new Label("Your next world\nstarts here.");
+        welcome.setStyle("-fx-text-fill:"+FG+";-fx-font-size:34px;-fx-font-weight:bold;");
+        hero.getChildren().addAll(eyebrow,welcome,muted("Choose an installation, customize your setup, and jump into Minecraft."));
         HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
         versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue(activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion); versions.setPrefWidth(170); styleCombo(versions);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue(activeInstanceLoader.isBlank() ? "Vanilla" : activeInstanceLoader); loader.setPrefWidth(150); styleCombo(loader);
-        Button play=new Button("PLAY"); play.setPrefSize(150,42);
-        play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:5;-fx-text-fill:white;-fx-font-weight:bold;-fx-cursor:hand;");
+        Button play=new Button("▶   PLAY"); play.setPrefSize(164,48);
+        play.setStyle("-fx-background-color:"+BLUE+";-fx-background-radius:9;-fx-text-fill:white;-fx-font-size:14px;-fx-font-weight:bold;-fx-cursor:hand;");
         Label playStatus=muted("Select an installed version. Microsoft sign-in and Minecraft ownership verification are required.");
         play.setOnAction(e->{
             if(minecraftSession==null){
@@ -260,10 +268,11 @@ public class RelianLauncher extends Application {
             }));
         });
         controls.getChildren().addAll(versions,loader,play); hero.getChildren().addAll(controls,playStatus);
+        versions.setPrefHeight(42); loader.setPrefHeight(42);
         VBox offlineCard = new VBox(9);
         offlineCard.setPadding(new Insets(18));
         offlineCard.setStyle(cardStyle());
-        Label offlineTitle = new Label("Offline / Local Test Profile");
+        Label offlineTitle = new Label("Local launcher preview");
         offlineTitle.setStyle("-fx-text-fill:" + FG + ";-fx-font-size:15px;-fx-font-weight:bold;");
         TextField offlineName = new TextField();
         offlineName.setPromptText("Test name (3–16 letters, numbers, underscore)");
@@ -300,7 +309,8 @@ public class RelianLauncher extends Application {
         cards.getChildren().addAll(card("MOD MANAGER","Browse mods and check compatibility.","Open Mods",()->page("Mods")),
             card("RESOURCE PACKS","Manage textures and visual styles.","Open Packs",()->page("Resource Packs")),
             card("SHADERS","Manage supported shader packs.","Open Shaders",()->page("Shaders")));
-        wrap.getChildren().addAll(hero,muted("QUICK ACCESS"),cards); return wrap;
+        Label quickTitle=new Label("QUICK ACCESS"); quickTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;-fx-letter-spacing:1.4px;");
+        wrap.getChildren().addAll(hero,quickTitle,cards); return wrap;
     }
     private VBox card(String t,String d,String action,Runnable r){
         VBox b=new VBox(10);b.setPadding(new Insets(17));b.setPrefWidth(230);b.setStyle(cardStyle());
