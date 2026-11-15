@@ -135,9 +135,15 @@ public final class CurseForgeInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
-            MarketplaceInstallRegistry.record(root, destination, "CurseForge", project.id(),
-                    string(selected, "id"), "sha1", expectedHash, project.type(),
-                    minecraftVersion.trim(), loader == null ? "" : loader.trim().toLowerCase(Locale.ROOT));
+            try {
+                MarketplaceInstallRegistry.record(root, destination, "CurseForge", project.id(),
+                        string(selected, "id"), "sha1", expectedHash, project.type(),
+                        minecraftVersion.trim(), loader == null ? "" : loader.trim().toLowerCase(Locale.ROOT));
+            } catch (IOException registryFailure) {
+                Files.deleteIfExists(destination);
+                moved = false;
+                throw registryFailure;
+            }
             return destination;
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
