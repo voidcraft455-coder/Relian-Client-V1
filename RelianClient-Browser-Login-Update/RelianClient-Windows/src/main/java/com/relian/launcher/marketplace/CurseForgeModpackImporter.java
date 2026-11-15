@@ -236,6 +236,8 @@ public final class CurseForgeModpackImporter {
             Path target = gameRoot.resolve(relative).normalize();
             if (!target.startsWith(gameRoot) || target.equals(gameRoot)) throw new IOException("Unsafe override path.");
             if (entry.isDirectory()) {
+                String directoryRoot = relative.contains("/") ? relative.substring(0, relative.indexOf("/")) : relative;
+                if (!FOLDERS.contains(directoryRoot)) throw new IOException("Unsupported override directory: " + relative);
                 Files.createDirectories(target);
                 continue;
             }
