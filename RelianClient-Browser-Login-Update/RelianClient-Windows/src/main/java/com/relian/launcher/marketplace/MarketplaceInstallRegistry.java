@@ -65,6 +65,30 @@ public final class MarketplaceInstallRegistry {
         return List.copyOf(records);
     }
 
+    public static Path resolveFile(Path gameRoot, InstallRecord record) throws IOException {
+        Path root = checkedRoot(gameRoot);
+        if (record == null || !safeRelative(record.relativePath())) throw new IOException("Marketplace install path is invalid.");
+        Path file = root.resolve(record.relativePath()).normalize();
+        if (Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(file)) return file;
+        String name = file.getFileName().toString();
+        Path alternate = name.endsWith(".disabled")
+                ? file.resolveSibling(name.substring(0, name.length() - ".disabled".length()))
+                : file.resolveSibling(name + ".disabled");
+        if (Files.isRegularFile(alternate, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(alternate)) return alternate;
+        throw new IOException("The tracked marketplace file is missing: " + record.fileName());
+    }
+
+    public static synchronized void forgetRecord(Path gameRoot, InstallRecord record) throws IOException {
+        Path root = checkedRoot(gameRoot);
+        if (record == null || !safeRelative(record.relativePath())) return;
+        JsonArray entries = readEntries(registryPath(root));
+        JsonArray next = new JsonArray();
+        for (JsonElement element : entries) {
+            if (element.isJsonObject() && !record.relativePath().equals(string(element.getAsJsonObject(), "relativePath"))) next.add(element);
+        }
+        writeEntries(registryPath(root), next);
+    }
+
     public static synchronized boolean isProjectInstalled(Path gameRoot, String projectId) throws IOException {
         if (blank(projectId)) return false;
         Path root = checkedRoot(gameRoot);
