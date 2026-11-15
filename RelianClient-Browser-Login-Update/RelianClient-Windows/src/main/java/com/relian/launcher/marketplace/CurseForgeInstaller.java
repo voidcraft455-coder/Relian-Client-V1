@@ -126,6 +126,9 @@ public final class CurseForgeInstaller {
             if (!HexFormat.of().formatHex(digest.digest()).equalsIgnoreCase(expectedHash)) {
                 throw new IOException("SHA-1 verification failed. The file was not installed.");
             }
+            if (project.type() == ProjectType.MOD) {
+                ContentConflictDetector.ensureNoDuplicateModIds(targetDirectory, temporary);
+            }
             try {
                 Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException ex) {
