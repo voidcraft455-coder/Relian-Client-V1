@@ -86,7 +86,7 @@ public final class MarketplaceUpdateChecker {
     }
 
     private static HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
-        return HTTP.send(request.timeout(Duration.ofSeconds(30)).build(), HttpResponse.BodyHandlers.ofString());
+        return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
     }
     private static JsonObject firstAvailable(JsonArray files) {
         for (JsonElement element : files) {
