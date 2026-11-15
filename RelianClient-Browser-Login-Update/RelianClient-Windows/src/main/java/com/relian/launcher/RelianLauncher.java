@@ -410,7 +410,7 @@ public class RelianLauncher extends Application {
                 Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Marketplace updates");
                 confirm.setHeaderText(updates.size()+" compatible update(s) found");
-                confirm.setContentText(summary+"\\nRelian will install verified replacements first, keep backups of the old files, and restore the old files if an update fails. Install all updates?");
+                confirm.setContentText(summary+"\nRelian will install verified replacements first, keep backups of the old files, and restore the old files if an update fails. Install all updates?");
                 confirm.initOwner(shell.getScene().getWindow());
                 if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK){state.setText("Updates are available; no files were changed.");return;}
                 checkUpdates.setDisable(true);
