@@ -460,7 +460,8 @@ public class RelianLauncher extends Application {
         heading.getChildren().addAll(title,push,refresh);
         VBox rows=new VBox(8);
         Label state=muted("Loading managed instances…");
-        Runnable load=()->{
+        final Runnable[] load=new Runnable[1];
+        load[0]=()->{
             rows.getChildren().clear();
             state.setText("Loading managed instances…");
             CompletableFuture.supplyAsync(()->{
@@ -540,10 +541,10 @@ public class RelianLauncher extends Application {
                 }
             }));
         };
-        refresh.setOnAction(event->load.run());
+        refresh.setOnAction(event->load[0].run());
         refreshInstancesAction=load;
         panel.getChildren().addAll(heading,state,rows);
-        load.run();
+        load[0].run();
         return panel;
     }
 
@@ -891,7 +892,7 @@ public class RelianLauncher extends Application {
                         try{
                             com.relian.launcher.cosmetics.CosmeticAssetLibrary.delete(category,asset);
                             status.setText("Removed "+asset.getFileName()+".");
-                            load.run();
+                            load[0].run();
                         }catch(Exception ex){status.setText("Could not remove asset: "+ex.getMessage());}
                     });
                     row.getChildren().addAll(preview,details,push,remove); rows.getChildren().add(row);
@@ -916,16 +917,16 @@ public class RelianLauncher extends Application {
                     status.setText("Import failed: "+cause.getMessage());
                 }else{
                     status.setText("Imported "+installed.getFileName()+" as a local "+category.label.toLowerCase(java.util.Locale.ROOT)+" asset. It is not equipped in-game.");
-                    load.run();
+                    load[0].run();
                 }
             }));
         });
-        refreshButton.setOnAction(event->load.run());
+        refreshButton.setOnAction(event->load[0].run());
         HBox actions=new HBox(8,importButton,refreshButton);
         ScrollPane scroll=new ScrollPane(rows); scroll.setFitToWidth(true); scroll.setPrefViewportHeight(260);
         scroll.setStyle("-fx-background:transparent;-fx-background-color:transparent;-fx-border-color:transparent;");
         content.getChildren().addAll(sizeHint,actions,scroll);
-        load.run();
+        load[0].run();
         return new Tab(category.label,content);
     }
 
