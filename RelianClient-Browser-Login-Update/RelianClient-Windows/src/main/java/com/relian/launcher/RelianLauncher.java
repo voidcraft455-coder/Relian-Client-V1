@@ -491,8 +491,8 @@ public class RelianLauncher extends Application {
                 if(error!=null){state.setText("Could not read instances: "+(error.getCause()==null?error.getMessage():error.getCause().getMessage()));return;}
                 if(items.isEmpty()){state.setText("No Relian-managed instances yet. Create one below.");return;}
                 var rankedItems=new java.util.ArrayList<>(items);
-                rankedItems.sort(java.util.Comparator.comparing((var item)->isPinned(item.directory())).reversed()
-                    .thenComparing((var item)->playSeconds(item.directory()),java.util.Comparator.reverseOrder())
+                rankedItems.sort(java.util.Comparator.comparing((com.relian.launcher.profiles.InstanceManager.InstanceEntry item)->isPinned(item.directory())).reversed()
+                    .thenComparing((com.relian.launcher.profiles.InstanceManager.InstanceEntry item)->playSeconds(item.directory()),java.util.Comparator.reverseOrder())
                     .thenComparing(item->item.manifest().name(),String.CASE_INSENSITIVE_ORDER));
                 state.setText(items.size()+" managed instance(s) • sorted by pinned status and playtime • stored in "+instancesRoot());
                 for(var item:rankedItems){
