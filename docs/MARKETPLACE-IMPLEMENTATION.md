@@ -6,7 +6,7 @@ The JavaFX launcher has separate pages for Mods, Modpacks, Resource Packs, and S
 
 ## Modrinth individual installs
 
-For mods, resource packs, and shaders, the Install action requests a compatible project version, downloads from approved HTTPS Modrinth CDN hosts, enforces a download-size ceiling, verifies the supplied SHA-512 digest, stages the file, and places it into the selected instance's standard `mods`, `resourcepacks`, or `shaderpacks` directory.
+For mods, resource packs, and shaders, the Install action requests a compatible project version, downloads from approved HTTPS Modrinth CDN hosts, enforces a download-size ceiling, verifies the supplied SHA-512 digest, stages the file, and places it into the selected instance's standard `mods`, `resourcepacks`, or `shaderpacks` directory. Mod installs now traverse Modrinth's required project dependencies recursively, install dependencies before the selected mod, respect pinned dependency version IDs, check the pinned version against the selected Minecraft version and loader, and de-duplicate/cycle-guard project IDs. Optional and incompatible dependencies are not installed automatically. If a required dependency cannot be resolved or downloaded safely, the install reports failure rather than silently claiming success.
 
 ## Modrinth modpack import
 
@@ -32,10 +32,11 @@ The Installed Content page scans supported mods, resource packs, and shaders in 
 
 ## Remaining marketplace work
 
-- Full dependency graph resolution and installation ordering for individual mods.
-- Clearer conflict detection and backup/rollback before replacing installed files.
+- Dependency resolution for direct CurseForge mod installs and recursive/transitive dependencies in CurseForge modpack manifests.
+- A marketplace-owned install manifest that maps provider project/version IDs and verified file hashes to installed paths.
 - Update checking and safe update flows for installed mods, resource packs, and shaders.
-- Required dependency graph resolution for Modrinth individual mod installs (CurseForge modpack manifest files are resolved individually, but transitive project dependencies are not recursively discovered).
+- Conflict detection for duplicate mod IDs and incompatible loader/game requirements, with actionable warnings.
+- A single staged multi-file transaction for dependency trees; individual Modrinth files are checksum-verified and atomically published, but a later dependency failure can currently leave earlier successfully installed dependencies in place.
 - Richer metadata display for licenses, supported environments, dependency details, and changelogs.
 - End-to-end tests against representative live Modrinth and CurseForge projects, including API-key-enabled CurseForge flows.
 
