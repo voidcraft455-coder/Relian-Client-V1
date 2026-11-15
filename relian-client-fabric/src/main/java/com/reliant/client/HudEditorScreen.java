@@ -186,7 +186,7 @@ public final class HudEditorScreen extends Screen {
         int px = panelLeft + 425;
         int py = panelTop + 88;
         for (int i = 0; i < MODULES.size(); i++) {
-            int y = panelTop + 88 + i * 20;
+            int y = panelTop + 88 + i * 15;
             if (inside(mouseX, mouseY, panelLeft + 18, y, 384, 14)) {
                 selected = i;
                 if (inside(mouseX, mouseY, panelLeft + 265, y + 1, 62, 12)) {
