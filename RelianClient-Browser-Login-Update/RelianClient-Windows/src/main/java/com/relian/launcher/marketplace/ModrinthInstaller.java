@@ -200,9 +200,9 @@ public final class ModrinthInstaller {
                 Files.move(temporary, destination);
             }
             moved = true;
+            published.add(destination);
             MarketplaceInstallRegistry.record(root, destination, "Modrinth", project.id(), versionId,
                     "sha512", expectedHash, project.type(), minecraftVersion.trim(), loaderValue);
-            published.add(destination);
             return destination;
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
