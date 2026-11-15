@@ -22,7 +22,7 @@ The Installed Content page scans mods, resource packs, and shaders in the select
 
 ## Install ownership and updates
 
-Successful Modrinth and CurseForge installs are recorded in `.relian/marketplace-installs.json` with provider project ID, selected version/file ID, verified checksum, content type, game version, loader, and relative installed path. Records survive enable/disable renames. The Installed Content page can check for compatible provider updates and, after confirmation, install replacements before retiring old files. The previous file is copied to `.relian-backups/marketplace-updates`; a failed replacement is removed and the previous file is restored. Manually added files are not included in provider update checks because they have no trusted project/version metadata.
+Successful Modrinth and CurseForge installs are recorded in `.relian/marketplace-installs.json` with provider project ID, selected version/file ID, verified checksum, content type, game version, loader, and relative installed path. Records survive enable/disable renames. The Installed Content page can check for compatible provider updates and, after confirmation, install replacements before retiring old files. The previous file is saved as a ZIP in `.relian-backups`, where it is also visible to the existing Restore backup control; a failed replacement is removed and the previous file is restored. Manually added files are not included in provider update checks because they have no trusted project/version metadata.
 
 ## Conflict and compatibility handling
 
