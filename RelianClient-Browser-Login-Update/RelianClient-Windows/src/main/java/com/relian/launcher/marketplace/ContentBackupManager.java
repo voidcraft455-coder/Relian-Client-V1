@@ -94,7 +94,7 @@ public final class ContentBackupManager {
                 while ((entry = zip.getNextEntry()) != null) {
                     if (++count > MAX_ENTRIES) throw new IOException("Backup contains too many entries.");
                     if (entry.isDirectory()) { zip.closeEntry(); continue; }
-                    String name = entry.getName().replace('\\\\', '/');
+                    String name = entry.getName().replace('\\', '/');
                     String[] parts = name.split("/", -1);
                     if (parts.length != 2 || !FOLDERS.contains(parts[0]) || !supported(parts[0], parts[1])
                             || parts[1].equals(".") || parts[1].equals("..")) {
