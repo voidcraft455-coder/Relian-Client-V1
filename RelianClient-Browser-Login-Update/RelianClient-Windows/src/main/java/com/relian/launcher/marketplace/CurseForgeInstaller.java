@@ -64,7 +64,7 @@ public final class CurseForgeInstaller {
             throws IOException, InterruptedException {
         if (!visited.add(project.id())) return null;
 
-        String url = API + "/mods/" + encode(project.id()) + "/files?gameVersion=" + enc(minecraftVersion.trim()) + "&pageSize=20&index=0";
+        String url = API + "/mods/" + encode(project.id()) + "/files?gameVersion=" + enc(minecraftVersion.trim()) + "&pageSize=20&index=0&sortField=2&sortOrder=desc";
         if (project.type() == ProjectType.MOD) {
             url += "&modLoaderType=" + loaderType(loader);
         }
