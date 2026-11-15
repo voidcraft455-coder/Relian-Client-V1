@@ -44,6 +44,9 @@ final class RelianHudRenderer {
         renderOffhand(client, context, config);
         renderDate(client, context, config);
         renderArmorSummary(client, context, config);
+        renderExperience(client, context, config);
+        renderWeather(client, context, config);
+        renderViewAngles(client, context, config);
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
@@ -232,6 +235,25 @@ final class RelianHudRenderer {
         String summary = pieces == 0 ? "ARMOR CONDITION: no gear"
             : String.format(java.util.Locale.ROOT, "ARMOR CONDITION: %.0f%% average", total / (float) pieces);
         renderText(client, context, config, "armor_summary", List.of(summary));
+    }
+
+    private static void renderExperience(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        int level = client.player.experienceLevel;
+        int progress = MathHelper.floor(client.player.experienceProgress * 100.0f);
+        renderText(client, context, config, "experience", List.of("XP: LEVEL " + level + "  " + progress + "%"));
+    }
+
+    private static void renderWeather(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        String weather = client.world.isThundering() ? "THUNDERSTORM"
+            : client.world.isRaining() ? "RAIN" : "CLEAR";
+        renderText(client, context, config, "weather", List.of("WEATHER: " + weather));
+    }
+
+    private static void renderViewAngles(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        renderText(client, context, config, "view_angles", List.of(String.format(
+            java.util.Locale.ROOT, "LOOK: YAW %.1f  PITCH %.1f",
+            client.player.getYaw(), client.player.getPitch()
+        )));
     }
 
     private static void renderText(MinecraftClient client, DrawContext context, HudConfig.Config config,
