@@ -38,6 +38,12 @@ final class RelianHudRenderer {
         renderWorldTime(client, context, config);
         renderServerInfo(client, context, config);
         renderSessionTime(client, context, config);
+        renderLightLevel(client, context, config);
+        renderChunkCoords(client, context, config);
+        renderVelocity(client, context, config);
+        renderOffhand(client, context, config);
+        renderDate(client, context, config);
+        renderArmorSummary(client, context, config);
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
@@ -173,6 +179,59 @@ final class RelianHudRenderer {
         long seconds = Math.max(0, (System.currentTimeMillis() - sessionStartedAt) / 1000);
         renderText(client, context, config, "session_time", List.of(String.format(
             java.util.Locale.ROOT, "SESSION: %02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60)));
+    }
+
+    private static void renderLightLevel(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        int light = client.world.getLightLevel(client.player.getBlockPos());
+        renderText(client, context, config, "light_level", List.of("BLOCK LIGHT: " + light + " / 15"));
+    }
+
+    private static void renderChunkCoords(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        var pos = client.player.getBlockPos();
+        int chunkX = pos.getX() >> 4;
+        int chunkZ = pos.getZ() >> 4;
+        int localX = Math.floorMod(pos.getX(), 16);
+        int localZ = Math.floorMod(pos.getZ(), 16);
+        renderText(client, context, config, "chunk_coords", List.of(
+            "CHUNK: " + chunkX + ", " + chunkZ,
+            "LOCAL: " + localX + ", " + localZ
+        ));
+    }
+
+    private static void renderVelocity(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        var velocity = client.player.getVelocity();
+        renderText(client, context, config, "velocity", List.of(String.format(
+            java.util.Locale.ROOT, "VELOCITY: X %.2f  Y %.2f  Z %.2f",
+            velocity.x, velocity.y, velocity.z
+        )));
+    }
+
+    private static void renderOffhand(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        ItemStack stack = client.player.getOffHandStack();
+        String value = stack.isEmpty() ? "OFFHAND: empty" : "OFFHAND: " + stack.getName().getString()
+            + (stack.getCount() > 1 ? " x" + stack.getCount() : "");
+        renderText(client, context, config, "offhand", List.of(value));
+    }
+
+    private static void renderDate(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        renderText(client, context, config, "date", List.of(
+            "DATE: " + java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        ));
+    }
+
+    private static void renderArmorSummary(MinecraftClient client, DrawContext context, HudConfig.Config config) {
+        int total = 0;
+        int pieces = 0;
+        for (ItemStack stack : client.player.getInventory().armor) {
+            if (!stack.isEmpty() && stack.isDamageable()) {
+                int remaining = Math.max(0, stack.getMaxDamage() - stack.getDamage());
+                total += MathHelper.floor(remaining * 100.0f / stack.getMaxDamage());
+                pieces++;
+            }
+        }
+        String summary = pieces == 0 ? "ARMOR CONDITION: no gear"
+            : String.format(java.util.Locale.ROOT, "ARMOR CONDITION: %.0f%% average", total / (float) pieces);
+        renderText(client, context, config, "armor_summary", List.of(summary));
     }
 
     private static void renderText(MinecraftClient client, DrawContext context, HudConfig.Config config,
