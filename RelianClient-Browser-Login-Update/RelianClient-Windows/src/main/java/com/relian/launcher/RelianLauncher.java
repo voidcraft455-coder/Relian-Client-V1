@@ -388,6 +388,51 @@ public class RelianLauncher extends Application {
         VBox entries=new VBox(8);
         Label state=muted("Choose a game directory and refresh to scan installed content.");
         Button refresh=small("Refresh");
+        Button backup=small("Backup content");
+        Button restore=small("Restore backup");
+        backup.setOnAction(event->{
+            if(gameDirectory.isBlank()){info("Choose a Minecraft game directory in Settings first.");return;}
+            backup.setDisable(true);
+            java.nio.file.Path root=java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+            CompletableFuture.supplyAsync(()->{
+                try{return com.relian.launcher.marketplace.ContentBackupManager.createBackup(root);}
+                catch(java.io.IOException ex){throw new RuntimeException(ex);}
+            }).whenComplete((archive,error)->javafx.application.Platform.runLater(()->{
+                backup.setDisable(false);
+                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();info("Backup failed: "+cause.getMessage());}
+                else state.setText("Content backup created: "+archive.getFileName());
+            }));
+        });
+        restore.setOnAction(event->{
+            if(gameDirectory.isBlank()){info("Choose a Minecraft game directory in Settings first.");return;}
+            try{
+                java.nio.file.Path root=java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+                var backups=com.relian.launcher.marketplace.ContentBackupManager.listBackups(root);
+                if(backups.isEmpty()){info("No Relian content backups were found for this game directory.");return;}
+                javafx.scene.control.ChoiceDialog<java.nio.file.Path> chooser=new javafx.scene.control.ChoiceDialog<>(backups.get(0),backups);
+                chooser.setTitle("Restore content backup");
+                chooser.setHeaderText("Choose a backup to restore");
+                chooser.setContentText("Restore adds files only when their destination does not already exist. Existing files are never overwritten.");
+                chooser.initOwner(shell.getScene().getWindow());
+                var selected=chooser.showAndWait();
+                if(selected.isEmpty())return;
+                var confirm=new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Confirm restore");
+                confirm.setHeaderText("Restore "+selected.get().getFileName()+"?");
+                confirm.setContentText("Relian will restore missing mods, resource packs, and shaders. If any destination already exists, the restore is stopped without overwriting it.");
+                confirm.initOwner(shell.getScene().getWindow());
+                if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
+                restore.setDisable(true);
+                CompletableFuture.supplyAsync(()->{
+                    try{return com.relian.launcher.marketplace.ContentBackupManager.restoreBackup(root,selected.get());}
+                    catch(java.io.IOException ex){throw new RuntimeException(ex);}
+                }).whenComplete((restored,error)->javafx.application.Platform.runLater(()->{
+                    restore.setDisable(false);
+                    if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();info("Restore failed: "+cause.getMessage());}
+                    else{state.setText("Restored "+restored.size()+" file(s). Existing content was not overwritten.");refresh.fire();}
+                }));
+            }catch(java.io.IOException ex){info("Could not list backups: "+ex.getMessage());}
+        });
         Runnable scan=()->{
             entries.getChildren().clear();
             if(gameDirectory.isBlank()){
@@ -454,7 +499,7 @@ public class RelianLauncher extends Application {
         };
         refresh.setOnAction(e->scan.run());
         category.setOnAction(e->scan.run());
-        HBox controls=new HBox(10,category,refresh);controls.setAlignment(Pos.CENTER_LEFT);
+        HBox controls=new HBox(10,category,refresh,backup,restore);controls.setAlignment(Pos.CENTER_LEFT);
         page.getChildren().addAll(intro,location,controls,state,entries);
         if(!gameDirectory.isBlank()) scan.run();
         return page;
