@@ -22,6 +22,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Locale;
 
 /**
@@ -38,7 +40,14 @@ public final class ModrinthInstaller {
 
     public static Path install(MarketplaceProject project, String minecraftVersion, String loader, Path gameDirectory)
             throws IOException, InterruptedException {
+        return installInternal(project, minecraftVersion, loader, gameDirectory, new HashSet<>(), "");
+    }
+
+    private static Path installInternal(MarketplaceProject project, String minecraftVersion, String loader,
+                                        Path gameDirectory, Set<String> visited, String pinnedVersionId)
+            throws IOException, InterruptedException {
         if (project == null || gameDirectory == null) throw new IllegalArgumentException("Project and game directory are required.");
+        if (!visited.add(project.id())) return null;
         if (!"Modrinth".equalsIgnoreCase(project.source())) throw new IOException("Only Modrinth downloads are currently supported.");
         if (project.type() == ProjectType.MODPACK) {
             throw new IOException("Modpack import is not available yet. Open the project page to review its pack files.");
