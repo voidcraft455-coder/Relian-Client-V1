@@ -80,6 +80,16 @@ public final class ModrinthInstaller {
         if (versions.isEmpty()) throw new IOException("No compatible files were found for Minecraft " + minecraftVersion + ".");
 
         JsonObject selectedVersion = versions.get(0).getAsJsonObject();
+        if (project.type() == ProjectType.MOD) {
+            for (ModrinthDependencyGraph.Dependency dependency :
+                    ModrinthDependencyGraph.requiredDependencies(selectedVersion)) {
+                String dependencyProjectId = dependency.projectId();
+                if (dependencyProjectId.isBlank() || visited.contains(dependencyProjectId)) continue;
+                MarketplaceProject dependencyProject = fetchModProject(dependencyProjectId);
+                // Install transitive required dependencies before the parent mod.
+                installInternal(dependencyProject, minecraftVersion, loader, gameDirectory, visited, "");
+            }
+        }
         String versionId = string(selectedVersion, "id");
         JsonArray files = selectedVersion.getAsJsonArray("files");
         if (files == null || files.isEmpty()) throw new IOException("The selected Modrinth version has no downloadable files.");
@@ -165,6 +175,31 @@ public final class ModrinthInstaller {
         } finally {
             if (!moved) Files.deleteIfExists(temporary);
         }
+    }
+
+    private static MarketplaceProject fetchModProject(String projectId) throws IOException, InterruptedException {
+        URI uri = API.resolve("/project/" + encodePath(projectId));
+        HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30))
+                .header("User-Agent", "RelianClient/0.1.0 (marketplace installer)").GET().build();
+        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200)
+            throw new IOException("Could not retrieve required Modrinth dependency " + projectId
+                    + " (HTTP " + response.statusCode() + ").");
+        JsonObject metadata;
+        try { metadata = JsonParser.parseString(response.body()).getAsJsonObject(); }
+        catch (RuntimeException ex) { throw new IOException("Modrinth returned invalid dependency metadata.", ex); }
+        if (!"mod".equalsIgnoreCase(string(metadata, "project_type")))
+            throw new IOException("A required dependency is not a supported Modrinth mod: " + projectId);
+        String id = string(metadata, "id");
+        String slug = string(metadata, "slug");
+        if (id.isBlank() || slug.isBlank()) throw new IOException("Modrinth returned incomplete dependency metadata.");
+        return new MarketplaceProject(id, fallback(string(metadata, "title"), slug), "Unknown",
+                string(metadata, "description"), ProjectType.MOD,
+                URI.create("https://modrinth.com/mod/" + slug), java.util.List.of(), "Modrinth");
+    }
+
+    private static String fallback(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private static String folderFor(ProjectType type) {
