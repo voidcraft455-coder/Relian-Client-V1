@@ -89,6 +89,17 @@ class InstalledContentManagerTest {
     }
 
     @Test
+    void deletingTrackedMarketplaceContentAlsoRemovesItsOwnershipRecord() throws Exception {
+        Path mods = Files.createDirectories(temp.resolve("mods"));
+        Path jar = Files.writeString(mods.resolve("tracked.jar"), "jar");
+        MarketplaceInstallRegistry.record(temp, jar, "Modrinth", "project", "version",
+                "sha512", "digest", ProjectType.MOD, "1.21.1", "fabric");
+        InstalledContentManager.delete(temp, jar);
+        assertTrue(MarketplaceInstallRegistry.list(temp).isEmpty());
+        assertFalse(Files.exists(jar));
+    }
+
+    @Test
     void rejectsFilesOutsideManagedContentFolders() throws Exception {
         Path outside = Files.write(temp.resolve("outside.jar"), new byte[] {1});
         assertThrows(java.io.IOException.class, () -> InstalledContentManager.toggleMod(temp, outside));
