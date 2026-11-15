@@ -94,9 +94,8 @@ public final class MarketplaceInstallRegistry {
         Path root = checkedRoot(gameRoot);
         for (InstallRecord record : list(root)) {
             if (!projectId.equals(record.projectId())) continue;
-            Path file = root.resolve(record.relativePath()).normalize();
-            if (file.startsWith(root) && Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
-                    && !Files.isSymbolicLink(file)) return true;
+            try { resolveFile(root, record); return true; }
+            catch (IOException missing) { /* Continue looking for another tracked file. */ }
         }
         return false;
     }
