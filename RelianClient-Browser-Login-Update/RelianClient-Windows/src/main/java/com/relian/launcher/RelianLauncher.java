@@ -390,6 +390,42 @@ public class RelianLauncher extends Application {
         Button refresh=small("Refresh");
         Button backup=small("Backup content");
         Button restore=small("Restore backup");
+        Button checkUpdates=small("Check for updates");
+        checkUpdates.setOnAction(event->{
+            if(gameDirectory.isBlank()){info("Choose a Minecraft game directory in Settings first.");return;}
+            java.nio.file.Path root=java.nio.file.Path.of(gameDirectory).toAbsolutePath().normalize();
+            checkUpdates.setDisable(true);
+            state.setText("Checking tracked Modrinth and CurseForge installs for compatible updates…");
+            CompletableFuture.supplyAsync(()->{
+                try{return com.relian.launcher.marketplace.MarketplaceUpdateChecker.check(root,System.getenv("RELIAN_CURSEFORGE_API_KEY"));}
+                catch(java.io.IOException|InterruptedException ex){if(ex instanceof InterruptedException)Thread.currentThread().interrupt();throw new RuntimeException(ex);}
+            }).whenComplete((updates,error)->javafx.application.Platform.runLater(()->{
+                checkUpdates.setDisable(false);
+                if(error!=null){Throwable cause=error.getCause()==null?error:error.getCause();state.setText("Update check failed: "+cause.getMessage());return;}
+                if(updates.isEmpty()){state.setText("All tracked marketplace installs are up to date. Manually added files are not included in update checks.");return;}
+                StringBuilder summary=new StringBuilder();
+                for(var update:updates){
+                    summary.append(update.installed().fileName()).append("  →  ").append(update.latestFileName().isBlank()?update.latestVersionId():update.latestFileName()).append("\\n");
+                }
+                Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Marketplace updates");
+                confirm.setHeaderText(updates.size()+" compatible update(s) found");
+                confirm.setContentText(summary+"\\nRelian will install verified replacements first, keep backups of the old files, and restore the old files if an update fails. Install all updates?");
+                confirm.initOwner(shell.getScene().getWindow());
+                if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK){state.setText("Updates are available; no files were changed.");return;}
+                checkUpdates.setDisable(true);
+                state.setText("Installing marketplace updates and preserving backups…");
+                CompletableFuture.supplyAsync(()->{
+                    try{return com.relian.launcher.marketplace.MarketplaceUpdateService.updateAll(root,System.getenv("RELIAN_CURSEFORGE_API_KEY"));}
+                    catch(java.io.IOException|InterruptedException ex){if(ex instanceof InterruptedException)Thread.currentThread().interrupt();throw new RuntimeException(ex);}
+                }).whenComplete((applied,updateError)->javafx.application.Platform.runLater(()->{
+                    checkUpdates.setDisable(false);
+                    if(updateError!=null){Throwable cause=updateError.getCause()==null?updateError:updateError.getCause();state.setText("Update operation stopped: "+cause.getMessage()+" Previously completed updates may already be applied.");refresh.fire();return;}
+                    state.setText("Updated "+applied.size()+" marketplace item(s). Previous versions were backed up.");
+                    refresh.fire();
+                }));
+            }));
+        });
         backup.setOnAction(event->{
             if(gameDirectory.isBlank()){info("Choose a Minecraft game directory in Settings first.");return;}
             backup.setDisable(true);
@@ -499,7 +535,7 @@ public class RelianLauncher extends Application {
         };
         refresh.setOnAction(e->scan.run());
         category.setOnAction(e->scan.run());
-        HBox controls=new HBox(10,category,refresh,backup,restore);controls.setAlignment(Pos.CENTER_LEFT);
+        HBox controls=new HBox(10,category,refresh,backup,restore,checkUpdates);controls.setAlignment(Pos.CENTER_LEFT);
         page.getChildren().addAll(intro,location,controls,state,entries);
         if(!gameDirectory.isBlank()) scan.run();
         return page;
