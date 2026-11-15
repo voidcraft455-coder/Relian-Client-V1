@@ -62,9 +62,14 @@ public final class MarketplaceUpdateService {
                 throw new IOException("The provider returned a different version than the update check. The old file has been kept.");
             }
 
-            Path backupDirectory = root.resolve(".relian-backups").resolve("marketplace-updates");
+            Path backupsRoot = root.resolve(".relian-backups");
+            if (Files.exists(backupsRoot, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(backupsRoot))
+                throw new IOException("Marketplace backup directory cannot be a symbolic link.");
+            Files.createDirectories(backupsRoot);
+            Path backupDirectory = backupsRoot.resolve("marketplace-updates");
+            if (Files.exists(backupDirectory, LinkOption.NOFOLLOW_LINKS) && Files.isSymbolicLink(backupDirectory))
+                throw new IOException("Marketplace update backup directory cannot be a symbolic link.");
             Files.createDirectories(backupDirectory);
-            if (Files.isSymbolicLink(backupDirectory)) throw new IOException("Marketplace update backup directory cannot be a symbolic link.");
             Path backup = backupDirectory.resolve(Instant.now().toEpochMilli() + "-" + safeName(oldFile.getFileName().toString()));
             Files.copy(inactiveOld, backup, StandardCopyOption.COPY_ATTRIBUTES);
             Files.delete(inactiveOld);
