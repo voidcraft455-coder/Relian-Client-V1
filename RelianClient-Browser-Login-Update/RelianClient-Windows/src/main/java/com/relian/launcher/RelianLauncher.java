@@ -1006,11 +1006,55 @@ public class RelianLauncher extends Application {
         for(var category:com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.values()){
             categories.getTabs().add(cosmeticCategoryTab(category,status,skinModel));
         }
-        panel.getChildren().addAll(heading,description,skinModelRow,categories,status);
+        VBox loadout=wardrobeLoadoutPanel();
+        panel.getChildren().addAll(heading,description,loadout,skinModelRow,categories,status);
         box.getChildren().addAll(panel,
             muted("Texture size rules: skins 64×64 or 64×32; capes 64×32 or 128×64; wings 64×32 or 128×64; hats 64×64 or 128×128. PNG files are limited to 2 MB."),
             muted("Applying a skin changes your official Minecraft account profile. Custom capes, wings, and hats are not part of Mojang skin uploads; Relian stores those assets locally until its in-game cosmetic renderer is implemented."));
         return box;
+    }
+
+
+    private VBox wardrobeLoadoutPanel(){
+        VBox panel=new VBox(8);
+        panel.setPadding(new Insets(12));
+        panel.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:8;");
+        Label title=new Label("Equipped local loadout");
+        title.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        Label note=muted("These selections are saved on this computer. They are not uploaded to Minecraft or visible to other players.");
+        VBox rows=new VBox(6);
+        Runnable[] refresh=new Runnable[1];
+        refresh[0]=()->{
+            rows.getChildren().clear();
+            for(var category:new com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category[]{
+                    com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.CAPE,
+                    com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.WINGS,
+                    com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.HAT}){
+                HBox row=new HBox(10);
+                row.setAlignment(Pos.CENTER_LEFT);
+                try{
+                    var asset=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(category);
+                    if(asset==null){
+                        row.getChildren().addAll(muted(category.label),muted("Nothing equipped"));
+                    }else{
+                        javafx.scene.image.ImageView image=new javafx.scene.image.ImageView(
+                            new javafx.scene.image.Image(asset.toUri().toString(),48,48,true,true));
+                        image.setFitWidth(48); image.setFitHeight(48); image.setPreserveRatio(true);
+                        Label name=new Label(category.label+": "+asset.getFileName());
+                        name.setStyle("-fx-text-fill:"+FG+";");
+                        row.getChildren().addAll(image,name);
+                    }
+                }catch(Exception ex){
+                    row.getChildren().addAll(muted(category.label),muted("Could not load selection: "+ex.getMessage()));
+                }
+                rows.getChildren().add(row);
+            }
+        };
+        Button refreshButton=small("Refresh loadout");
+        refreshButton.setOnAction(event->refresh[0].run());
+        panel.getChildren().addAll(title,note,rows,refreshButton);
+        refresh[0].run();
+        return panel;
     }
 
     private Tab cosmeticCategoryTab(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category category, Label status, ComboBox<String> skinModel){
