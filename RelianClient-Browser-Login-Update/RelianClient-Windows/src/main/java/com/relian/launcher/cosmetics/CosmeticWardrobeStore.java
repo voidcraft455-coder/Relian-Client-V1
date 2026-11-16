@@ -56,7 +56,7 @@ public final class CosmeticWardrobeStore {
         String prefix = category.folder + "/";
         if (!relative.startsWith(prefix)) return null;
         String fileName = relative.substring(prefix.length());
-        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\\\")
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")
                 || fileName.equals(".") || fileName.equals("..")
                 || !fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".png")) return null;
         Path folder = CosmeticAssetLibrary.directory(libraryRoot, category);
