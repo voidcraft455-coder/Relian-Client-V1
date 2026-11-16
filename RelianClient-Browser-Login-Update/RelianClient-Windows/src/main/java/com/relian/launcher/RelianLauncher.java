@@ -1081,7 +1081,33 @@ public class RelianLauncher extends Application {
         refreshWardrobeLoadoutAction=refresh[0];
         Button refreshButton=small("Refresh loadout");
         refreshButton.setOnAction(event->refresh[0].run());
-        panel.getChildren().addAll(title,note,rows,refreshButton);
+        Button exportButton=small("Export loadout to selected instance");
+        Label exportStatus=muted(activeInstanceDirectory==null
+            ? "Select an instance to export its cosmetic bundle."
+            : "Ready to export into "+activeInstanceDirectory.getFileName()+".");
+        exportButton.setDisable(activeInstanceDirectory==null);
+        exportButton.setOnAction(event->{
+            if(activeInstanceDirectory==null){
+                exportStatus.setText("Select an instance first. Nothing was exported.");
+                return;
+            }
+            exportButton.setDisable(true);
+            exportStatus.setText("Copying equipped cosmetics into the selected instance…");
+            CompletableFuture.supplyAsync(()->{
+                try{return com.reliant.launcher.cosmetics.CosmeticWardrobeExporter.export(activeInstanceDirectory);}
+                catch(java.io.IOException ex){throw new RuntimeException(ex);}
+            }).whenComplete((folder,error)->javafx.application.Platform.runLater(()->{
+                exportButton.setDisable(activeInstanceDirectory==null);
+                if(error!=null){
+                    Throwable cause=error.getCause()==null?error:error.getCause();
+                    exportStatus.setText("Export failed: "+cause.getMessage());
+                }else{
+                    exportStatus.setText("Exported equipped PNGs and wardrobe.json to "+folder
+                        +". This prepares instance-local assets; in-game cosmetic rendering is not yet included.");
+                }
+            }));
+        });
+        panel.getChildren().addAll(title,note,rows,new HBox(8,refreshButton,exportButton),exportStatus);
         refresh[0].run();
         return panel;
     }
