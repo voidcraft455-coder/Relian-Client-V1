@@ -522,6 +522,34 @@ public class RelianLauncher extends Application {
                     });
                     row.getChildren().addAll(details,push,toggle);
                     Button remove=small("Remove");
+                    Button equip=null;
+                    Button unequip=null;
+                    if(category!=com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.SKIN){
+                        boolean selected=false;
+                        try{
+                            var current=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(category);
+                            selected=current!=null&&current.equals(asset.toRealPath());
+                        }catch(Exception ignored){}
+                        equip=small(selected?"Equipped":"Equip");
+                        equip.setDisable(selected);
+                        equip.setOnAction(event->{
+                            try{
+                                com.relian.launcher.cosmetics.CosmeticWardrobeStore.equip(category,asset);
+                                status.setText("Selected "+asset.getFileName()+" for your local "+category.label.toLowerCase(java.util.Locale.ROOT)+" wardrobe slot. In-game rendering is still pending.");
+                                load[0].run();
+                            }catch(Exception ex){status.setText("Could not equip asset: "+ex.getMessage());}
+                        });
+                        if(selected){
+                            unequip=small("Unequip");
+                            unequip.setOnAction(event->{
+                                try{
+                                    com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
+                                    status.setText("Unequipped the local "+category.label.toLowerCase(java.util.Locale.ROOT)+" selection.");
+                                    load[0].run();
+                                }catch(Exception ex){status.setText("Could not unequip asset: "+ex.getMessage());}
+                            });
+                        }
+                    }
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                         confirm.setTitle("Remove installed content");confirm.setHeaderText("Remove "+file.getFileName()+"?");
@@ -969,7 +997,7 @@ public class RelianLauncher extends Application {
         VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
         Label heading=new Label("Relian Cosmetic Wardrobe");
         heading.setStyle("-fx-text-fill:"+FG+";-fx-font-size:16px;-fx-font-weight:bold;");
-        Label description=muted("Organize custom PNG texture assets in separate Skin, Cape, Wings, and Hat libraries. Files stay on this computer.");
+        Label description=muted("Organize custom PNG texture assets in separate Skin, Cape, Wings, and Hat libraries. Select one local cape, wings, and hat asset for a persistent wardrobe loadout. Files stay on this computer.");
         Label status=muted("Skins can be applied to your signed-in Minecraft Java profile. Capes, wings, and hats remain local preview assets and are not rendered in-game yet.");
         ComboBox<String> skinModel=new ComboBox<>(); skinModel.getItems().addAll("Classic (wide arms)","Slim (narrow arms)"); skinModel.setValue("Classic (wide arms)"); styleCombo(skinModel);
         HBox skinModelRow=new HBox(10,muted("Account skin model"),skinModel); skinModelRow.setAlignment(Pos.CENTER_LEFT);
@@ -1017,6 +1045,11 @@ public class RelianLauncher extends Application {
                         confirm.initOwner(shell.getScene().getWindow());
                         if(confirm.showAndWait().orElse(ButtonType.CANCEL)!=ButtonType.OK)return;
                         try{
+                            if(category!=com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.SKIN){
+                                var current=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(category);
+                                if(current!=null&&current.equals(asset.toRealPath()))
+                                    com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
+                            }
                             com.relian.launcher.cosmetics.CosmeticAssetLibrary.delete(category,asset);
                             status.setText("Removed "+asset.getFileName()+".");
                             load[0].run();
@@ -1040,7 +1073,10 @@ public class RelianLauncher extends Application {
                             }));
                         });
                         row.getChildren().addAll(preview,details,push,applySkin,remove);
-                    }else row.getChildren().addAll(preview,details,push,remove);
+                    }else{
+                        if(unequip!=null)row.getChildren().addAll(preview,details,push,equip,unequip,remove);
+                        else row.getChildren().addAll(preview,details,push,equip,remove);
+                    }
                     rows.getChildren().add(row);
                 }
                 status.setText(assets.size()+" "+category.label.toLowerCase(java.util.Locale.ROOT)+" asset(s) stored locally.");
