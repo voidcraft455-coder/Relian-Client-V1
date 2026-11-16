@@ -21,6 +21,7 @@ public class RelianLauncher extends Application {
     private final Preferences preferences = Preferences.userNodeForPackage(RelianLauncher.class);
     private String backgroundColor = preferences.get("background.color", BG);
     private String backgroundStyle = preferences.get("background.style", backgroundColor);
+    private String backgroundImagePath = preferences.get("background.image", "");
     private int memoryLimitMb = Math.max(1024, Math.min(6144, preferences.getInt("memory.maxMb", 4096)));
     private String gameDirectory = preferences.get("game.directory", "");
     private java.nio.file.Path activeInstanceDirectory = null;
@@ -58,7 +59,7 @@ public class RelianLauncher extends Application {
                 }
             } catch (RuntimeException ignored) { activeInstanceDirectory = null; }
         }
-        shell.setStyle("-fx-background-color:"+backgroundStyle+";");
+        shell.setStyle(backgroundCss());
         shell.setLeft(sidebar());
         shell.setCenter(host);
         page("Home");
@@ -140,8 +141,8 @@ public class RelianLauncher extends Application {
             default -> content.getChildren().add(settings());
         }
         ScrollPane scroll=new ScrollPane(content); scroll.setFitToWidth(true); scroll.setPannable(true);
-        content.setStyle("-fx-background-color:"+backgroundStyle+";");
-        scroll.setStyle("-fx-background:"+backgroundStyle+";-fx-background-color:"+backgroundStyle+";-fx-border-color:transparent;-fx-padding:0;");
+        content.setStyle("-fx-background-color:transparent;");
+        scroll.setStyle("-fx-background:transparent;-fx-background-color:transparent;-fx-control-inner-background:transparent;-fx-border-color:transparent;-fx-padding:0;");
         host.getChildren().add(scroll);
         if(shell.getLeft() instanceof VBox side) for(var node:side.getChildren()) if(node instanceof Button b) b.setStyle(navStyle(b.getText().equals(name)));
     }
@@ -1263,12 +1264,14 @@ public class RelianLauncher extends Application {
             backgroundStyle=backgroundColor;
             preferences.put("background.color",backgroundColor);
             preferences.put("background.style",backgroundStyle);
+            backgroundImagePath=""; preferences.remove("background.image");
             page("Settings");
         });
         Button applyGradient=small("Use midnight gradient");
         applyGradient.setOnAction(e->{
             backgroundStyle="linear-gradient(to bottom right,#101b2c,#0b1019 58%,#17243a)";
             preferences.put("background.style",backgroundStyle);
+            backgroundImagePath=""; preferences.remove("background.image");
             page("Settings");
         });
         Button resetBackground=small("Reset default");
@@ -1277,7 +1280,31 @@ public class RelianLauncher extends Application {
             preferences.put("background.color",BG);preferences.put("background.style",BG);
             page("Settings");
         });
-        appearance.getChildren().addAll(appearanceTitle,muted("Choose a solid color or a subtle dark gradient. Your selection is saved between launches."),backgroundPicker,new HBox(8,applyBackground,applyGradient,resetBackground));
+        Button chooseBackgroundImage=small("Choose local background image");
+        Button clearBackgroundImage=small("Clear image");
+        Label imageStatus=muted(backgroundImagePath.isBlank()?"No local background image selected.":"Image: "+backgroundImagePath);
+        chooseBackgroundImage.setOnAction(event->{
+            javafx.stage.FileChooser chooser=new javafx.stage.FileChooser();
+            chooser.setTitle("Choose Relian background image");
+            chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("Images","*.png","*.jpg","*.jpeg"));
+            File selected=chooser.showOpenDialog(shell.getScene().getWindow());
+            if(selected==null)return;
+            try{
+                javafx.scene.image.Image image=new javafx.scene.image.Image(selected.toURI().toString(),1,1,true,true,true);
+                if(image.isError())throw new IllegalArgumentException("The selected image could not be read.");
+                backgroundImagePath=selected.getCanonicalPath();
+                preferences.put("background.image",backgroundImagePath);
+                shell.setStyle(backgroundCss());
+                imageStatus.setText("Applied local image: "+selected.getName());
+                page("Settings");
+            }catch(Exception ex){imageStatus.setText("Could not use that image: "+ex.getMessage());}
+        });
+        clearBackgroundImage.setOnAction(event->{
+            backgroundImagePath="";preferences.remove("background.image");
+            shell.setStyle(backgroundCss());imageStatus.setText("Local background image cleared.");
+            page("Settings");
+        });
+        appearance.getChildren().addAll(appearanceTitle,muted("Choose a solid color, dark gradient, or local PNG/JPG background. Your selection is saved between launches."),backgroundPicker,new HBox(8,applyBackground,applyGradient,resetBackground),new HBox(8,chooseBackgroundImage,clearBackgroundImage),imageStatus);
 
         VBox performance=new VBox(10);
         performance.setPadding(new Insets(18)); performance.setStyle(cardStyle());
@@ -1412,6 +1439,17 @@ public class RelianLauncher extends Application {
         account.getChildren().addAll(accountTitle,clientIdField,saveClientId,openRegistration,accountHelp);
         b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime,account);
         return b;
+    }
+
+    private String backgroundCss(){
+        if(backgroundImagePath!=null&&!backgroundImagePath.isBlank()){
+            try{
+                java.nio.file.Path image=java.nio.file.Path.of(backgroundImagePath).toAbsolutePath().normalize();
+                if(java.nio.file.Files.isRegularFile(image)&&!java.nio.file.Files.isSymbolicLink(image))
+                    return "-fx-background-color:"+BG+";-fx-background-image:url('"+image.toUri().toASCIIString()+"');-fx-background-size:cover;-fx-background-position:center center;";
+            }catch(RuntimeException ignored){}
+        }
+        return "-fx-background-color:"+backgroundStyle+";";
     }
 
     private static String toHex(Color color){
