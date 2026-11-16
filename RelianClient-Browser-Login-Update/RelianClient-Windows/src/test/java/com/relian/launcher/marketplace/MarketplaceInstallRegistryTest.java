@@ -37,7 +37,7 @@ class MarketplaceInstallRegistryTest {
         MarketplaceInstallRegistry.record(temp,jar,"Modrinth","toggle-project","v1","sha512","hash",ProjectType.MOD,"1.21.1","fabric");
         Path disabled=Files.move(jar,mods.resolve("toggle.jar.disabled"));
         var record=MarketplaceInstallRegistry.list(temp).get(0);
-        assertEquals(disabled,MarketplaceInstallRegistry.resolveFile(temp,record));
+        assertEquals(disabled.toRealPath(),MarketplaceInstallRegistry.resolveFile(temp,record).toRealPath());
         MarketplaceInstallRegistry.forgetRecord(temp,record);
         assertTrue(MarketplaceInstallRegistry.list(temp).isEmpty());
     }
