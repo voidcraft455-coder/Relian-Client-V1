@@ -222,7 +222,10 @@ public class RelianLauncher extends Application {
         Label eyebrow=muted("RELIAN CLIENT  /  MINECRAFT JAVA EDITION");
         Label welcome=new Label("Your next world\nstarts here.");
         welcome.setStyle("-fx-text-fill:"+FG+";-fx-font-size:34px;-fx-font-weight:bold;");
-        hero.getChildren().addAll(eyebrow,statusChip,welcome,muted("Choose an installation, customize your setup, and jump into Minecraft."));
+        Label connectionChip=new Label(minecraftSession==null?"MICROSOFT ACCOUNT NOT CONNECTED":"MICROSOFT ACCOUNT CONNECTED");
+        connectionChip.setPadding(new Insets(5,9,5,9));
+        connectionChip.setStyle("-fx-background-color:"+(minecraftSession==null?"#3b2b24":"#1e3b32")+";-fx-background-radius:20;-fx-text-fill:"+(minecraftSession==null?"#f0b58a":"#8ce0b4")+";-fx-font-size:10px;-fx-font-weight:bold;");
+        hero.getChildren().addAll(eyebrow,connectionChip,welcome,muted("Choose an installation, customize your setup, and jump into Minecraft."));
         HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
         versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue(activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion); versions.setPrefWidth(170); styleCombo(versions);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue(activeInstanceLoader.isBlank() ? "Vanilla" : activeInstanceLoader); loader.setPrefWidth(150); styleCombo(loader);
@@ -1014,9 +1017,9 @@ public class RelianLauncher extends Application {
         draw.run();
         Runnable[] refresh={draw};
         refreshWardrobePreviewAction=draw;
-        Button refresh=small("Refresh preview");
-        refresh.setOnAction(event->refresh[0].run());
-        panel.getChildren().addAll(title,hint,canvas,refresh);
+        Button refreshPreview=small("Refresh preview");
+        refreshPreview.setOnAction(event->refresh[0].run());
+        panel.getChildren().addAll(title,hint,canvas,refreshPreview);
         return panel;
     }
 
