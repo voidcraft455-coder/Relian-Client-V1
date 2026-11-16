@@ -29,6 +29,7 @@ public class RelianLauncher extends Application {
     private String activeInstanceLoader = preferences.get("active.instance.loader", "");
     private String activeInstanceProfileId = preferences.get("active.instance.profileId", "");
     private final BorderPane shell = new BorderPane();
+    private Runnable refreshWardrobeLoadoutAction = () -> {};
     private final StackPane host = new StackPane();
     private ComboBox<String> versions;
     private String active = "Home";
@@ -1022,6 +1023,7 @@ public class RelianLauncher extends Application {
                 rows.getChildren().add(row);
             }
         };
+        refreshWardrobeLoadoutAction=refresh[0];
         Button refreshButton=small("Refresh loadout");
         refreshButton.setOnAction(event->refresh[0].run());
         panel.getChildren().addAll(title,note,rows,refreshButton);
@@ -1067,6 +1069,7 @@ public class RelianLauncher extends Application {
                             try{
                                 com.relian.launcher.cosmetics.CosmeticWardrobeStore.equip(category,asset);
                                 status.setText("Selected "+asset.getFileName()+" for your local "+category.label.toLowerCase(java.util.Locale.ROOT)+" wardrobe slot. In-game rendering is still pending.");
+                                refreshWardrobeLoadoutAction.run();
                                 load[0].run();
                             }catch(Exception ex){status.setText("Could not equip asset: "+ex.getMessage());}
                         });
@@ -1076,6 +1079,7 @@ public class RelianLauncher extends Application {
                                 try{
                                     com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
                                     status.setText("Unequipped the local "+category.label.toLowerCase(java.util.Locale.ROOT)+" selection.");
+                                    refreshWardrobeLoadoutAction.run();
                                     load[0].run();
                                 }catch(Exception ex){status.setText("Could not unequip asset: "+ex.getMessage());}
                             });
@@ -1096,6 +1100,7 @@ public class RelianLauncher extends Application {
                             }
                             com.relian.launcher.cosmetics.CosmeticAssetLibrary.delete(category,asset);
                             status.setText("Removed "+asset.getFileName()+".");
+                            refreshWardrobeLoadoutAction.run();
                             load[0].run();
                         }catch(Exception ex){status.setText("Could not remove asset: "+ex.getMessage());}
                     });
