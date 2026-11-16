@@ -1,4 +1,4 @@
-package com.reliant.launcher.cosmetics;
+package com.relian.launcher.cosmetics;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
