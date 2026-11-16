@@ -49,4 +49,34 @@ class CosmeticWardrobeStoreTest {
         assertThrows(java.io.IOException.class, () -> CosmeticWardrobeStore.unequip(
                 temp.resolve("library"), CosmeticAssetLibrary.Category.SKIN));
     }
+    @Test void ignoresTamperedWardrobePaths() throws Exception {
+        Path library = temp.resolve("library");
+        Path cape = png(CosmeticAssetLibrary.Category.CAPE, "safe-cape.png");
+        CosmeticWardrobeStore.equip(library, CosmeticAssetLibrary.Category.CAPE, cape);
+        Path state = library.resolve("wardrobe.json");
+        Files.writeString(state, """
+                {"CAPE":"capes/../../outside.png","WINGS":"wings\\\\..\\\\outside.png","HAT":"hats/"}
+                """);
+        assertNull(CosmeticWardrobeStore.equipped(library, CosmeticAssetLibrary.Category.CAPE));
+        assertNull(CosmeticWardrobeStore.equipped(library, CosmeticAssetLibrary.Category.WINGS));
+        assertNull(CosmeticWardrobeStore.equipped(library, CosmeticAssetLibrary.Category.HAT));
+    }
+
+    @Test void refusesToOverwriteWardrobeSymlink() throws Exception {
+        Path library = temp.resolve("library");
+        Files.createDirectories(library);
+        Path outside = temp.resolve("outside.json");
+        Files.writeString(outside, "{}");
+        Path wardrobe = library.resolve("wardrobe.json");
+        try {
+            Files.createSymbolicLink(wardrobe, outside);
+        } catch (UnsupportedOperationException | java.io.IOException | SecurityException ex) {
+            return; // Symlink creation may be unavailable on Windows without developer mode.
+        }
+        Path cape = png(library, "cape-for-link.png");
+        assertThrows(java.io.IOException.class, () -> CosmeticWardrobeStore.equip(
+                library, CosmeticAssetLibrary.Category.CAPE, cape));
+        assertEquals("{}", Files.readString(outside));
+    }
+
 }
