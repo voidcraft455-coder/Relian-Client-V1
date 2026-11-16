@@ -123,11 +123,26 @@ public class RelianLauncher extends Application {
         HBox header=new HBox(12); header.setAlignment(Pos.CENTER_LEFT);
         Label title=new Label(name); title.setStyle("-fx-text-fill:"+FG+";-fx-font-size:27px;-fx-font-weight:bold;");
         Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
-        Label pageHint=muted("RELIAN CLIENT");
+        String section=switch(name){
+            case "Home","Instances","Versions" -> "PLAY";
+            case "Mods","Modpacks","Resource Packs","Shaders" -> "DISCOVER";
+            case "Installed Content","Cosmetics" -> "LIBRARY";
+            default -> "PREFERENCES";
+        };
+        Label pageHint=muted("RELIAN CLIENT   /   "+section+"   /   "+name.toUpperCase(java.util.Locale.ROOT));
         VBox heading=new VBox(2,title,pageHint);
+        Label selectedInstance=muted(activeInstanceDirectory==null?"No instance selected":activeInstanceDirectory.getFileName().toString()+"  •  "+activeInstanceVersion);
+        Button quickSettings=small("⚙");
+        quickSettings.setTooltip(new Tooltip("Open launcher settings"));
+        quickSettings.setOnAction(e->{if(!"Settings".equals(active))page("Settings");});
         Button account=small(accountLabel);
+        account.setMaxWidth(230);
+        account.setTooltip(new Tooltip(accountLabel+" — click to manage Microsoft sign-in"));
+        account.setStyle("-fx-background-color:"+(minecraftSession==null?"#3b2b24":"#1e3b32")+";-fx-background-radius:8;-fx-text-fill:"+(minecraftSession==null?"#f0c09d":"#9ce6bf")+";-fx-padding:9 14;-fx-cursor:hand;-fx-font-size:12px;");
         account.setOnAction(e -> signIn());
-        header.getChildren().addAll(heading,spacer,account); content.getChildren().add(header);
+        HBox actions=new HBox(8,selectedInstance,quickSettings,account);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        header.getChildren().addAll(heading,spacer,actions); content.getChildren().add(header);
         switch(name) {
             case "Home" -> content.getChildren().add(home());
             case "Instances" -> content.getChildren().add(instancesPage());
@@ -159,13 +174,19 @@ public class RelianLauncher extends Application {
 
     private Label navSection(String name){Label label=new Label(name);label.setPadding(new Insets(10,10,3,10));label.setStyle("-fx-text-fill:#66758b;-fx-font-size:9px;-fx-font-weight:bold;-fx-letter-spacing:1.2px;");return label;}
     private Button navButton(String name){Button b=new Button(name);b.setMaxWidth(Double.MAX_VALUE);b.setAlignment(Pos.CENTER_LEFT);b.setPadding(new Insets(10,12,10,12));b.setOnAction(e->page(name));b.setId("nav-"+name);b.setStyle(navStyle(false));b.setOnMouseEntered(e->{if(!name.equals(active))b.setStyle(navHoverStyle());});b.setOnMouseExited(e->b.setStyle(navStyle(name.equals(active))));return b;}
-    private String navHoverStyle(){return "-fx-background-color:#182335;-fx-background-radius:8;-fx-text-fill:#e7edf8;-fx-font-size:13px;-fx-cursor:hand;";}
+    private String navHoverStyle(){return "-fx-background-color:#182335;-fx-background-radius:8;-fx-border-color:transparent transparent transparent #425a7d;-fx-border-width:0 0 0 3;-fx-text-fill:#e7edf8;-fx-font-size:13px;-fx-cursor:hand;";}
     private String navStyle(boolean selected) {
-        return "-fx-background-color:"+(selected?"#263b5c":"transparent")+";-fx-background-radius:8;-fx-text-fill:"+(selected?"#ffffff":"#aebbd0")+";-fx-font-size:13px;-fx-font-weight:"+(selected?"bold":"normal")+";-fx-cursor:hand;";
+        return "-fx-background-color:"+(selected?"#263b5c":"transparent")+";-fx-background-radius:8;-fx-border-color:"+(selected?"transparent transparent transparent "+BLUE:"transparent")+";-fx-border-width:0 0 0 3;-fx-text-fill:"+(selected?"#ffffff":"#aebbd0")+";-fx-font-size:13px;-fx-font-weight:"+(selected?"bold":"normal")+";-fx-cursor:hand;";
     }
     private String cardStyle(){return "-fx-background-color:"+PANEL+";-fx-background-radius:12;-fx-border-color:#273449;-fx-border-radius:12;";}
     private Label muted(String s){Label l=new Label(s);l.setWrapText(true);l.setStyle("-fx-text-fill:"+MUTED+";-fx-font-size:12px;");return l;}
-    private Button small(String s){Button b=new Button(s);b.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:8;-fx-text-fill:#e6edf8;-fx-padding:9 14;-fx-cursor:hand;-fx-font-size:12px;");return b;}
+    private String smallButtonStyle(){return "-fx-background-color:"+ALT+";-fx-background-radius:8;-fx-text-fill:#e6edf8;-fx-padding:9 14;-fx-cursor:hand;-fx-font-size:12px;";}
+    private Button small(String s){
+        Button b=new Button(s);b.setStyle(smallButtonStyle());
+        b.setOnMouseEntered(e->{if(!b.isDisabled())b.setStyle("-fx-background-color:#31425c;-fx-background-radius:8;-fx-text-fill:#ffffff;-fx-padding:9 14;-fx-cursor:hand;-fx-font-size:12px;");});
+        b.setOnMouseExited(e->b.setStyle(smallButtonStyle()));
+        return b;
+    }
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
     private void signIn() {
@@ -327,18 +348,31 @@ public class RelianLauncher extends Application {
         Button createInstance=small("＋ Create a new instance");
         createInstance.setOnAction(e->page("Instances"));
         hero.getChildren().add(createInstance);
-        HBox cards=new HBox(14);
+        FlowPane cards=new FlowPane(14,14);
+        cards.setAlignment(Pos.TOP_LEFT);
         VBox modsCard=card("MOD MANAGER","Browse mods and check compatibility.","Open Mods",()->page("Mods"));
         VBox packsCard=card("RESOURCE PACKS","Manage textures and visual styles.","Open Packs",()->page("Resource Packs"));
         VBox shadersCard=card("SHADERS","Manage supported shader packs.","Open Shaders",()->page("Shaders"));
-        for(VBox item:List.of(modsCard,packsCard,shadersCard))HBox.setHgrow(item,Priority.ALWAYS);
+        for(VBox item:List.of(modsCard,packsCard,shadersCard)){item.setPrefWidth(220);item.setMaxWidth(260);}
         cards.getChildren().addAll(modsCard,packsCard,shadersCard);
         Label quickTitle=new Label("QUICK ACCESS"); quickTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;-fx-letter-spacing:1.4px;");
         if(activeInstanceDirectory!=null){VBox featured=new VBox(7);featured.setPadding(new Insets(16));featured.setStyle(cardStyle());Label featuredTitle=new Label("SELECTED INSTALLATION");featuredTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;");Label featuredName=new Label(activeInstanceDirectory.getFileName()+"  •  "+activeInstanceVersion+"  •  "+activeInstanceLoader);featuredName.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");featured.getChildren().addAll(featuredTitle,featuredName,muted("Total playtime recorded by Relian: "+formatPlaytime(playSeconds(activeInstanceDirectory))));wrap.getChildren().add(featured);}
-        HBox heroRow=new HBox(14,hero,wardrobeCharacterPreview());
+        VBox characterPreview=wardrobeCharacterPreview();
+        HBox heroRow=new HBox(14,hero,characterPreview);
         heroRow.setAlignment(Pos.TOP_LEFT);
         HBox.setHgrow(hero,Priority.ALWAYS);
-        wrap.getChildren().addAll(heroRow,quickTitle,cards); return wrap;
+        wrap.getChildren().addAll(heroRow,quickTitle,cards);
+        wrap.widthProperty().addListener((obs,oldWidth,newWidth)->{
+            boolean stackPreview=newWidth.doubleValue()<860;
+            if(stackPreview){
+                if(heroRow.getChildren().contains(characterPreview))heroRow.getChildren().remove(characterPreview);
+                if(!wrap.getChildren().contains(characterPreview))wrap.getChildren().add(1,characterPreview);
+            }else{
+                if(wrap.getChildren().contains(characterPreview))wrap.getChildren().remove(characterPreview);
+                if(!heroRow.getChildren().contains(characterPreview))heroRow.getChildren().add(characterPreview);
+            }
+        });
+        return wrap;
     }
     private VBox card(String t,String d,String action,Runnable r){
         VBox b=new VBox(11);b.setPadding(new Insets(18));b.setMinWidth(190);b.setMaxWidth(Double.MAX_VALUE);
