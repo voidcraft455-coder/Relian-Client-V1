@@ -17,6 +17,10 @@ public final class CosmeticWardrobeExporter {
     private CosmeticWardrobeExporter() {}
 
     public static Path export(Path instanceDirectory) throws IOException {
+        return export(instanceDirectory, CosmeticAssetLibrary.root());
+    }
+
+    public static Path export(Path instanceDirectory, Path libraryRoot) throws IOException {
         if (instanceDirectory == null) throw new IOException("Choose an instance before exporting cosmetics.");
         Path instance = instanceDirectory.toAbsolutePath().normalize();
         if (Files.isSymbolicLink(instance) || !Files.isDirectory(instance, LinkOption.NOFOLLOW_LINKS))
@@ -42,7 +46,7 @@ public final class CosmeticWardrobeExporter {
 
         JsonObject manifest = new JsonObject();
         Map<CosmeticAssetLibrary.Category, Path> loadout =
-                CosmeticWardrobeStore.loadout(CosmeticAssetLibrary.root());
+                CosmeticWardrobeStore.loadout(libraryRoot);
         for (CosmeticAssetLibrary.Category category : new CosmeticAssetLibrary.Category[] {
                 CosmeticAssetLibrary.Category.CAPE, CosmeticAssetLibrary.Category.WINGS,
                 CosmeticAssetLibrary.Category.HAT }) {
