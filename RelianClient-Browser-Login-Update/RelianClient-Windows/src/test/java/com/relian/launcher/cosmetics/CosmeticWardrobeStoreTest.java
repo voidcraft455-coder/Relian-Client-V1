@@ -55,7 +55,7 @@ class CosmeticWardrobeStoreTest {
         CosmeticWardrobeStore.equip(library, CosmeticAssetLibrary.Category.CAPE, cape);
         Path state = library.resolve("wardrobe.json");
         Files.writeString(state, """
-                {"CAPE":"capes/../../outside.png","WINGS":"wings\\\\..\\\\outside.png","HAT":"hats/"}
+                {"CAPE":"capes/../../outside.png","WINGS":"wings\\..\\outside.png","HAT":"hats/"}
                 """);
         assertNull(CosmeticWardrobeStore.equipped(library, CosmeticAssetLibrary.Category.CAPE));
         assertNull(CosmeticWardrobeStore.equipped(library, CosmeticAssetLibrary.Category.WINGS));
