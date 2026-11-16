@@ -51,12 +51,16 @@ public final class CosmeticWardrobeStore {
         requireWearable(category);
         JsonObject state = read(libraryRoot);
         if (!state.has(category.name()) || !state.get(category.name()).isJsonPrimitive()) return null;
+        if (!state.get(category.name()).getAsJsonPrimitive().isString()) return null;
         String relative = state.get(category.name()).getAsString();
-        Path expected = Path.of(category.folder).resolve(relative.substring(relative.indexOf('/') + 1)).normalize();
-        if (relative.indexOf('/') < 0 || !expected.getParent().equals(Path.of(category.folder))
-                || expected.getFileName() == null || !expected.getFileName().toString().toLowerCase().endsWith(".png")) return null;
+        String prefix = category.folder + "/";
+        if (!relative.startsWith(prefix)) return null;
+        String fileName = relative.substring(prefix.length());
+        if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\\\")
+                || fileName.equals(".") || fileName.equals("..")
+                || !fileName.toLowerCase(java.util.Locale.ROOT).endsWith(".png")) return null;
         Path folder = CosmeticAssetLibrary.directory(libraryRoot, category);
-        Path candidate = folder.resolve(expected.getFileName()).normalize();
+        Path candidate = folder.resolve(fileName).normalize();
         if (!candidate.getParent().equals(folder) || Files.isSymbolicLink(candidate)
                 || !Files.isRegularFile(candidate, LinkOption.NOFOLLOW_LINKS)) return null;
         return candidate.toRealPath();
@@ -109,9 +113,18 @@ public final class CosmeticWardrobeStore {
     }
 
     private static void write(Path libraryRoot, JsonObject state) throws IOException {
+        if (libraryRoot == null) throw new IOException("A wardrobe library folder is required.");
         Path base = libraryRoot.toAbsolutePath().normalize();
+        if (Files.exists(base, LinkOption.NOFOLLOW_LINKS)
+                && (Files.isSymbolicLink(base) || !Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS)))
+            throw new IOException("Wardrobe library must be a regular directory.");
         Files.createDirectories(base);
+        if (Files.isSymbolicLink(base)) throw new IOException("Wardrobe library cannot be a symbolic link.");
+        base = base.toRealPath();
         Path target = base.resolve(FILE);
+        if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)
+                && (Files.isSymbolicLink(target) || !Files.isRegularFile(target, LinkOption.NOFOLLOW_LINKS)))
+            throw new IOException("Wardrobe data file is not a regular file.");
         Path temporary = Files.createTempFile(base, ".wardrobe-", ".part");
         try {
             Files.writeString(temporary, GSON.toJson(state));
