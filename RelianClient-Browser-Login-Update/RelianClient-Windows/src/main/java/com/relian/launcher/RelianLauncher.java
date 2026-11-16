@@ -119,7 +119,7 @@ public class RelianLauncher extends Application {
 
     private void page(String name) {
         active=name; host.getChildren().clear();
-        VBox content=new VBox(18); content.setPadding(new Insets(30,38,30,38));
+        VBox content=new VBox(18); content.setPadding(new Insets(26,30,28,30));
         HBox header=new HBox(12); header.setAlignment(Pos.CENTER_LEFT);
         Label title=new Label(name); title.setStyle("-fx-text-fill:"+FG+";-fx-font-size:27px;-fx-font-weight:bold;");
         Region spacer=new Region(); HBox.setHgrow(spacer,Priority.ALWAYS);
@@ -132,6 +132,8 @@ public class RelianLauncher extends Application {
         Label pageHint=muted("RELIAN CLIENT   /   "+section+"   /   "+name.toUpperCase(java.util.Locale.ROOT));
         VBox heading=new VBox(2,title,pageHint);
         Label selectedInstance=muted(activeInstanceDirectory==null?"No instance selected":activeInstanceDirectory.getFileName().toString()+"  •  "+activeInstanceVersion);
+        selectedInstance.setMaxWidth(170);
+        selectedInstance.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
         Button quickSettings=small("⚙");
         quickSettings.setTooltip(new Tooltip("Open launcher settings"));
         quickSettings.setOnAction(e->{if(!"Settings".equals(active))page("Settings");});
@@ -247,7 +249,7 @@ public class RelianLauncher extends Application {
         connectionChip.setPadding(new Insets(5,9,5,9));
         connectionChip.setStyle("-fx-background-color:"+(minecraftSession==null?"#3b2b24":"#1e3b32")+";-fx-background-radius:20;-fx-text-fill:"+(minecraftSession==null?"#f0b58a":"#8ce0b4")+";-fx-font-size:10px;-fx-font-weight:bold;");
         hero.getChildren().addAll(eyebrow,connectionChip,welcome,muted("Choose an installation, customize your setup, and jump into Minecraft."));
-        HBox controls=new HBox(10); controls.setAlignment(Pos.CENTER_LEFT);
+        FlowPane controls=new FlowPane(10,10); controls.setAlignment(Pos.CENTER_LEFT);
         versions=new ComboBox<>(); versions.getItems().addAll(versionList); versions.setValue(activeInstanceVersion.isBlank() ? "1.21.11" : activeInstanceVersion); versions.setPrefWidth(170); styleCombo(versions);
         ComboBox<String> loader=new ComboBox<>(); loader.getItems().addAll("Fabric","Forge","NeoForge","Quilt","Vanilla"); loader.setValue(activeInstanceLoader.isBlank() ? "Vanilla" : activeInstanceLoader); loader.setPrefWidth(150); styleCombo(loader);
         Button play=new Button("▶   PLAY"); play.setPrefSize(164,48);
@@ -1305,6 +1307,7 @@ public class RelianLauncher extends Application {
             preferences.put("background.color",backgroundColor);
             preferences.put("background.style",backgroundStyle);
             backgroundImagePath=""; preferences.remove("background.image");
+            shell.setStyle(backgroundCss());
             page("Settings");
         });
         Button applyGradient=small("Use midnight gradient");
@@ -1318,6 +1321,8 @@ public class RelianLauncher extends Application {
         resetBackground.setOnAction(e->{
             backgroundColor=BG;backgroundStyle=BG;
             preferences.put("background.color",BG);preferences.put("background.style",BG);
+            backgroundImagePath="";preferences.remove("background.image");
+            shell.setStyle(backgroundCss());
             page("Settings");
         });
         Button chooseBackgroundImage=small("Choose local background image");
