@@ -30,6 +30,7 @@ public class RelianLauncher extends Application {
     private String activeInstanceProfileId = preferences.get("active.instance.profileId", "");
     private final BorderPane shell = new BorderPane();
     private Runnable refreshWardrobeLoadoutAction = () -> {};
+    private Runnable refreshWardrobePreviewAction = () -> {};
     private final StackPane host = new StackPane();
     private ComboBox<String> versions;
     private String active = "Home";
@@ -997,7 +998,7 @@ public class RelianLauncher extends Application {
         };
         draw.run();
         Runnable[] refresh={draw};
-        refreshWardrobeLoadoutAction=()->{draw.run();};
+        refreshWardrobePreviewAction=draw;
         Button refresh=small("Refresh preview");
         refresh.setOnAction(event->refresh[0].run());
         panel.getChildren().addAll(title,hint,canvas,refresh);
@@ -1113,6 +1114,8 @@ public class RelianLauncher extends Application {
                                 com.relian.launcher.cosmetics.CosmeticWardrobeStore.equip(category,asset);
                                 status.setText("Selected "+asset.getFileName()+" for your local "+category.label.toLowerCase(java.util.Locale.ROOT)+" wardrobe slot. In-game rendering is still pending.");
                                 refreshWardrobeLoadoutAction.run();
+                            refreshWardrobePreviewAction.run();
+                                refreshWardrobePreviewAction.run();
                                 load[0].run();
                             }catch(Exception ex){status.setText("Could not equip asset: "+ex.getMessage());}
                         });
@@ -1123,6 +1126,7 @@ public class RelianLauncher extends Application {
                                     com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
                                     status.setText("Unequipped the local "+category.label.toLowerCase(java.util.Locale.ROOT)+" selection.");
                                     refreshWardrobeLoadoutAction.run();
+                                    refreshWardrobePreviewAction.run();
                                     load[0].run();
                                 }catch(Exception ex){status.setText("Could not unequip asset: "+ex.getMessage());}
                             });
