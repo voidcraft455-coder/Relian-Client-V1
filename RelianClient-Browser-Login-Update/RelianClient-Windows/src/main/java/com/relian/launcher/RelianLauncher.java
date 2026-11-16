@@ -522,34 +522,6 @@ public class RelianLauncher extends Application {
                     });
                     row.getChildren().addAll(details,push,toggle);
                     Button remove=small("Remove");
-                    Button equip=null;
-                    Button unequip=null;
-                    if(category!=com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.SKIN){
-                        boolean selected=false;
-                        try{
-                            var current=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(category);
-                            selected=current!=null&&current.equals(asset.toRealPath());
-                        }catch(Exception ignored){}
-                        equip=small(selected?"Equipped":"Equip");
-                        equip.setDisable(selected);
-                        equip.setOnAction(event->{
-                            try{
-                                com.relian.launcher.cosmetics.CosmeticWardrobeStore.equip(category,asset);
-                                status.setText("Selected "+asset.getFileName()+" for your local "+category.label.toLowerCase(java.util.Locale.ROOT)+" wardrobe slot. In-game rendering is still pending.");
-                                load[0].run();
-                            }catch(Exception ex){status.setText("Could not equip asset: "+ex.getMessage());}
-                        });
-                        if(selected){
-                            unequip=small("Unequip");
-                            unequip.setOnAction(event->{
-                                try{
-                                    com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
-                                    status.setText("Unequipped the local "+category.label.toLowerCase(java.util.Locale.ROOT)+" selection.");
-                                    load[0].run();
-                                }catch(Exception ex){status.setText("Could not unequip asset: "+ex.getMessage());}
-                            });
-                        }
-                    }
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                         confirm.setTitle("Remove installed content");confirm.setHeaderText("Remove "+file.getFileName()+"?");
@@ -1081,6 +1053,34 @@ public class RelianLauncher extends Application {
                     details.getChildren().addAll(name,muted((FilesSize(asset)/1024)+" KB • Local asset"));
                     Region push=new Region(); HBox.setHgrow(push,Priority.ALWAYS);
                     Button remove=small("Remove");
+                    Button equip=null;
+                    Button unequip=null;
+                    if(category!=com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.SKIN){
+                        boolean selected=false;
+                        try{
+                            var current=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(category);
+                            selected=current!=null&&current.equals(asset.toRealPath());
+                        }catch(Exception ignored){}
+                        equip=small(selected?"Equipped":"Equip");
+                        equip.setDisable(selected);
+                        equip.setOnAction(event->{
+                            try{
+                                com.relian.launcher.cosmetics.CosmeticWardrobeStore.equip(category,asset);
+                                status.setText("Selected "+asset.getFileName()+" for your local "+category.label.toLowerCase(java.util.Locale.ROOT)+" wardrobe slot. In-game rendering is still pending.");
+                                load[0].run();
+                            }catch(Exception ex){status.setText("Could not equip asset: "+ex.getMessage());}
+                        });
+                        if(selected){
+                            unequip=small("Unequip");
+                            unequip.setOnAction(event->{
+                                try{
+                                    com.relian.launcher.cosmetics.CosmeticWardrobeStore.unequip(category);
+                                    status.setText("Unequipped the local "+category.label.toLowerCase(java.util.Locale.ROOT)+" selection.");
+                                    load[0].run();
+                                }catch(Exception ex){status.setText("Could not unequip asset: "+ex.getMessage());}
+                            });
+                        }
+                    }
                     remove.setOnAction(event->{
                         Alert confirm=new Alert(Alert.AlertType.CONFIRMATION);
                         confirm.setTitle("Remove cosmetic asset");
