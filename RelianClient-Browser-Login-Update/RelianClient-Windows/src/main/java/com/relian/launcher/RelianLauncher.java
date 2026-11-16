@@ -965,6 +965,45 @@ public class RelianLauncher extends Application {
         });
     }
 
+    private VBox wardrobeCharacterPreview(){
+        VBox panel=new VBox(8);
+        panel.setPadding(new Insets(14));
+        panel.setStyle("-fx-background-color:"+ALT+";-fx-background-radius:10;");
+        Label title=new Label("Character preview");
+        title.setStyle("-fx-text-fill:"+FG+";-fx-font-weight:bold;");
+        Label hint=muted("A local preview of your selected wardrobe textures. This is not an in-game player render.");
+        javafx.scene.canvas.Canvas canvas=new javafx.scene.canvas.Canvas(300,250);
+        Runnable draw=()->{
+            var g=canvas.getGraphicsContext2D();
+            g.clearRect(0,0,300,250);
+            g.setFill(Color.web("#101827"));g.fillRoundRect(0,0,300,250,12,12);
+            // Back accessories are drawn first so the player silhouette stays readable.
+            try{
+                var cape=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.CAPE);
+                var wings=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.WINGS);
+                var hat=com.relian.launcher.cosmetics.CosmeticWardrobeStore.equipped(com.relian.launcher.cosmetics.CosmeticAssetLibrary.Category.HAT);
+                if(cape!=null){var image=new javafx.scene.image.Image(cape.toUri().toString());g.drawImage(image,124,83,52,96);}
+                if(wings!=null){var image=new javafx.scene.image.Image(wings.toUri().toString());g.drawImage(image,49,86,82,82);g.drawImage(image,169,86,82,82);}
+                g.setFill(Color.web("#668cff"));g.fillRoundRect(119,74,62,106,9,9);
+                g.setFill(Color.web("#d7a47c"));g.fillRoundRect(126,22,48,48,9,9);
+                g.setFill(Color.web("#26364e"));g.fillRoundRect(122,18,56,14,5,5);
+                g.setFill(Color.web("#668cff"));g.fillRoundRect(104,78,15,83,6,6);g.fillRoundRect(181,78,15,83,6,6);
+                g.setFill(Color.web("#26364e"));g.fillRoundRect(121,180,25,53,5,5);g.fillRoundRect(154,180,25,53,5,5);
+                if(hat!=null){var image=new javafx.scene.image.Image(hat.toUri().toString());g.drawImage(image,119,8,62,34);}
+                g.setStroke(Color.web("#8195b5"));g.strokeRoundRect(118,20,50,52,8,8);
+            }catch(Exception ex){
+                g.setFill(Color.web("#f3f6fc"));g.fillText("Could not load one of the selected textures.",18,232);
+            }
+        };
+        draw.run();
+        Runnable[] refresh={draw};
+        refreshWardrobeLoadoutAction=()->{draw.run();};
+        Button refresh=small("Refresh preview");
+        refresh.setOnAction(event->refresh[0].run());
+        panel.getChildren().addAll(title,hint,canvas,refresh);
+        return panel;
+    }
+
     private VBox cosmeticsPage(){
         VBox box=new VBox(14);
         VBox panel=new VBox(12); panel.setPadding(new Insets(18)); panel.setStyle(cardStyle());
@@ -980,7 +1019,11 @@ public class RelianLauncher extends Application {
             categories.getTabs().add(cosmeticCategoryTab(category,status,skinModel));
         }
         VBox loadout=wardrobeLoadoutPanel();
-        panel.getChildren().addAll(heading,description,loadout,skinModelRow,categories,status);
+        VBox characterPreview=wardrobeCharacterPreview();
+        HBox wardrobeVisuals=new HBox(12,characterPreview,loadout);
+        wardrobeVisuals.setAlignment(Pos.TOP_LEFT);
+        HBox.setHgrow(loadout,Priority.ALWAYS);
+        panel.getChildren().addAll(heading,description,wardrobeVisuals,skinModelRow,categories,status);
         box.getChildren().addAll(panel,
             muted("Texture size rules: skins 64×64 or 64×32; capes 64×32 or 128×64; wings 64×32 or 128×64; hats 64×64 or 128×128. PNG files are limited to 2 MB."),
             muted("Applying a skin changes your official Minecraft account profile. Custom capes, wings, and hats are not part of Mojang skin uploads; Relian stores those assets locally until its in-game cosmetic renderer is implemented."));
