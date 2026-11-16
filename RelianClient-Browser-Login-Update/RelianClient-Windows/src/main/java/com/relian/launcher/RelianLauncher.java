@@ -332,7 +332,10 @@ public class RelianLauncher extends Application {
         cards.getChildren().addAll(modsCard,packsCard,shadersCard);
         Label quickTitle=new Label("QUICK ACCESS"); quickTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;-fx-letter-spacing:1.4px;");
         if(activeInstanceDirectory!=null){VBox featured=new VBox(7);featured.setPadding(new Insets(16));featured.setStyle(cardStyle());Label featuredTitle=new Label("SELECTED INSTALLATION");featuredTitle.setStyle("-fx-text-fill:#8192aa;-fx-font-size:10px;-fx-font-weight:bold;");Label featuredName=new Label(activeInstanceDirectory.getFileName()+"  •  "+activeInstanceVersion+"  •  "+activeInstanceLoader);featuredName.setStyle("-fx-text-fill:"+FG+";-fx-font-size:15px;-fx-font-weight:bold;");featured.getChildren().addAll(featuredTitle,featuredName,muted("Total playtime recorded by Relian: "+formatPlaytime(playSeconds(activeInstanceDirectory))));wrap.getChildren().add(featured);}
-        wrap.getChildren().addAll(hero,quickTitle,cards); return wrap;
+        HBox heroRow=new HBox(14,hero,wardrobeCharacterPreview());
+        heroRow.setAlignment(Pos.TOP_LEFT);
+        HBox.setHgrow(hero,Priority.ALWAYS);
+        wrap.getChildren().addAll(heroRow,quickTitle,cards); return wrap;
     }
     private VBox card(String t,String d,String action,Runnable r){
         VBox b=new VBox(11);b.setPadding(new Insets(18));b.setMinWidth(190);b.setMaxWidth(Double.MAX_VALUE);
