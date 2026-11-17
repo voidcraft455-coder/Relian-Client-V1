@@ -70,7 +70,7 @@ public final class CosmeticFeatureRenderer extends FeatureRenderer<AbstractClien
         int green = (color >>> 8) & 255;
         int blue = color & 255;
         vertex(buffer, position, entry, left, top, z, 0, 0, red, green, blue, light);
-        vertex(buffer, position, normal, right, top, z, 1, 0, red, green, blue, light);
+        vertex(buffer, position, entry, right, top, z, 1, 0, red, green, blue, light);
         vertex(buffer, position, normal, right, bottom, z2, 1, 1, red, green, blue, light);
         vertex(buffer, position, normal, left, bottom, z2, 0, 1, red, green, blue, light);
     }
