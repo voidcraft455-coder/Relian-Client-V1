@@ -67,6 +67,7 @@ public class RelianLauncher extends Application {
         stage.setMinWidth(900); stage.setMinHeight(600);
         stage.setScene(new Scene(shell,1120,700));
         stage.show();
+        restoreMicrosoftSession();
         loadVersionCatalog();
     }
 
@@ -191,6 +192,35 @@ public class RelianLauncher extends Application {
     }
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
+    private void restoreMicrosoftSession() {
+        if (!MicrosoftTokenVault.isSupported()) return;
+        String clientId = preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId());
+        if (clientId == null || clientId.isBlank()) return;
+        CompletableFuture.runAsync(() -> {
+            try {
+                var saved = MicrosoftTokenVault.readRefreshToken();
+                if (saved.isEmpty()) return;
+                MicrosoftBrowserLogin.LoginResult refreshed =
+                    MicrosoftBrowserLogin.refresh(clientId, saved.get());
+                var verified = MinecraftAccountAuthenticator.authenticate(refreshed.accessToken());
+                MicrosoftTokenVault.saveRefreshToken(refreshed.refreshToken());
+                javafx.application.Platform.runLater(() -> {
+                    minecraftSession = verified;
+                    offlineTestProfile = null;
+                    accountLabel = verified.username();
+                    page(active);
+                    info("Welcome back, " + verified.username() + ". Your Microsoft account was securely reconnected.");
+                });
+            } catch (Exception ex) {
+                javafx.application.Platform.runLater(() -> {
+                    accountLabel = "Reconnect Microsoft";
+                    page(active);
+                });
+                System.err.println("[Relian] Saved Microsoft session could not be refreshed: " + ex.getMessage());
+            }
+        });
+    }
+
     private void signIn() {
         if (minecraftSession != null) {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -201,8 +231,10 @@ public class RelianLauncher extends Application {
             if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 minecraftSession = null;
                 accountLabel = "Sign in with Microsoft";
+                try { MicrosoftTokenVault.clear(); }
+                catch (Exception ex) { info("The active session was cleared, but the saved Windows token could not be removed: " + ex.getMessage()); }
                 page(active);
-                info("Microsoft account disconnected. No account token was saved by Relian.");
+                info("Microsoft account disconnected. Its saved refresh token was removed from Windows secure storage.");
             }
             return;
         }
@@ -236,12 +268,17 @@ public class RelianLauncher extends Application {
                         accountLabel = stage;
                         page(active);
                     }));
+                try {
+                    MicrosoftTokenVault.saveRefreshToken(result.refreshToken());
+                } catch (Exception vaultError) {
+                    System.err.println("[Relian] Secure sign-in persistence is unavailable: " + vaultError.getMessage());
+                }
                 javafx.application.Platform.runLater(() -> {
                     minecraftSession = verifiedSession;
                     offlineTestProfile = null;
                     accountLabel = verifiedSession.username();
                     page(active);
-                    info("Minecraft account verified: " + verifiedSession.username() + ". You can now launch installed Vanilla versions.");
+                    info("Minecraft account verified: " + verifiedSession.username() + ". You can now launch installed Minecraft versions.");
                 });
             } catch (Exception ex) {
                 javafx.application.Platform.runLater(() -> {
