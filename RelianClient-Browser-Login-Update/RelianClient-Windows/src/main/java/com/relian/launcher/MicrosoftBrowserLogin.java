@@ -34,7 +34,8 @@ public final class MicrosoftBrowserLogin {
 
     private MicrosoftBrowserLogin() {}
 
-    public record LoginResult(boolean microsoftAuthenticated, String accessToken) {}
+    public record LoginResult(boolean microsoftAuthenticated, String accessToken, String refreshToken) {}
+    private record TokenResponse(String accessToken, String refreshToken) {}
 
     public static String getClientId() {
         String fromEnv = System.getenv("RELIAN_MS_CLIENT_ID");
@@ -84,8 +85,8 @@ public final class MicrosoftBrowserLogin {
             if (callbackError.get() != null) throw new IOException(callbackError.get());
             String code = authCode.get();
             if (code == null || code.isBlank()) throw new IOException("Microsoft did not return an authorization code.");
-            String accessToken = exchangeCode(clientId, code, redirectUri, verifier);
-            return new LoginResult(true, accessToken);
+            TokenResponse tokens = exchangeCode(clientId, code, redirectUri, verifier);
+            return new LoginResult(true, tokens.accessToken(), tokens.refreshToken());
         } finally {
             server.stop(0);
         }
@@ -120,12 +121,29 @@ public final class MicrosoftBrowserLogin {
         } finally { done.countDown(); }
     }
 
-    private static String exchangeCode(String clientId, String code, String redirectUri, String verifier) throws Exception {
+    /** Exchanges a DPAPI-vaulted refresh token for a fresh Microsoft access token. */
+    public static LoginResult refresh(String clientId, String refreshToken) throws Exception {
+        if (clientId == null || !clientId.trim().matches("(?i)[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))
+            throw new IOException("A valid Microsoft public Application (client) ID is required.");
+        if (refreshToken == null || refreshToken.isBlank())
+            throw new IOException("No saved Microsoft refresh token is available.");
+        String form = "client_id=" + enc(clientId.trim())
+                + "&grant_type=refresh_token&refresh_token=" + enc(refreshToken)
+                + "&scope=" + enc("XboxLive.signin offline_access openid profile");
+        TokenResponse tokens = sendTokenForm(form);
+        return new LoginResult(true, tokens.accessToken(), tokens.refreshToken());
+    }
+
+    private static TokenResponse exchangeCode(String clientId, String code, String redirectUri, String verifier) throws Exception {
         String form = "client_id=" + enc(clientId)
                 + "&grant_type=authorization_code&code=" + enc(code)
                 + "&redirect_uri=" + enc(redirectUri)
                 + "&code_verifier=" + enc(verifier)
                 + "&scope=" + enc("XboxLive.signin offline_access openid profile");
+        return sendTokenForm(form);
+    }
+
+    private static TokenResponse sendTokenForm(String form) throws Exception {
         HttpRequest request = HttpRequest.newBuilder(URI.create(TOKEN_ENDPOINT))
                 .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/x-www-form-urlencoded")
@@ -138,11 +156,14 @@ public final class MicrosoftBrowserLogin {
                 if (error.has("error_description")) detail = error.get("error_description").getAsString();
                 else if (error.has("error")) detail = error.get("error").getAsString() + ": " + detail;
             } catch (RuntimeException ignored) { }
-            throw new IOException("Microsoft token exchange failed (HTTP " + response.statusCode() + "): " + detail);
+            throw new IOException("Microsoft token request failed (HTTP " + response.statusCode() + "): " + detail);
         }
-        String token = jsonString(response.body(), "access_token");
-        if (token == null || token.isBlank()) throw new IOException("Microsoft did not return an access token.");
-        return token;
+        var json = com.google.gson.JsonParser.parseString(response.body()).getAsJsonObject();
+        String access = json.has("access_token") ? json.get("access_token").getAsString() : "";
+        String refresh = json.has("refresh_token") ? json.get("refresh_token").getAsString() : "";
+        if (access.isBlank()) throw new IOException("Microsoft did not return an access token.");
+        if (refresh.isBlank()) throw new IOException("Microsoft did not return a refresh token. Check that offline_access is enabled for the app registration.");
+        return new TokenResponse(access, refresh);
     }
 
     private static String jsonString(String json, String key) {
