@@ -11,7 +11,6 @@ import net.minecraft.client.render.entity.feature.FeatureRendererContext;
 import net.minecraft.client.render.entity.model.PlayerEntityModel;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 /** Simple client-side 3D wardrobe attachments. They are local visuals, not server-synced cosmetics. */
@@ -65,21 +64,21 @@ public final class CosmeticFeatureRenderer extends FeatureRenderer<AbstractClien
     private static void drawQuad(MatrixStack matrices, VertexConsumer buffer, int light,
                                  float left, float top, float z,
                                  float right, float bottom, float z2, int color) {
-        Matrix4f position = matrices.peek().getPositionMatrix();
-        Matrix3f normal = matrices.peek().getNormalMatrix();
+        MatrixStack.Entry entry = matrices.peek();
+        Matrix4f position = entry.getPositionMatrix();
         int red = (color >>> 16) & 255;
         int green = (color >>> 8) & 255;
         int blue = color & 255;
-        vertex(buffer, position, normal, left, top, z, 0, 0, red, green, blue, light);
+        vertex(buffer, position, entry, left, top, z, 0, 0, red, green, blue, light);
         vertex(buffer, position, normal, right, top, z, 1, 0, red, green, blue, light);
         vertex(buffer, position, normal, right, bottom, z2, 1, 1, red, green, blue, light);
         vertex(buffer, position, normal, left, bottom, z2, 0, 1, red, green, blue, light);
     }
 
-    private static void vertex(VertexConsumer buffer, Matrix4f position, Matrix3f normal,
+    private static void vertex(VertexConsumer buffer, Matrix4f position, MatrixStack.Entry entry,
                                float x, float y, float z, float u, float v,
                                int red, int green, int blue, int light) {
         buffer.vertex(position, x, y, z).color(red, green, blue, 255).texture(u, v)
-                .overlay(OverlayTexture.DEFAULT_UV).light(light).normal(normal, 0, 0, 1);
+                .overlay(OverlayTexture.DEFAULT_UV).light(light).normal(entry, 0, 0, 1);
     }
 }
