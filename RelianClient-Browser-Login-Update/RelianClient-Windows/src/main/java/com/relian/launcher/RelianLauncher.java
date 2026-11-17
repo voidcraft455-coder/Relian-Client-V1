@@ -202,8 +202,8 @@ public class RelianLauncher extends Application {
                 if (saved.isEmpty()) return;
                 MicrosoftBrowserLogin.LoginResult refreshed =
                     MicrosoftBrowserLogin.refresh(clientId, saved.get());
-                var verified = MinecraftAccountAuthenticator.authenticate(refreshed.accessToken());
                 MicrosoftTokenVault.saveRefreshToken(refreshed.refreshToken());
+                var verified = MinecraftAccountAuthenticator.authenticate(refreshed.accessToken());
                 javafx.application.Platform.runLater(() -> {
                     minecraftSession = verified;
                     offlineTestProfile = null;
@@ -263,16 +263,16 @@ public class RelianLauncher extends Application {
         CompletableFuture.runAsync(() -> {
             try {
                 MicrosoftBrowserLogin.LoginResult result = MicrosoftBrowserLogin.signIn(clientId);
-                var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken(), stage ->
-                    javafx.application.Platform.runLater(() -> {
-                        accountLabel = stage;
-                        page(active);
-                    }));
                 try {
                     MicrosoftTokenVault.saveRefreshToken(result.refreshToken());
                 } catch (Exception vaultError) {
                     System.err.println("[Relian] Secure sign-in persistence is unavailable: " + vaultError.getMessage());
                 }
+                var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken(), stage ->
+                    javafx.application.Platform.runLater(() -> {
+                        accountLabel = stage;
+                        page(active);
+                    }));
                 javafx.application.Platform.runLater(() -> {
                     minecraftSession = verifiedSession;
                     offlineTestProfile = null;
