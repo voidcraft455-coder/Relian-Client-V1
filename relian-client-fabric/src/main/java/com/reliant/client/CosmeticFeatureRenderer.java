@@ -1,5 +1,6 @@
 package com.reliant.client;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.RenderLayer;
@@ -27,7 +28,7 @@ public final class CosmeticFeatureRenderer extends FeatureRenderer<AbstractClien
     public void render(MatrixStack matrices, VertexConsumerProvider consumers, int light,
                        AbstractClientPlayerEntity player, float limbAngle, float limbDistance,
                        float tickDelta, float animationProgress, float headYaw, float headPitch) {
-        if (player.isInvisible()) return;
+        if (player.isInvisible() || player != MinecraftClient.getInstance().player) return;
         var equipped = CosmeticWardrobeRuntime.lines();
         if (equipped.isEmpty()) return;
         VertexConsumer buffer = consumers.getBuffer(RenderLayer.getEntityCutoutNoCull(WHITE));
