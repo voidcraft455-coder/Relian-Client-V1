@@ -192,6 +192,20 @@ public class RelianLauncher extends Application {
     private void styleCombo(ComboBox<String> c){c.setStyle("-fx-background-color:"+ALT+";-fx-mark-color:#d7dce5;-fx-font-size:12px;");}
 
     private void signIn() {
+        if (minecraftSession != null) {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Disconnect Microsoft account");
+            confirm.setHeaderText("Sign out of " + minecraftSession.username() + "?");
+            confirm.setContentText("Relian will clear the active Minecraft session from memory. You will need to sign in again before launching Minecraft.");
+            confirm.initOwner(shell.getScene().getWindow());
+            if (confirm.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                minecraftSession = null;
+                accountLabel = "Sign in with Microsoft";
+                page(active);
+                info("Microsoft account disconnected. No account token was saved by Relian.");
+            }
+            return;
+        }
         String configuredClientId = preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId());
         if (configuredClientId == null || configuredClientId.isBlank() || configuredClientId.equals("YOUR_APPLICATION_CLIENT_ID")) {
             TextInputDialog dialog = new TextInputDialog();
@@ -1137,7 +1151,7 @@ public class RelianLauncher extends Application {
             exportButton.setDisable(true);
             exportStatus.setText("Copying equipped cosmetics into the selected instance…");
             CompletableFuture.supplyAsync(()->{
-                try{return com.reliant.launcher.cosmetics.CosmeticWardrobeExporter.export(activeInstanceDirectory);}
+                try{return com.relian.launcher.cosmetics.CosmeticWardrobeExporter.export(activeInstanceDirectory);}
                 catch(java.io.IOException ex){throw new RuntimeException(ex);}
             }).whenComplete((folder,error)->javafx.application.Platform.runLater(()->{
                 exportButton.setDisable(activeInstanceDirectory==null);
