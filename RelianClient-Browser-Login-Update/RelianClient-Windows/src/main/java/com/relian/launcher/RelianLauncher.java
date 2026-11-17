@@ -1520,7 +1520,7 @@ public class RelianLauncher extends Application {
         TextField clientIdField=new TextField(preferences.get("microsoft.clientId", MicrosoftBrowserLogin.getClientId()));
         clientIdField.setPromptText("Microsoft public desktop application client ID (GUID)");
         Button saveClientId=small("Save Microsoft application ID");
-        Label accountHelp=muted("Required setup: register Relian as a public/native desktop app for personal Microsoft accounts, enable authorization-code flow with PKCE, add the http://localhost mobile/desktop redirect, and configure the XboxLive.signin scope. Relian opens the system browser and never asks for your Microsoft password.");
+        Label accountHelp=muted("Register Relian as a public desktop app for personal Microsoft accounts, enable authorization-code flow with PKCE, and request XboxLive.signin plus offline_access. Relian opens your browser, verifies Xbox/XSTS and Minecraft Java ownership, and never asks for your Microsoft password. On Windows, only the refresh token is saved using current-user DPAPI protection; the active game token remains in memory.");
         Button openRegistration=small("Open Microsoft app registrations");
         openRegistration.setOnAction(event->{
             try{java.awt.Desktop.getDesktop().browse(java.net.URI.create("https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"));}
