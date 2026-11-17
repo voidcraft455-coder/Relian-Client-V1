@@ -104,6 +104,7 @@ public final class HudConfig {
         config.modules.put("experience", new ModuleSettings(false, 8, 612, 1.0f, 0xFF8FE3B0));
         config.modules.put("weather", new ModuleSettings(false, 8, 634, 1.0f, 0xFF83B7FF));
         config.modules.put("view_angles", new ModuleSettings(false, 8, 656, 1.0f, 0xFFFFD479));
+        config.modules.put("cosmetics", new ModuleSettings(true, 8, 678, 1.0f, 0xFFB69CFF));
         return config;
     }
 
