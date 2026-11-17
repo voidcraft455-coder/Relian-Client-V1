@@ -47,6 +47,7 @@ final class RelianHudRenderer {
         renderExperience(client, context, config);
         renderWeather(client, context, config);
         renderViewAngles(client, context, config);
+        renderText(client, context, config, "cosmetics", CosmeticWardrobeRuntime.lines());
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
