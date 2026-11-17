@@ -22,6 +22,6 @@ A separate Relian email/password account is not implemented. It requires a real 
 
 The launcher validates local PNG assets and stores the selected cape, wings, and hat in the wardrobe. Export copies the equipped assets into the selected instance at `config/relian/cosmetics/` and writes `wardrobe.json`.
 
-The Fabric 1.21.1 client reads that manifest with path and PNG-signature checks. A player-renderer feature adds local 3D cape, wing, and hat attachments when the corresponding slots are equipped. These attachments are client-side decorative geometry and are not synchronized to other players or server-side accounts. The imported PNG currently identifies the equipped slot; custom image texture-mapping onto the 3D models and remote cosmetic synchronization remain future work.
+The Fabric 1.21.1 client reads that manifest with path, file-size, and PNG-signature checks, then registers the imported PNGs as dynamic Minecraft textures. A player-renderer feature applies those textures to local 3D cape, wing, and hat attachments when the corresponding slots are equipped. Texture resources are refreshed when an equipped file changes. These attachments are client-side decorative geometry and are not synchronized to other players or server-side accounts. The attachment geometry is intentionally a simple flat/low-poly representation; it does not reproduce every pixel layout or animation convention used by third-party cosmetic formats.
 
 Press Right Shift to open HUD Studio. The Cosmetics module can be moved, resized, recolored, or disabled like other HUD modules.
