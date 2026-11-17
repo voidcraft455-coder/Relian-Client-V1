@@ -3,7 +3,9 @@
   "package": "com.reliant.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "SplashOverlayMixin"
+    "SplashOverlayMixin",
+    "LivingEntityRendererAccessor",
+    "PlayerEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
