@@ -14,11 +14,11 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 /** Simple client-side 3D wardrobe attachments. They are local visuals, not server-synced cosmetics. */
-final class CosmeticFeatureRenderer extends FeatureRenderer<AbstractClientPlayerEntity,
+public final class CosmeticFeatureRenderer extends FeatureRenderer<AbstractClientPlayerEntity,
         PlayerEntityModel<AbstractClientPlayerEntity>> {
     private static final Identifier WHITE = Identifier.of("minecraft", "textures/block/white_wool.png");
 
-    CosmeticFeatureRenderer(FeatureRendererContext<AbstractClientPlayerEntity,
+    public CosmeticFeatureRenderer(FeatureRendererContext<AbstractClientPlayerEntity,
             PlayerEntityModel<AbstractClientPlayerEntity>> context) {
         super(context);
     }
