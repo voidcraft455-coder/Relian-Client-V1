@@ -31,6 +31,8 @@ final class MinecraftDependencyInstaller {
     private static final long MAX_INDEX_BYTES = 32L * 1024 * 1024;
     private static final long MAX_LIBRARY_BYTES = 512L * 1024 * 1024;
     private static final long MAX_ASSET_BYTES = 128L * 1024 * 1024;
+    private static final long MAX_NATIVE_EXPANDED_BYTES = 512L * 1024 * 1024;
+    private static final int MAX_NATIVE_ENTRIES = 100_000;
     private static final Set<String> HOSTS = Set.of(
             "libraries.minecraft.net", "repo.maven.apache.org", "repo1.maven.org",
             "maven.fabricmc.net", "maven.minecraftforge.net", "maven.neoforged.net", "maven.quiltmc.org", "resources.download.minecraft.net",
@@ -310,7 +312,11 @@ final class MinecraftDependencyInstaller {
         try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(jar))) {
             ZipEntry entry;
             byte[] buffer = new byte[16 * 1024];
+            long expanded = 0;
+            int entries = 0;
             while ((entry = zip.getNextEntry()) != null) {
+                if (++entries > MAX_NATIVE_ENTRIES)
+                    throw new IOException("A Minecraft native archive contains too many entries.");
                 if (entry.isDirectory() || entry.getName().startsWith("META-INF/")) continue;
                 Path output = safeResolve(destination, entry.getName());
                 if (Files.isSymbolicLink(output) || hasSymlinkParent(output.getParent())) {
@@ -322,7 +328,12 @@ final class MinecraftDependencyInstaller {
                 }
                 try (OutputStream out = Files.newOutputStream(output)) {
                     int count;
-                    while ((count = zip.read(buffer)) != -1) out.write(buffer, 0, count);
+                    while ((count = zip.read(buffer)) != -1) {
+                        expanded += count;
+                        if (expanded > MAX_NATIVE_EXPANDED_BYTES)
+                            throw new IOException("A Minecraft native archive exceeded the extraction size limit.");
+                        out.write(buffer, 0, count);
+                    }
                 }
             }
         }
