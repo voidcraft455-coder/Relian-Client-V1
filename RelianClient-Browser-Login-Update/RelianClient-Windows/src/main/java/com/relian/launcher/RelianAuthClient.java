@@ -18,7 +18,7 @@ public final class RelianAuthClient {
 
     public record Config(String projectUrl, String anonKey) {
         public Config {
-            if (projectUrl == null || anonKey == null || anonKey.isBlank())
+            if (projectUrl == null || anonKey == null || anonKey.trim().isBlank() || anonKey.length() > 8192)
                 throw new IllegalArgumentException("Enter the Supabase project URL and public anon/publishable key.");
             try {
                 URI uri = URI.create(projectUrl.trim());
@@ -30,6 +30,7 @@ public final class RelianAuthClient {
                         || uri.getRawQuery() != null || uri.getRawFragment() != null)
                     throw new IllegalArgumentException("Use the HTTPS URL for your Supabase project (for example, https://your-project.supabase.co).");
                 projectUrl = "https://" + host;
+                anonKey = anonKey.trim();
             } catch (RuntimeException ex) {
                 throw new IllegalArgumentException("The Supabase project URL is invalid.", ex);
             }
