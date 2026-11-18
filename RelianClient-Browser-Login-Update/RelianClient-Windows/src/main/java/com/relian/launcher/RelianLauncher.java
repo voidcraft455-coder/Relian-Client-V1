@@ -1664,7 +1664,7 @@ public class RelianLauncher extends Application {
                 if (error != null) {
                     Throwable cause = error.getCause() == null ? error : error.getCause();
                     status.setText("Password-reset request failed: " + cause.getMessage());
-                } else status.setText("If that address has an account, the identity provider will send password-reset instructions.");
+                } else status.setText("If that address has an account, a recovery email will arrive. Enter its one-time code and your new password below.");
             }));
         });
         completeReset.setOnAction(event -> {
