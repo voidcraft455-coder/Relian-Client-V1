@@ -57,7 +57,8 @@ public final class MinecraftVersionInstaller {
                 "piston-meta.mojang.com", "launchermeta.mojang.com");
         status.accept("Downloading official " + id + " version metadata…");
         byte[] metadataBytes = getBytes(metadataUri, MAX_METADATA_BYTES);
-        if (!release.sha1().isBlank() && !sha1(metadataBytes).equalsIgnoreCase(release.sha1())) {
+        if (!release.sha1().isBlank() && (!release.sha1().matches("(?i)[a-f0-9]{40}")
+                || !sha1(metadataBytes).equalsIgnoreCase(release.sha1()))) {
             throw new IOException("The version metadata SHA-1 did not match Mojang's version manifest.");
         }
 
@@ -75,10 +76,13 @@ public final class MinecraftVersionInstaller {
         if (client == null) throw new IOException("This Minecraft version has no official client download entry.");
         String clientUrl = string(client, "url");
         String clientSha1 = string(client, "sha1");
-        if (clientSha1.isBlank()) throw new IOException("Mojang did not provide a client JAR checksum.");
+        if (!clientSha1.matches("(?i)[a-f0-9]{40}"))
+            throw new IOException("Mojang did not provide a valid client JAR checksum.");
         URI clientUri = trustedUri(clientUrl, "launcher.mojang.com", "piston-data.mojang.com");
 
         Path root = gameDirectory.toAbsolutePath().normalize();
+        if (Files.isSymbolicLink(root))
+            throw new IOException("The selected Minecraft game directory cannot be a symbolic link.");
         Path versionsRoot = root.resolve("versions").normalize();
         Path versionDirectory = versionsRoot.resolve(id).normalize();
         if (!versionsRoot.startsWith(root) || !versionDirectory.startsWith(versionsRoot)) {
