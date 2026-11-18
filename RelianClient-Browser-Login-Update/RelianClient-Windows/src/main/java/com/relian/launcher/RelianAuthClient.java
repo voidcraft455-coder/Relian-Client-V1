@@ -46,7 +46,7 @@ public final class RelianAuthClient {
         validateCredentials(email, password);
         JsonObject response = request(config, "signup", "POST", credentials(email, password), null, false);
         Session session = session(response, email);
-        if (session == null) throw new IOException("Registration submitted. Check your email for the verification message, then return to Relian and sign in.");
+        if (session == null) throw new IOException("Registration submitted. Check your email for the confirmation link or one-time code. If your template uses a code, enter it in Relian Settings.");
         return session;
     }
 
@@ -74,7 +74,22 @@ public final class RelianAuthClient {
         request(config, "recover", "POST", body, null, true);
     }
 
-    /** Verifies the email's recovery OTP, then changes the password using the short-lived recovery session. */
+    /** Verifies a Supabase email-confirmation OTP and returns the newly issued session. */
+    public static Session verifyEmailCode(Config config, String email, String code)
+            throws IOException, InterruptedException {
+        validateEmail(email);
+        if (code == null || !code.trim().matches("[0-9]{6,10}"))
+            throw new IOException("Enter the 6–10 digit email verification code.");
+        JsonObject verification = new JsonObject();
+        verification.addProperty("email", email.trim());
+        verification.addProperty("token", code.trim());
+        verification.addProperty("type", "signup");
+        Session session = session(request(config, "verify", "POST", verification, null, false), email);
+        if (session == null) throw new IOException("The email code was not accepted or did not create a signed-in session.");
+        return session;
+    }
+
+        /** Verifies the email's recovery OTP, then changes the password using the short-lived recovery session. */
     public static Session completePasswordRecovery(Config config, String email, String code, String newPassword)
             throws IOException, InterruptedException {
         validateEmail(email);
