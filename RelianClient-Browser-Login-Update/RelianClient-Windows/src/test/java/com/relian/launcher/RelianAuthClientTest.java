@@ -41,4 +41,18 @@ class RelianAuthClientTest {
                 () -> new RelianAuthClient.Config("https://project.supabase.co?redirect=evil", "public-key"));
     }
 
+    @Test
+    void rejectsInvalidSignInCredentialsBeforeMakingNetworkRequests() {
+        var config = new RelianAuthClient.Config("https://example-project.supabase.co", "public-key");
+        assertThrows(java.io.IOException.class, () -> RelianAuthClient.signIn(config, "not-an-email", "long-enough-password"));
+        assertThrows(java.io.IOException.class, () -> RelianAuthClient.signIn(config, "user@example.com", "short"));
+    }
+
+    @Test
+    void rejectsInvalidRecoveryCodeBeforeMakingNetworkRequests() {
+        var config = new RelianAuthClient.Config("https://example-project.supabase.co", "public-key");
+        assertThrows(java.io.IOException.class, () ->
+                RelianAuthClient.completePasswordRecovery(config, "user@example.com", "not-a-code", "new-password-123"));
+    }
+
 }
