@@ -9,7 +9,7 @@ import java.util.List;
 
 public final class HudEditorScreen extends Screen {
     private static final List<String> MODULES = List.of(
-        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time", "light_level", "chunk_coords", "velocity", "offhand", "date", "armor_summary", "experience", "weather", "view_angles"
+        "fps", "coordinates", "keystrokes", "armor", "ping", "held_item", "potions", "direction", "biome", "speed", "clock", "dimension", "target_block", "health", "hunger", "world_time", "server_info", "session_time", "light_level", "chunk_coords", "velocity", "offhand", "date", "armor_summary", "experience", "weather", "view_angles", "cosmetics"
     );
     private int selected = 0;
     private boolean draggingPreview = false;
@@ -117,6 +117,7 @@ public final class HudEditorScreen extends Screen {
             case "experience" -> "XP: LEVEL 24  68%";
             case "weather" -> "WEATHER: CLEAR";
             case "view_angles" -> "LOOK: YAW 90.0  PITCH -12.5";
+            case "cosmetics" -> "WARDROBE: CAPE / WINGS / HAT";
             default -> label(id);
         };
     }
@@ -182,6 +183,7 @@ public final class HudEditorScreen extends Screen {
             case "experience" -> "EXPERIENCE LEVEL";
             case "weather" -> "WORLD WEATHER";
             case "view_angles" -> "VIEW ANGLES";
+            case "cosmetics" -> "WARDROBE / COSMETICS";
             default -> id.toUpperCase();
         };
     }
