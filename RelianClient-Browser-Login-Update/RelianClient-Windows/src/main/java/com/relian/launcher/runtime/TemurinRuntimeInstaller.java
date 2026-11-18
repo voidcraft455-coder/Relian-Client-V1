@@ -129,7 +129,7 @@ public final class TemurinRuntimeInstaller {
             }
             String output = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             java.util.regex.Matcher matcher = java.util.regex.Pattern
-                    .compile("(?:version|openjdk)\\s+\\"?([0-9]+)(?:\\.([0-9]+))?")
+                    .compile("(?:version|openjdk)[^0-9]*([0-9]+)(?:\\.([0-9]+))?")
                     .matcher(output);
             if (!matcher.find()) throw new IOException("The existing Java runtime version could not be identified.");
             int first = Integer.parseInt(matcher.group(1));
