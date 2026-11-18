@@ -55,7 +55,13 @@ public final class TemurinRuntimeInstaller {
         Path destination = root.resolve("temurin-" + major + "-" + architecture).normalize();
         if (!destination.startsWith(root) || Files.isSymbolicLink(destination)) throw new IOException("Unsafe runtime destination.");
         Path javaExe = destination.resolve("bin").resolve("java.exe");
-        if (Files.isRegularFile(javaExe)) return javaExe;
+        if (Files.exists(destination, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            if (Files.isSymbolicLink(destination) || !Files.isDirectory(destination, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                    || Files.isSymbolicLink(javaExe) || !Files.isRegularFile(javaExe, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                throw new IOException("The existing Temurin runtime directory is incomplete or unsafe. Remove it before retrying.");
+            verifyJavaMajor(javaExe, major);
+            return javaExe;
+        }
 
         Path archive = Files.createTempFile(root, ".temurin-", ".zip");
         Path staging = Files.createTempDirectory(root, ".temurin-stage-");
@@ -109,6 +115,30 @@ public final class TemurinRuntimeInstaller {
             } else {
                 Files.deleteIfExists(staging);
             }
+        }
+    }
+
+
+    private static void verifyJavaMajor(Path executable, int expectedMajor) throws IOException {
+        try {
+            Process process = new ProcessBuilder(executable.toString(), "-version")
+                    .redirectErrorStream(true).start();
+            if (!process.waitFor(8, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                throw new IOException("The existing Temurin runtime did not respond to a version check.");
+            }
+            String output = new String(process.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("(?:version|openjdk)\\s+\\"?([0-9]+)(?:\\.([0-9]+))?")
+                    .matcher(output);
+            if (!matcher.find()) throw new IOException("The existing Java runtime version could not be identified.");
+            int first = Integer.parseInt(matcher.group(1));
+            int actual = first == 1 && matcher.group(2) != null ? Integer.parseInt(matcher.group(2)) : first;
+            if (actual != expectedMajor)
+                throw new IOException("The existing runtime is Java " + actual + ", but Java " + expectedMajor + " is required.");
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Java runtime verification was interrupted.", ex);
         }
     }
 
