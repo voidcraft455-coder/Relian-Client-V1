@@ -38,6 +38,7 @@ public class RelianLauncher extends Application {
     private String accountLabel = "Sign in with Microsoft";
     private com.relian.launcher.runtime.MinecraftLaunchCommandBuilder.Session minecraftSession;
     private OfflineTestProfile offlineTestProfile;
+    private RelianAuthClient.Session relianAccountSession;
     private final com.relian.launcher.runtime.MinecraftLaunchService launchService = new com.relian.launcher.runtime.MinecraftLaunchService();
     private final List<String> versionList = new ArrayList<>(List.of("26.3","26.2","1.21.11","1.21.10","1.20.6","1.20.1","1.19.4","1.18.2","1.8.9","1.8.8"));
     private static String usageKey(java.nio.file.Path directory,String field){String id=directory.getFileName()==null?"default":directory.getFileName().toString().replaceAll("[^A-Za-z0-9._-]","_");if(id.length()>48)id=id.substring(0,48);return "instance.usage."+id+"."+field;}
@@ -68,6 +69,7 @@ public class RelianLauncher extends Application {
         stage.setScene(new Scene(shell,1120,700));
         stage.show();
         restoreMicrosoftSession();
+        restoreRelianAccountSession();
         loadVersionCatalog();
     }
 
@@ -1533,8 +1535,164 @@ public class RelianLauncher extends Application {
             accountHelp.setText("Public application ID saved locally. Return to Home and select Sign in with Microsoft. The app registration must also have the XboxLive.signin permission and localhost redirect.");
         });
         account.getChildren().addAll(accountTitle,clientIdField,saveClientId,openRegistration,accountHelp);
-        b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime,account);
+        b.getChildren().addAll(appearance,performance,fpsTools,directories,runtime,account,relianIdentitySettings());
         return b;
+    }
+
+
+    private RelianAuthClient.Config relianAuthConfig() {
+        String url = preferences.get("relian.auth.url", System.getenv().getOrDefault("RELIAN_SUPABASE_URL", ""));
+        String key = preferences.get("relian.auth.anonKey", System.getenv().getOrDefault("RELIAN_SUPABASE_ANON_KEY", ""));
+        return new RelianAuthClient.Config(url, key);
+    }
+
+    private void restoreRelianAccountSession() {
+        if (!MicrosoftTokenVault.isSupported()) return;
+        try { relianAuthConfig(); } catch (RuntimeException ex) { return; }
+        CompletableFuture.runAsync(() -> {
+            try {
+                var saved = RelianAccountVault.read();
+                if (saved.isEmpty()) return;
+                var session = RelianAuthClient.refresh(relianAuthConfig(), saved.get().email(), saved.get().refreshToken());
+                RelianAccountVault.save(session.email(), session.refreshToken());
+                javafx.application.Platform.runLater(() -> {
+                    relianAccountSession = session;
+                    if ("Settings".equals(active)) page(active);
+                });
+            } catch (Exception ex) {
+                System.err.println("[Relian] Saved Relian identity session could not be restored: " + ex.getMessage());
+            }
+        });
+    }
+
+    private VBox relianIdentitySettings() {
+        VBox card = new VBox(9);
+        card.setPadding(new Insets(16));
+        card.setStyle(cardStyle());
+        Label heading = new Label("Relian account");
+        heading.setStyle("-fx-text-fill:" + FG + ";-fx-font-weight:bold;");
+        TextField projectUrl = new TextField(preferences.get("relian.auth.url",
+                System.getenv().getOrDefault("RELIAN_SUPABASE_URL", "")));
+        projectUrl.setPromptText("Supabase project URL (https://your-project.supabase.co)");
+        TextField publicKey = new TextField(preferences.get("relian.auth.anonKey",
+                System.getenv().getOrDefault("RELIAN_SUPABASE_ANON_KEY", "")));
+        publicKey.setPromptText("Supabase public anon / publishable key");
+        TextField email = new TextField(relianAccountSession == null ? "" : relianAccountSession.email());
+        email.setPromptText("Email address");
+        PasswordField password = new PasswordField();
+        password.setPromptText("Password (8–256 characters)");
+        Label status = muted(relianAccountSession == null
+                ? "Not connected. Configure the hosted identity provider, then register or sign in."
+                : "Signed in as " + relianAccountSession.email() + ". This Relian account is separate from Microsoft Minecraft ownership.");
+        Button save = small("Save identity-provider settings");
+        Button register = small("Create Relian account");
+        Button signIn = small("Sign in");
+        Button reset = small("Send password-reset email");
+        Button signOut = small("Sign out");
+        Runnable saveConfig = () -> {
+            try {
+                RelianAuthClient.Config config = new RelianAuthClient.Config(projectUrl.getText(), publicKey.getText());
+                preferences.put("relian.auth.url", config.projectUrl());
+                preferences.put("relian.auth.anonKey", config.anonKey());
+                status.setText("Identity-provider configuration saved locally. The public key is not a service-role secret.");
+            } catch (RuntimeException ex) {
+                status.setText(ex.getMessage());
+                throw ex;
+            }
+        };
+        save.setOnAction(event -> {
+            try { saveConfig.run(); }
+            catch (RuntimeException ignored) {}
+        });
+        register.setOnAction(event -> {
+            try { saveConfig.run(); } catch (RuntimeException ex) { return; }
+            String address = email.getText() == null ? "" : email.getText().trim();
+            String secret = password.getText();
+            register.setDisable(true);
+            status.setText("Creating your Relian account securely…");
+            CompletableFuture.supplyAsync(() -> {
+                try { return RelianAuthClient.signUp(relianAuthConfig(), address, secret); }
+                catch (Exception ex) { throw new RuntimeException(ex); }
+            }).whenComplete((session, error) -> javafx.application.Platform.runLater(() -> {
+                register.setDisable(false);
+                password.clear();
+                if (error != null) {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    String message = cause.getMessage();
+                    status.setText(message);
+                    if (message != null && message.startsWith("Registration submitted")) status.setText(message);
+                    return;
+                }
+                acceptRelianSession(session, status);
+            }));
+        });
+        signIn.setOnAction(event -> {
+            try { saveConfig.run(); } catch (RuntimeException ex) { return; }
+            String address = email.getText() == null ? "" : email.getText().trim();
+            String secret = password.getText();
+            signIn.setDisable(true);
+            status.setText("Signing in to your Relian account…");
+            CompletableFuture.supplyAsync(() -> {
+                try { return RelianAuthClient.signIn(relianAuthConfig(), address, secret); }
+                catch (Exception ex) { throw new RuntimeException(ex); }
+            }).whenComplete((session, error) -> javafx.application.Platform.runLater(() -> {
+                signIn.setDisable(false);
+                password.clear();
+                if (error != null) {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    status.setText("Sign-in failed: " + cause.getMessage());
+                    return;
+                }
+                acceptRelianSession(session, status);
+            }));
+        });
+        reset.setOnAction(event -> {
+            try { saveConfig.run(); } catch (RuntimeException ex) { return; }
+            String address = email.getText() == null ? "" : email.getText().trim();
+            reset.setDisable(true);
+            status.setText("Requesting password-reset email…");
+            CompletableFuture.runAsync(() -> {
+                try { RelianAuthClient.requestPasswordReset(relianAuthConfig(), address); }
+                catch (Exception ex) { throw new RuntimeException(ex); }
+            }).whenComplete((ignored, error) -> javafx.application.Platform.runLater(() -> {
+                reset.setDisable(false);
+                if (error != null) {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    status.setText("Password-reset request failed: " + cause.getMessage());
+                } else status.setText("If that address has an account, the identity provider will send password-reset instructions.");
+            }));
+        });
+        signOut.setOnAction(event -> {
+            RelianAuthClient.Session current = relianAccountSession;
+            relianAccountSession = null;
+            try { RelianAccountVault.clear(); } catch (Exception ex) { status.setText("Local sign-out completed, but saved session cleanup failed: " + ex.getMessage()); }
+            signOut.setDisable(true);
+            CompletableFuture.runAsync(() -> {
+                try { if (current != null) RelianAuthClient.signOut(relianAuthConfig(), current.accessToken()); }
+                catch (Exception ex) { System.err.println("[Relian] Remote sign-out could not be confirmed: " + ex.getMessage()); }
+            }).whenComplete((ignored, error) -> javafx.application.Platform.runLater(() -> {
+                signOut.setDisable(false);
+                status.setText("Signed out of the Relian identity account. Microsoft Minecraft sign-in is managed separately.");
+                page(active);
+            }));
+        });
+        card.getChildren().addAll(heading,
+                muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. Never paste a service-role key here."),
+                projectUrl, publicKey, save, new Separator(), email, password,
+                new HBox(8, register, signIn), new HBox(8, reset, signOut), status);
+        return card;
+    }
+
+    private void acceptRelianSession(RelianAuthClient.Session session, Label status) {
+        relianAccountSession = session;
+        try {
+            if (MicrosoftTokenVault.isSupported()) {
+                RelianAccountVault.save(session.email(), session.refreshToken());
+                status.setText("Signed in as " + session.email() + ". Refresh token protected with Windows DPAPI.");
+            } else status.setText("Signed in as " + session.email() + ". Secure session persistence is available on Windows only.");
+        } catch (Exception ex) {
+            status.setText("Signed in as " + session.email() + ", but secure session persistence failed: " + ex.getMessage());
+        }
     }
 
     private String backgroundCss(){
