@@ -1,4 +1,4 @@
-package com.reliant.launcher.cosmetics;
+package com.relian.launcher.cosmetics;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
