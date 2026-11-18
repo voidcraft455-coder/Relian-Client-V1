@@ -47,4 +47,28 @@ class MinecraftInstallIntegrationTest {
             assertTrue(indexes.findAny().isPresent(), "Expected a downloaded asset index.");
         }
     }
+    @Test
+    @EnabledIfSystemProperty(named = "relian.minecraft.integration", matches = "true")
+    void installsOfficialFabricQuiltForgeAndNeoForgeProfiles() throws Exception {
+        MinecraftVersionCatalog catalog = new MinecraftVersionCatalog();
+        MinecraftRelease release = catalog.fetchAllReleases().stream()
+                .filter(item -> item.id().equals("1.21.1"))
+                .findFirst().orElseThrow(() -> new AssertionError("Minecraft 1.21.1 is missing from Mojang's manifest."));
+        MinecraftVersionInstaller.install(release, temporaryDirectory, ignored -> {});
+
+        Path javaExecutable = Path.of(System.getProperty("java.home"), "bin", "java.exe");
+        for (String loader : List.of("Fabric", "Quilt", "Forge", "NeoForge")) {
+            LoaderInstaller.Result result = LoaderInstaller.install(
+                    loader, "1.21.1", temporaryDirectory, javaExecutable, ignored -> {});
+            assertEquals(loader, result.loader());
+            assertEquals("1.21.1", result.minecraftVersion());
+            assertTrue(Files.isRegularFile(result.profileMetadata()),
+                    loader + " should publish a complete launch profile.");
+            var profile = com.google.gson.JsonParser.parseString(
+                    Files.readString(result.profileMetadata())).getAsJsonObject();
+            assertEquals("1.21.1", profile.get("inheritsFrom").getAsString(),
+                    loader + " must inherit the verified vanilla parent.");
+        }
+    }
+
 }
