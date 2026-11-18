@@ -35,7 +35,7 @@ class LoaderInstallerTest {
         Files.writeString(version.resolve("1.21.1.jar"), "test");
         var error = assertThrows(java.io.IOException.class,
                 () -> LoaderInstaller.install("Forge", "1.21.1", temp, Path.of("java.exe"), ignored -> {}));
-        assertTrue(error.getMessage().contains("missing its client checksum"));
+        assertTrue(error.getMessage().contains("missing a valid client checksum"));
     }
     @Test
     void rejectsClientJarWhoseContentsDoNotMatchVanillaMetadataChecksum() throws Exception {
