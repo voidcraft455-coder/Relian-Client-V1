@@ -1587,6 +1587,9 @@ public class RelianLauncher extends Application {
         Button save = small("Save identity-provider settings");
         Button register = small("Create Relian account");
         Button signIn = small("Sign in");
+        TextField verificationCode = new TextField();
+        verificationCode.setPromptText("6–10 digit email verification code");
+        Button verifyEmail = small("Verify email code");
         Button reset = small("Send password-reset email");
         TextField recoveryCode = new TextField();
         recoveryCode.setPromptText("6–10 digit recovery code from your email");
@@ -1651,6 +1654,26 @@ public class RelianLauncher extends Application {
                 acceptRelianSession(session, status);
             }));
         });
+        verifyEmail.setOnAction(event -> {
+            try { saveConfig.run(); } catch (RuntimeException ex) { return; }
+            String address = email.getText() == null ? "" : email.getText().trim();
+            String code = verificationCode.getText() == null ? "" : verificationCode.getText().trim();
+            verifyEmail.setDisable(true);
+            status.setText("Verifying your Relian email address…");
+            CompletableFuture.supplyAsync(() -> {
+                try { return RelianAuthClient.verifyEmailCode(relianAuthConfig(), address, code); }
+                catch (Exception ex) { throw new RuntimeException(ex); }
+            }).whenComplete((session, error) -> javafx.application.Platform.runLater(() -> {
+                verifyEmail.setDisable(false);
+                verificationCode.clear();
+                if (error != null) {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    status.setText("Email verification failed: " + cause.getMessage());
+                    return;
+                }
+                acceptRelianSession(session, status);
+            }));
+        });
         reset.setOnAction(event -> {
             try { saveConfig.run(); } catch (RuntimeException ex) { return; }
             String address = email.getText() == null ? "" : email.getText().trim();
@@ -1704,7 +1727,7 @@ public class RelianLauncher extends Application {
             }));
         });
         card.getChildren().addAll(heading,
-                muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. Set the recovery email template to include the one-time {{ .Token }} code so it can be entered below. Never paste a service-role key here."),
+                muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. You may use a confirmation link or a one-time `{{ .Token }}` code. Set the recovery email template to include the one-time {{ .Token }} code so it can be entered below. Never paste a service-role key here."),
                 projectUrl, publicKey, save, new Separator(), email, password,
                 new HBox(8, register, signIn), new HBox(8, reset, signOut), status);
         return card;
