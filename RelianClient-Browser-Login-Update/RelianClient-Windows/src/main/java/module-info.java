@@ -5,6 +5,8 @@ module com.relian.launcher {
     requires java.prefs;
     requires jdk.httpserver;
     requires com.google.gson;
+    requires com.sun.jna;
+    requires com.sun.jna.platform;
 
     exports com.relian.launcher;
 }
