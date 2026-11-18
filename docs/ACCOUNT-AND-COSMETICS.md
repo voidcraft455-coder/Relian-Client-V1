@@ -16,13 +16,13 @@ The account button disconnects the active Minecraft session and removes the DPAP
 
 ### Relian email account flow
 
-The launcher now includes a Supabase Auth REST client and Settings controls for registration, password sign-in, password-reset email, and sign-out. It uses the project's HTTPS Auth API and public anon/publishable key only; a service-role key must never be placed in the desktop app. Passwords are sent only to the configured identity provider over HTTPS and are not written to disk or launcher preferences. If email confirmation is enabled, registration may return without a session; the user must follow the provider's email confirmation flow before signing in.
+The launcher now includes a Supabase Auth REST client and Settings controls for registration, password sign-in, one-time-code password recovery, and sign-out. It uses the project's HTTPS Auth API and public anon/publishable key only; a service-role key must never be placed in the desktop app. Passwords are sent only to the configured identity provider over HTTPS and are not written to disk or launcher preferences. If email confirmation is enabled, registration may return without a session; the user must complete the provider's email confirmation before signing in. For password recovery, Relian verifies the email OTP and submits the new password using the short-lived recovery access token.
 
 Configure these values in Settings:
 - Supabase project URL, for example `https://your-project.supabase.co`
 - Supabase public anon/publishable key
 
-The same values may be supplied using `RELIAN_SUPABASE_URL` and `RELIAN_SUPABASE_ANON_KEY`. Enable email/password authentication, email confirmation, and password recovery in the Supabase dashboard. Set the provider's Site URL and allowed redirect URLs to the website used by your email confirmation and recovery templates. Relian does not host the identity database or email service itself.
+The same values may be supplied using `RELIAN_SUPABASE_URL` and `RELIAN_SUPABASE_ANON_KEY`. Enable email/password authentication, email confirmation, and password recovery in the Supabase dashboard. Configure the password-recovery email template to show the one-time `{{ .Token }}` code; the user enters that code in Relian along with a new password. Configure the confirmation email template and Site URL according to the Supabase project settings. Relian does not host the identity database or email service itself.
 
 On Windows, the Relian identity refresh token and email are protected together with current-user DPAPI in `%LOCALAPPDATA%\\Relian\\secure\\relian-account.dpapi`. The short-lived access token stays in memory. A saved session is refreshed on startup. The Relian account is separate from Microsoft sign-in and does not grant Minecraft ownership or game-launch access.
 
