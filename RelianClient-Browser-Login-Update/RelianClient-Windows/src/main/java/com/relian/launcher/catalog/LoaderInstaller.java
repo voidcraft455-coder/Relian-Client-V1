@@ -119,8 +119,11 @@ public final class LoaderInstaller {
             if (!minecraftVersion.equals(string(metadata, "id")))
                 throw new IOException("The installed Minecraft parent metadata does not match " + minecraftVersion + ".");
             JsonObject client = object(object(metadata, "downloads"), "client");
-            if (client == null || string(client, "sha1").isBlank())
-                throw new IOException("The installed Minecraft parent metadata is missing its client checksum.");
+            String expectedSha1 = string(client, "sha1");
+            if (!expectedSha1.matches("(?i)[a-f0-9]{40}"))
+                throw new IOException("The installed Minecraft parent metadata is missing a valid client checksum.");
+            if (!expectedSha1.equalsIgnoreCase(sha1(clientJar)))
+                throw new IOException("The installed Minecraft client JAR failed checksum verification. Reinstall the vanilla version before adding a loader.");
         } catch (com.google.gson.JsonParseException | IllegalStateException ex) {
             throw new IOException("The installed Minecraft parent metadata is invalid.", ex);
         }
