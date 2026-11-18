@@ -51,30 +51,61 @@ final class RelianHudRenderer {
     }
 
     private static void renderKeystrokes(MinecraftClient client, DrawContext context, HudConfig.Config config) {
-        List<String> lines = List.of(
-            client.options.forwardKey.isPressed() ? "[W]" : " W ",
-            (client.options.leftKey.isPressed() ? "[A]" : " A ") + " " +
-                (client.options.backKey.isPressed() ? "[S]" : " S ") + " " +
-                (client.options.rightKey.isPressed() ? "[D]" : " D "),
-            client.options.jumpKey.isPressed() ? "[SPACE]" : " SPACE "
-        );
-        renderText(client, context, config, "keystrokes", lines);
+        HudConfig.ModuleSettings settings = config.modules.get("keystrokes");
+        if (settings == null || !settings.enabled) return;
+        float scale = Math.max(0.5f, Math.min(2.0f, settings.scale));
+        context.getMatrices().push();
+        context.getMatrices().translate(settings.x, settings.y, 0);
+        context.getMatrices().scale(scale, scale, 1.0f);
+        rounded(context, -4, -4, 66, 63, 0x99101824, 6);
+        drawKey(context, client, "W", 20, 0, 20, 18, client.options.forwardKey.isPressed(), settings.color);
+        drawKey(context, client, "A", 0, 20, 20, 18, client.options.leftKey.isPressed(), settings.color);
+        drawKey(context, client, "S", 22, 20, 20, 18, client.options.backKey.isPressed(), settings.color);
+        drawKey(context, client, "D", 44, 20, 20, 18, client.options.rightKey.isPressed(), settings.color);
+        drawKey(context, client, "SPACE", 0, 40, 64, 18, client.options.jumpKey.isPressed(), settings.color);
+        context.getMatrices().pop();
+    }
+
+    private static void drawKey(DrawContext context, MinecraftClient client, String label,
+                                int x, int y, int width, int height, boolean pressed, int accent) {
+        rounded(context, x, y, x + width, y + height,
+                pressed ? accent : 0xFF344154, 4);
+        int textWidth = client.textRenderer.getWidth(label);
+        context.drawTextWithShadow(client.textRenderer, Text.literal(label),
+                x + (width - textWidth) / 2, y + (height - 8) / 2, 0xFFFFFFFF);
     }
 
     private static void renderArmor(MinecraftClient client, DrawContext context, HudConfig.Config config) {
-        List<String> lines = new ArrayList<>();
-        for (ItemStack stack : client.player.getInventory().armor) {
+        HudConfig.ModuleSettings settings = config.modules.get("armor");
+        if (settings == null || !settings.enabled) return;
+        List<ItemStack> pieces = new ArrayList<>();
+        for (int i = client.player.getInventory().armor.size() - 1; i >= 0; i--) {
+            pieces.add(client.player.getInventory().armor.get(i));
+        }
+        if (pieces.stream().allMatch(ItemStack::isEmpty)) {
+            renderText(client, context, config, "armor", List.of("ARMOR: EMPTY"));
+            return;
+        }
+        float scale = Math.max(0.5f, Math.min(2.0f, settings.scale));
+        context.getMatrices().push();
+        context.getMatrices().translate(settings.x, settings.y, 0);
+        context.getMatrices().scale(scale, scale, 1.0f);
+        rounded(context, -4, -4, 80, 37, 0x99101824, 6);
+        for (int i = 0; i < pieces.size(); i++) {
+            ItemStack stack = pieces.get(i);
+            int x = i * 19;
             if (stack.isEmpty()) continue;
+            context.drawItem(stack, x, 0);
             if (stack.isDamageable()) {
                 int remaining = Math.max(0, stack.getMaxDamage() - stack.getDamage());
                 int percent = MathHelper.floor(remaining * 100.0f / stack.getMaxDamage());
-                lines.add(stack.getName().getString() + ": " + percent + "%");
-            } else {
-                lines.add(stack.getName().getString());
+                String value = percent + "%";
+                int textWidth = client.textRenderer.getWidth(value);
+                context.drawTextWithShadow(client.textRenderer, Text.literal(value),
+                        x + (16 - textWidth) / 2, 19, settings.color);
             }
         }
-        if (lines.isEmpty()) lines.add("Armor: empty");
-        renderText(client, context, config, "armor", lines);
+        context.getMatrices().pop();
     }
 
     private static void renderPing(MinecraftClient client, DrawContext context, HudConfig.Config config) {
