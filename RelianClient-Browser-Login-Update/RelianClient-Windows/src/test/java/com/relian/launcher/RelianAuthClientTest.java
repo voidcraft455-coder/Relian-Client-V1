@@ -27,4 +27,18 @@ class RelianAuthClientTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new RelianAuthClient.Config("https://example-project.supabase.co", ""));
     }
+    @Test
+    void rejectsSupabaseLookalikeHostsAndUrlDecorations() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RelianAuthClient.Config("https://project.supabase.co.evil.example", "public-key"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RelianAuthClient.Config("https://nested.project.supabase.co", "public-key"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RelianAuthClient.Config("https://user@project.supabase.co", "public-key"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RelianAuthClient.Config("https://project.supabase.co/other-path", "public-key"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RelianAuthClient.Config("https://project.supabase.co?redirect=evil", "public-key"));
+    }
+
 }
