@@ -22,10 +22,14 @@ public final class RelianAuthClient {
                 throw new IllegalArgumentException("Enter the Supabase project URL and public anon/publishable key.");
             try {
                 URI uri = URI.create(projectUrl.trim());
-                if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
-                        || !(uri.getHost().endsWith(".supabase.co") || "localhost".equalsIgnoreCase(uri.getHost())))
-                    throw new IllegalArgumentException("Use your HTTPS Supabase project URL.");
-                projectUrl = uri.toString().replaceAll("/+$", "");
+                String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+                boolean trustedProjectHost = host.matches("[a-z0-9-]+\\.supabase\\.co");
+                if (!"https".equalsIgnoreCase(uri.getScheme()) || !trustedProjectHost
+                        || uri.getUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)
+                        || (uri.getRawPath() != null && !uri.getRawPath().isEmpty() && !"/".equals(uri.getRawPath()))
+                        || uri.getRawQuery() != null || uri.getRawFragment() != null)
+                    throw new IllegalArgumentException("Use the HTTPS URL for your Supabase project (for example, https://your-project.supabase.co).");
+                projectUrl = "https://" + host;
             } catch (RuntimeException ex) {
                 throw new IllegalArgumentException("The Supabase project URL is invalid.", ex);
             }
