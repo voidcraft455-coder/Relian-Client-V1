@@ -1673,7 +1673,6 @@ public class RelianLauncher extends Application {
             }).whenComplete((ignored, error) -> javafx.application.Platform.runLater(() -> {
                 signOut.setDisable(false);
                 status.setText("Signed out of the Relian identity account. Microsoft Minecraft sign-in is managed separately.");
-                page(active);
             }));
         });
         card.getChildren().addAll(heading,
