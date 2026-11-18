@@ -96,7 +96,6 @@ public final class RelianAuthClient {
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json");
         if (bearer != null && !bearer.isBlank()) builder.header("Authorization", "Bearer " + bearer);
-        else builder.header("Authorization", "Bearer " + config.anonKey());
         HttpRequest request = builder.method(method, HttpRequest.BodyPublishers.ofString(body.toString())).build();
         HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
