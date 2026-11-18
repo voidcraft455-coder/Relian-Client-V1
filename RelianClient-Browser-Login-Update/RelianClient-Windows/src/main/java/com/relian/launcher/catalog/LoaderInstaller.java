@@ -50,10 +50,12 @@ public final class LoaderInstaller {
             throw new IOException("Choose Fabric, Forge, NeoForge, or Quilt.");
         if (minecraftVersion == null || !minecraftVersion.matches("[0-9A-Za-z._-]{1,32}"))
             throw new IOException("Invalid Minecraft version.");
+        if (gameRoot == null) throw new IOException("Choose an instance directory before installing a loader.");
         Path root = gameRoot.toAbsolutePath().normalize();
         if (Files.isSymbolicLink(root)) throw new IOException("The selected instance directory cannot be a symbolic link.");
         Files.createDirectories(root);
         Consumer<String> status = progress == null ? ignored -> {} : progress;
+        requireVerifiedBaseVersion(root, minecraftVersion);
         if (kind.equals("Fabric") || kind.equals("Quilt")) {
             return installProfileLoader(kind, minecraftVersion, requested, root, status);
         }
@@ -97,6 +99,31 @@ public final class LoaderInstaller {
         Result result = findInstalledProfile(kind, minecraftVersion, root, loaderVersion);
         status.accept(kind + " " + result.loaderVersion() + " installed.");
         return result;
+    }
+
+
+    private static void requireVerifiedBaseVersion(Path root, String minecraftVersion) throws IOException {
+        Path versionsRoot = root.resolve("versions").normalize();
+        Path baseDirectory = versionsRoot.resolve(minecraftVersion).normalize();
+        Path metadataFile = baseDirectory.resolve(minecraftVersion + ".json");
+        Path clientJar = baseDirectory.resolve(minecraftVersion + ".jar");
+        if (!baseDirectory.startsWith(versionsRoot) || Files.isSymbolicLink(versionsRoot)
+                || Files.isSymbolicLink(baseDirectory) || Files.isSymbolicLink(metadataFile)
+                || Files.isSymbolicLink(clientJar) || !Files.isRegularFile(metadataFile)
+                || !Files.isRegularFile(clientJar)) {
+            throw new IOException("Install the official Minecraft " + minecraftVersion
+                    + " client files before installing a mod loader.");
+        }
+        try {
+            JsonObject metadata = JsonParser.parseString(Files.readString(metadataFile)).getAsJsonObject();
+            if (!minecraftVersion.equals(string(metadata, "id")))
+                throw new IOException("The installed Minecraft parent metadata does not match " + minecraftVersion + ".");
+            JsonObject client = object(object(metadata, "downloads"), "client");
+            if (client == null || string(client, "sha1").isBlank())
+                throw new IOException("The installed Minecraft parent metadata is missing its client checksum.");
+        } catch (com.google.gson.JsonParseException | IllegalStateException ex) {
+            throw new IOException("The installed Minecraft parent metadata is invalid.", ex);
+        }
     }
 
     private static Result installProfileLoader(String kind, String mc, String requested, Path root, Consumer<String> status)
