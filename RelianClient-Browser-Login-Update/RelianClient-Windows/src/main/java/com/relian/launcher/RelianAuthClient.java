@@ -67,11 +67,29 @@ public final class RelianAuthClient {
     }
 
     public static void requestPasswordReset(Config config, String email) throws IOException, InterruptedException {
-        if (email == null || !email.trim().matches("(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}"))
-            throw new IOException("Enter a valid email address.");
+        validateEmail(email);
         JsonObject body = new JsonObject();
         body.addProperty("email", email.trim());
         request(config, "recover", "POST", body, null, true);
+    }
+
+    /** Verifies the email's recovery OTP, then changes the password using the short-lived recovery session. */
+    public static Session completePasswordRecovery(Config config, String email, String code, String newPassword)
+            throws IOException, InterruptedException {
+        validateEmail(email);
+        validatePassword(newPassword);
+        if (code == null || !code.trim().matches("[0-9]{6,10}"))
+            throw new IOException("Enter the 6–10 digit recovery code from your email.");
+        JsonObject verification = new JsonObject();
+        verification.addProperty("email", email.trim());
+        verification.addProperty("token", code.trim());
+        verification.addProperty("type", "recovery");
+        Session session = session(request(config, "verify", "POST", verification, null, false), email);
+        if (session == null) throw new IOException("The recovery code was not accepted or did not create a recovery session.");
+        JsonObject update = new JsonObject();
+        update.addProperty("password", newPassword);
+        request(config, "user", "PUT", update, session.accessToken(), false);
+        return session;
     }
 
     public static void signOut(Config config, String accessToken) throws IOException, InterruptedException {
@@ -87,8 +105,17 @@ public final class RelianAuthClient {
     }
 
     private static void validateCredentials(String email, String password) throws IOException {
-        if (email == null || !email.trim().matches("(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}"))
+        validateEmail(email);
+        validatePassword(password);
+    }
+
+    private static void validateEmail(String email) throws IOException {
+        if (email == null || email.length() > 254
+                || !email.trim().matches("(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}"))
             throw new IOException("Enter a valid email address.");
+    }
+
+    private static void validatePassword(String password) throws IOException {
         if (password == null || password.length() < 8 || password.length() > 256)
             throw new IOException("Password must be between 8 and 256 characters.");
     }
