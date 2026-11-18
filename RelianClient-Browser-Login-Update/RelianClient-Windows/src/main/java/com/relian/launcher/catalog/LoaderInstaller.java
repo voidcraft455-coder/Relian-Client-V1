@@ -166,9 +166,10 @@ public final class LoaderInstaller {
             throw new IOException("Unsafe " + kind + " profile directory.");
         Files.createDirectories(profileDir);
         Path metadata = profileDir.resolve(id + ".json");
-        writeAtomically(metadata, profile.toString().getBytes(StandardCharsets.UTF_8));
+        // Publish the profile only after its dependencies and inherited native files are ready.
         MinecraftDependencyInstaller.install(profile, root, status);
         copyBaseNatives(root, mc, profileDir);
+        writeAtomically(metadata, profile.toString().getBytes(StandardCharsets.UTF_8));
         return new Result(kind, mc, loaderVersion, id, metadata);
     }
 
