@@ -1588,6 +1588,11 @@ public class RelianLauncher extends Application {
         Button register = small("Create Relian account");
         Button signIn = small("Sign in");
         Button reset = small("Send password-reset email");
+        TextField recoveryCode = new TextField();
+        recoveryCode.setPromptText("6–10 digit recovery code from your email");
+        PasswordField newPassword = new PasswordField();
+        newPassword.setPromptText("New password (8–256 characters)");
+        Button completeReset = small("Verify code & change password");
         Button signOut = small("Sign out");
         Runnable saveConfig = () -> {
             try {
@@ -1662,6 +1667,29 @@ public class RelianLauncher extends Application {
                 } else status.setText("If that address has an account, the identity provider will send password-reset instructions.");
             }));
         });
+        completeReset.setOnAction(event -> {
+            try { saveConfig.run(); } catch (RuntimeException ex) { return; }
+            String address = email.getText() == null ? "" : email.getText().trim();
+            String code = recoveryCode.getText() == null ? "" : recoveryCode.getText().trim();
+            String replacement = newPassword.getText();
+            completeReset.setDisable(true);
+            status.setText("Verifying recovery code and updating password…");
+            CompletableFuture.supplyAsync(() -> {
+                try { return RelianAuthClient.completePasswordRecovery(relianAuthConfig(), address, code, replacement); }
+                catch (Exception ex) { throw new RuntimeException(ex); }
+            }).whenComplete((session, error) -> javafx.application.Platform.runLater(() -> {
+                completeReset.setDisable(false);
+                newPassword.clear();
+                recoveryCode.clear();
+                if (error != null) {
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    status.setText("Password update failed: " + cause.getMessage());
+                    return;
+                }
+                acceptRelianSession(session, status);
+                status.setText("Password updated. Signed in as " + session.email() + ".");
+            }));
+        });
         signOut.setOnAction(event -> {
             RelianAuthClient.Session current = relianAccountSession;
             relianAccountSession = null;
@@ -1676,7 +1704,7 @@ public class RelianLauncher extends Application {
             }));
         });
         card.getChildren().addAll(heading,
-                muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. Never paste a service-role key here."),
+                muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. Set the recovery email template to include the one-time {{ .Token }} code so it can be entered below. Never paste a service-role key here."),
                 projectUrl, publicKey, save, new Separator(), email, password,
                 new HBox(8, register, signIn), new HBox(8, reset, signOut), status);
         return card;
