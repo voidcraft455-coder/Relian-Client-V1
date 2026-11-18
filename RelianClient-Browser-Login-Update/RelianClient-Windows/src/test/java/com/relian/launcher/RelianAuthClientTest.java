@@ -55,4 +55,11 @@ class RelianAuthClientTest {
                 RelianAuthClient.completePasswordRecovery(config, "user@example.com", "not-a-code", "new-password-123"));
     }
 
+    @Test
+    void rejectsInvalidEmailVerificationCodeBeforeMakingNetworkRequests() {
+        var config = new RelianAuthClient.Config("https://example-project.supabase.co", "public-key");
+        assertThrows(java.io.IOException.class, () ->
+                RelianAuthClient.verifyEmailCode(config, "user@example.com", "bad-code"));
+    }
+
 }
