@@ -25,6 +25,8 @@ public final class RelianAccountVault {
                 && (Files.isSymbolicLink(dir) || !Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)))
             throw new IOException("Relian secure storage directory is not safe.");
         Files.createDirectories(dir);
+        if (Files.isSymbolicLink(dir) || !Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("Relian secure storage directory changed to an unsafe path.");
         return dir.resolve("relian-account.dpapi");
     }
 
@@ -34,12 +36,12 @@ public final class RelianAccountVault {
         JsonObject data = new JsonObject();
         data.addProperty("email", email);
         data.addProperty("refreshToken", refreshToken);
+        Path target = file();
         byte[] plain = GSON.toJson(data).getBytes(StandardCharsets.UTF_8);
         byte[] encrypted;
         try { encrypted = Crypt32Util.cryptProtectData(plain); }
         catch (UnsatisfiedLinkError | RuntimeException ex) { throw new IOException("Windows DPAPI could not protect the Relian account session.", ex); }
         finally { java.util.Arrays.fill(plain, (byte) 0); }
-        Path target = file();
         Path temp = Files.createTempFile(target.getParent(), ".relian-account-", ".tmp");
         try {
             Files.write(temp, encrypted);
