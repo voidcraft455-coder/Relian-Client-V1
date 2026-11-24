@@ -94,23 +94,52 @@ public final class MicrosoftBrowserLogin {
 
     private static void handleCallback(HttpExchange ex, String expectedState,
             AtomicReference<String> code, AtomicReference<String> error, CountDownLatch done) throws IOException {
+        boolean verifiedCallback = false;
         try {
-            var params = new java.util.HashMap<String, String>();
+            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
+                ex.sendResponseHeaders(405, -1);
+                return;
+            }
+            if (!"/".equals(ex.getRequestURI().getRawPath())) {
+                ex.sendResponseHeaders(404, -1);
+                return;
+            }
             String query = ex.getRequestURI().getRawQuery();
-            if (query != null) for (String pair : query.split("&")) {
+            if (query == null || query.length() > 16384) {
+                ex.sendResponseHeaders(400, -1);
+                return;
+            }
+            var params = new java.util.HashMap<String, String>();
+            for (String pair : query.split("&")) {
+                if (params.size() >= 32) break;
                 String[] kv = pair.split("=", 2);
-                params.put(java.net.URLDecoder.decode(kv[0], StandardCharsets.UTF_8),
-                        kv.length > 1 ? java.net.URLDecoder.decode(kv[1], StandardCharsets.UTF_8) : "");
+                String key = java.net.URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+                String value = kv.length > 1
+                        ? java.net.URLDecoder.decode(kv[1], StandardCharsets.UTF_8) : "";
+                params.put(key, value);
             }
             String returnedState = params.getOrDefault("state", "");
-            if (!MessageDigest.isEqual(expectedState.getBytes(StandardCharsets.UTF_8), returnedState.getBytes(StandardCharsets.UTF_8))) {
-                error.set("The sign-in response could not be verified (state mismatch).");
-            } else if (params.containsKey("error")) {
-                String detail = params.getOrDefault("error_description", params.getOrDefault("error", "unknown error"));
+            if (returnedState.isBlank() || returnedState.length() > 256
+                    || !MessageDigest.isEqual(expectedState.getBytes(StandardCharsets.UTF_8),
+                            returnedState.getBytes(StandardCharsets.UTF_8))) {
+                ex.sendResponseHeaders(400, -1);
+                return;
+            }
+
+            verifiedCallback = true;
+            if (params.containsKey("error")) {
+                String detail = params.getOrDefault("error_description",
+                        params.getOrDefault("error", "unknown error"));
+                if (detail.length() > 256) detail = detail.substring(0, 256);
                 error.set("Microsoft sign-in error: " + detail);
             } else {
-                code.set(params.get("code"));
+                String returnedCode = params.getOrDefault("code", "");
+                if (returnedCode.isBlank() || returnedCode.length() > 8192)
+                    error.set("Microsoft did not return a valid authorization code.");
+                else
+                    code.set(returnedCode);
             }
+
             byte[] body = ("<!doctype html><html><head><meta charset='utf-8'><title>Relian Client</title></head>"
                     + "<body style='font-family:Segoe UI,Arial;background:#17191e;color:#f2f4f7;padding:48px'>"
                     + "<h2>Relian Client</h2><p>Sign-in response received. You can close this tab and return to Relian.</p></body></html>")
@@ -118,7 +147,11 @@ public final class MicrosoftBrowserLogin {
             ex.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
             ex.sendResponseHeaders(200, body.length);
             try (var out = ex.getResponseBody()) { out.write(body); }
-        } finally { done.countDown(); }
+        } catch (IllegalArgumentException malformedQuery) {
+            ex.sendResponseHeaders(400, -1);
+        } finally {
+            if (verifiedCallback) done.countDown();
+        }
     }
 
     /** Exchanges a DPAPI-vaulted refresh token for a fresh Microsoft access token. */
