@@ -31,19 +31,25 @@ public final class MicrosoftTokenVault {
                 && (Files.isSymbolicLink(directory) || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)))
             throw new IOException("The secure account storage directory is not safe.");
         Files.createDirectories(directory);
+        if (Files.isSymbolicLink(directory)
+                || !Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS))
+            throw new IOException("The secure account storage directory changed to an unsafe path.");
         return directory.resolve(FILE_NAME);
     }
 
     public static void saveRefreshToken(String refreshToken) throws IOException {
         if (refreshToken == null || refreshToken.isBlank()) throw new IOException("Microsoft did not provide a refresh token.");
         if (refreshToken.length() > 32768) throw new IOException("Microsoft refresh token exceeds the supported size.");
+        Path target = file();
+        byte[] plain = refreshToken.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] protectedBytes;
         try {
-            protectedBytes = Crypt32Util.cryptProtectData(refreshToken.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            protectedBytes = Crypt32Util.cryptProtectData(plain);
         } catch (UnsatisfiedLinkError | RuntimeException ex) {
             throw new IOException("Windows could not protect the Microsoft refresh token with DPAPI.", ex);
+        } finally {
+            java.util.Arrays.fill(plain, (byte) 0);
         }
-        Path target = file();
         Path temporary = Files.createTempFile(target.getParent(), ".relian-token-", ".tmp");
         try {
             Files.write(temporary, protectedBytes);
