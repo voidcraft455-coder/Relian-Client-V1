@@ -33,6 +33,12 @@ application {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
     systemProperty 'relian.minecraft.integration', project.findProperty('relian.minecraft.integration') ?: 'false'
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+        showCauses true
+        showStackTraces true
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
