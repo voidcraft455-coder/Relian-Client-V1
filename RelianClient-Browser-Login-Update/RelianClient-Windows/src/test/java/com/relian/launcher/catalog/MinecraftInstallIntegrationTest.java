@@ -1,5 +1,7 @@
 package com.relian.launcher.catalog;
 
+import java.io.IOException;
+
 import com.relian.launcher.runtime.JavaRuntimeManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
