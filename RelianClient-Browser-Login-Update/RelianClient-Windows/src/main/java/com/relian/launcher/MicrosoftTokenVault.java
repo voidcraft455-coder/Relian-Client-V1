@@ -50,8 +50,9 @@ public final class MicrosoftTokenVault {
         } finally {
             java.util.Arrays.fill(plain, (byte) 0);
         }
-        Path temporary = Files.createTempFile(target.getParent(), ".relian-token-", ".tmp");
+        Path temporary = null;
         try {
+            temporary = Files.createTempFile(target.getParent(), ".relian-token-", ".tmp");
             Files.write(temporary, protectedBytes);
             try {
                 Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
@@ -59,7 +60,7 @@ public final class MicrosoftTokenVault {
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }
         } finally {
-            Files.deleteIfExists(temporary);
+            if (temporary != null) Files.deleteIfExists(temporary);
             java.util.Arrays.fill(protectedBytes, (byte) 0);
         }
     }
