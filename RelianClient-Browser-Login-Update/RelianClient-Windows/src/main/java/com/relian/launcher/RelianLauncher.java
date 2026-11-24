@@ -265,16 +265,16 @@ public class RelianLauncher extends Application {
         CompletableFuture.runAsync(() -> {
             try {
                 MicrosoftBrowserLogin.LoginResult result = MicrosoftBrowserLogin.signIn(clientId);
-                try {
-                    MicrosoftTokenVault.saveRefreshToken(result.refreshToken());
-                } catch (Exception vaultError) {
-                    System.err.println("[Relian] Secure sign-in persistence is unavailable: " + vaultError.getMessage());
-                }
                 var verifiedSession = MinecraftAccountAuthenticator.authenticate(result.accessToken(), stage ->
                     javafx.application.Platform.runLater(() -> {
                         accountLabel = stage;
                         page(active);
                     }));
+                try {
+                    MicrosoftTokenVault.saveRefreshToken(result.refreshToken());
+                } catch (Exception vaultError) {
+                    System.err.println("[Relian] Secure sign-in persistence is unavailable: " + vaultError.getMessage());
+                }
                 javafx.application.Platform.runLater(() -> {
                     minecraftSession = verifiedSession;
                     offlineTestProfile = null;
