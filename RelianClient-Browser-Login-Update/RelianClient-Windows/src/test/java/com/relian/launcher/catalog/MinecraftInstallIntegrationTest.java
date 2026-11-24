@@ -58,8 +58,15 @@ class MinecraftInstallIntegrationTest {
 
         Path javaExecutable = Path.of(System.getProperty("java.home"), "bin", "java.exe");
         for (String loader : List.of("Fabric", "Quilt", "Forge", "NeoForge")) {
-            LoaderInstaller.Result result = LoaderInstaller.install(
-                    loader, "1.21.1", temporaryDirectory, javaExecutable, ignored -> {});
+            LoaderInstaller.Result result;
+            try {
+                result = LoaderInstaller.install(
+                        loader, "1.21.1", temporaryDirectory, javaExecutable, ignored -> {});
+            } catch (IOException | InterruptedException ex) {
+                if (ex instanceof InterruptedException) Thread.currentThread().interrupt();
+                throw new IOException("Failed while installing the " + loader
+                        + " profile for Minecraft 1.21.1.", ex);
+            }
             assertEquals(loader, result.loader());
             assertEquals("1.21.1", result.minecraftVersion());
             assertTrue(Files.isRegularFile(result.profileMetadata()),
