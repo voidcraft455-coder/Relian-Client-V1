@@ -42,13 +42,14 @@ public final class RelianAccountVault {
         try { encrypted = Crypt32Util.cryptProtectData(plain); }
         catch (UnsatisfiedLinkError | RuntimeException ex) { throw new IOException("Windows DPAPI could not protect the Relian account session.", ex); }
         finally { java.util.Arrays.fill(plain, (byte) 0); }
-        Path temp = Files.createTempFile(target.getParent(), ".relian-account-", ".tmp");
+        Path temp = null;
         try {
+            temp = Files.createTempFile(target.getParent(), ".relian-account-", ".tmp");
             Files.write(temp, encrypted);
             try { Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (java.nio.file.AtomicMoveNotSupportedException ex) { Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING); }
         } finally {
-            Files.deleteIfExists(temp);
+            if (temp != null) Files.deleteIfExists(temp);
             java.util.Arrays.fill(encrypted, (byte) 0);
         }
     }
