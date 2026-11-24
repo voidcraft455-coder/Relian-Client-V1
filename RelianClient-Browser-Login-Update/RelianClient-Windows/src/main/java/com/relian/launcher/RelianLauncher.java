@@ -1729,7 +1729,11 @@ public class RelianLauncher extends Application {
         card.getChildren().addAll(heading,
                 muted("Relian email accounts use Supabase Auth. Configure your own project URL and public anon/publishable key. Enable email confirmation and password recovery in the provider dashboard. You may use a confirmation link or a one-time `{{ .Token }}` code. Set the recovery email template to include the one-time {{ .Token }} code so it can be entered below. Never paste a service-role key here."),
                 projectUrl, publicKey, save, new Separator(), email, password,
-                new HBox(8, register, signIn), new HBox(8, reset, signOut), status);
+                new HBox(8, register, signIn),
+                new Label("Email verification"), verificationCode, verifyEmail,
+                new Separator(),
+                new Label("Password recovery"), new HBox(8, reset, signOut),
+                recoveryCode, newPassword, completeReset, status);
         return card;
     }
 
