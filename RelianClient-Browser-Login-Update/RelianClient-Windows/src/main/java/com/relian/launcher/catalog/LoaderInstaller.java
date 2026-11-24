@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
@@ -76,6 +77,7 @@ public final class LoaderInstaller {
         Path installer = root.resolve("relian-downloads").resolve(fileName).normalize();
         if (!installer.startsWith(root)) throw new IOException("Unsafe loader installer path.");
         downloadWithSha1(installerUrl, installer, MAX_INSTALLER_BYTES);
+        ensureLauncherProfilesFile(root);
         status.accept("Running the official " + kind + " client installer…");
         Process process = new ProcessBuilder(javaExecutable.toString(), "-jar", installer.toString(),
                 "--installClient", root.toString()).directory(root.toFile()).redirectErrorStream(true).start();
@@ -99,6 +101,32 @@ public final class LoaderInstaller {
         Result result = findInstalledProfile(kind, minecraftVersion, root, loaderVersion);
         status.accept(kind + " " + result.loaderVersion() + " installed.");
         return result;
+    }
+
+
+    /**
+     * Forge-family installers expect the standard launcher profile registry to exist,
+     * even when Relian is installing into a fresh, isolated instance directory.
+     * Preserve an existing registry and refuse to follow a symbolic link.
+     */
+    private static void ensureLauncherProfilesFile(Path root) throws IOException {
+        Path profiles = root.resolve("launcher_profiles.json").normalize();
+        if (!profiles.startsWith(root) || Files.isSymbolicLink(profiles))
+            throw new IOException("The Minecraft launcher profiles path is unsafe.");
+        if (Files.exists(profiles, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            if (!Files.isRegularFile(profiles, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                throw new IOException("The Minecraft launcher profiles path is not a regular file.");
+            return;
+        }
+        String initial = "{\\"profiles\\":{},\\"settings\\":{},\\"version\\":3}";
+        try {
+            Files.writeString(profiles, initial, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        } catch (java.nio.file.FileAlreadyExistsException ignored) {
+            if (Files.isSymbolicLink(profiles)
+                    || !Files.isRegularFile(profiles, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+                throw new IOException("The Minecraft launcher profiles path changed to an unsafe file.");
+        }
     }
 
 
