@@ -51,6 +51,7 @@ public final class MinecraftAccountAuthenticator {
         String xstsToken = required(xsts, "Token", "Xbox security authentication failed.");
         JsonArray xui = array(object(xsts, "DisplayClaims"), "xui");
         String xuid = xui != null && xui.size() > 0 ? string(xui.get(0).getAsJsonObject(), "xid") : "";
+        if (xuid.isBlank()) throw new IOException("Xbox security did not return the account identifier.");
 
         status.accept("Requesting a Minecraft Services session…");
         JsonObject minecraft = post("https://api.minecraftservices.com/authentication/login_with_xbox",
@@ -61,7 +62,8 @@ public final class MinecraftAccountAuthenticator {
         JsonObject entitlements = get("https://api.minecraftservices.com/entitlements/mcstore", minecraftToken);
         JsonArray items = entitlements.has("items") && entitlements.get("items").isJsonArray()
                 ? entitlements.getAsJsonArray("items") : new JsonArray();
-        if (items.isEmpty()) throw new IOException("This Microsoft account does not appear to own Minecraft Java Edition.");
+        if (!hasJavaEditionEntitlement(items))
+            throw new IOException("This Microsoft account does not appear to own Minecraft Java Edition. A Bedrock-only or unrelated Xbox entitlement is not enough.");
 
         status.accept("Retrieving the Minecraft Java profile…");
         JsonObject profile = get("https://api.minecraftservices.com/minecraft/profile", minecraftToken);
@@ -98,6 +100,16 @@ public final class MinecraftAccountAuthenticator {
         }
         try { return JsonParser.parseString(response.body()).getAsJsonObject(); }
         catch (RuntimeException ex) { throw new IOException("Authentication service returned invalid JSON.", ex); }
+    }
+
+    static boolean hasJavaEditionEntitlement(JsonArray items) {
+        if (items == null) return false;
+        for (int i = 0; i < items.size(); i++) {
+            if (!items.get(i).isJsonObject()) continue;
+            String name = string(items.get(i).getAsJsonObject(), "name");
+            if ("game_minecraft".equals(name) || "product_minecraft".equals(name)) return true;
+        }
+        return false;
     }
 
     private static String required(JsonObject object, String key, String message) throws IOException {
